@@ -351,3 +351,235 @@ export function createPortfolioSummaryCard(
     contents: bubble
   };
 }
+
+/**
+ * 生成記帳成功卡片
+ * 顯示本月統計、最近交易和查看完整記帳按鈕
+ */
+interface TransactionSummary {
+  type: 'income' | 'expense';
+  amount: number;
+  category: string;
+  monthlyIncome: number;
+  monthlyExpense: number;
+  monthlyBalance: number;
+  recentTransactions: Array<{
+    date: string;
+    type: 'income' | 'expense';
+    amount: number;
+    category: string;
+  }>;
+  liffUrl?: string;
+}
+
+export function createTransactionSuccessCard(data: TransactionSummary): FlexMessage {
+  const isIncome = data.type === 'income';
+  const iconColor = isIncome ? COLORS.profit : COLORS.loss;
+  const icon = isIncome ? '💰' : '💸';
+  const title = isIncome ? '收入已記錄' : '支出已記錄';
+
+  const bubble: FlexBubble = {
+    type: 'bubble',
+    size: 'kilo',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: COLORS.background,
+      paddingAll: '20px',
+      contents: [
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: icon,
+              size: 'xl',
+              flex: 0
+            },
+            {
+              type: 'box',
+              layout: 'vertical',
+              margin: 'md',
+              contents: [
+                {
+                  type: 'text',
+                  text: title,
+                  size: 'lg',
+                  weight: 'bold',
+                  color: COLORS.textMain
+                },
+                {
+                  type: 'text',
+                  text: data.category,
+                  size: 'sm',
+                  color: COLORS.textMuted
+                }
+              ]
+            }
+          ]
+        },
+        {
+          type: 'text',
+          text: `${isIncome ? '+' : '-'}$${data.amount.toFixed(0)}`,
+          size: 'xxl',
+          weight: 'bold',
+          color: iconColor,
+          align: 'center',
+          margin: 'lg'
+        }
+      ]
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      paddingAll: '20px',
+      spacing: 'md',
+      contents: [
+        {
+          type: 'text',
+          text: '📊 本月統計',
+          size: 'sm',
+          weight: 'bold',
+          color: COLORS.textMain,
+          margin: 'none'
+        },
+        {
+          type: 'separator',
+          color: COLORS.separator
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          margin: 'md',
+          contents: [
+            {
+              type: 'text',
+              text: '收入',
+              size: 'sm',
+              color: COLORS.textMuted,
+              flex: 1
+            },
+            {
+              type: 'text',
+              text: `+$${data.monthlyIncome.toFixed(0)}`,
+              size: 'sm',
+              color: COLORS.profit,
+              weight: 'bold',
+              align: 'end',
+              flex: 1
+            }
+          ]
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: '支出',
+              size: 'sm',
+              color: COLORS.textMuted,
+              flex: 1
+            },
+            {
+              type: 'text',
+              text: `-$${data.monthlyExpense.toFixed(0)}`,
+              size: 'sm',
+              color: COLORS.loss,
+              weight: 'bold',
+              align: 'end',
+              flex: 1
+            }
+          ]
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: '結餘',
+              size: 'sm',
+              color: COLORS.textMain,
+              weight: 'bold',
+              flex: 1
+            },
+            {
+              type: 'text',
+              text: `$${data.monthlyBalance.toFixed(0)}`,
+              size: 'sm',
+              color: data.monthlyBalance >= 0 ? COLORS.profit : COLORS.loss,
+              weight: 'bold',
+              align: 'end',
+              flex: 1
+            }
+          ]
+        },
+        {
+          type: 'separator',
+          margin: 'lg',
+          color: COLORS.separator
+        },
+        {
+          type: 'text',
+          text: '📝 最近交易',
+          size: 'sm',
+          weight: 'bold',
+          color: COLORS.textMain,
+          margin: 'md'
+        }
+      ]
+    },
+    footer: data.liffUrl ? {
+      type: 'box',
+      layout: 'vertical',
+      paddingAll: '15px',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#6B9BD1',
+          action: {
+            type: 'uri',
+            label: '📖 查看完整記帳',
+            uri: data.liffUrl
+          },
+          height: 'sm'
+        }
+      ]
+    } : undefined
+  };
+
+  // 添加最近交易（最多顯示2筆）
+  const recentItems = data.recentTransactions.slice(0, 2).map(tx => ({
+    type: 'box' as const,
+    layout: 'horizontal' as const,
+    margin: 'sm' as const,
+    contents: [
+      {
+        type: 'text' as const,
+        text: tx.category,
+        size: 'xs' as const,
+        color: COLORS.textMuted,
+        flex: 2
+      },
+      {
+        type: 'text' as const,
+        text: `${tx.type === 'income' ? '+' : '-'}$${tx.amount.toFixed(0)}`,
+        size: 'xs' as const,
+        color: tx.type === 'income' ? COLORS.profit : COLORS.loss,
+        align: 'end' as const,
+        flex: 1
+      }
+    ]
+  }));
+
+  bubble.body!.contents.push(...recentItems);
+
+  return {
+    type: 'flex',
+    altText: `${title} ${data.category} ${isIncome ? '+' : '-'}$${data.amount}`,
+    contents: bubble
+  };
+}

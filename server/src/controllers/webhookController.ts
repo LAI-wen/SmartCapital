@@ -8,6 +8,7 @@ import {
   getOrCreateUser,
   getUserSettings,
   createTransaction,
+  getUserTransactions,
   upsertAsset,
   reduceAsset,
   getAsset,
@@ -22,7 +23,8 @@ import {
   createStockQuoteCard,
   createExpenseCategoryQuickReply,
   createIncomeCategoryQuickReply,
-  createPortfolioSummaryCard
+  createPortfolioSummaryCard,
+  createTransactionSuccessCard
 } from '../utils/flexMessages.js';
 import { parseMessage, getHelpMessage, validateQuantity, validateAmount } from '../utils/messageParser.js';
 
@@ -384,13 +386,57 @@ export class WebhookController {
     category: string,
     amount: number
   ): Promise<void> {
+    // 創建交易
     await createTransaction(userId, 'expense', amount, category);
     await clearConversationState(lineUserId);
 
-    await this.client.pushMessage(lineUserId, {
-      type: 'text',
-      text: `✅ 已記錄支出\n\n類別: ${category}\n金額: -$${amount}`
+    // 獲取本月統計
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const allTransactions = await getUserTransactions(userId, 100);
+
+    // 計算本月收支
+    let monthlyIncome = 0;
+    let monthlyExpense = 0;
+
+    allTransactions.forEach(tx => {
+      const txDate = new Date(tx.date);
+      if (txDate >= startOfMonth) {
+        if (tx.type === 'income') {
+          monthlyIncome += tx.amount;
+        } else {
+          monthlyExpense += tx.amount;
+        }
+      }
     });
+
+    // 獲取最近2筆交易（不包括剛剛的這筆）
+    const recentTransactions = allTransactions
+      .slice(1, 3) // 跳過第一筆（剛剛創建的），取接下來2筆
+      .map(tx => ({
+        date: typeof tx.date === 'string' ? tx.date : tx.date.toISOString(),
+        type: tx.type as 'income' | 'expense',
+        amount: tx.amount,
+        category: tx.category
+      }));
+
+    // 獲取 LIFF URL
+    const liffId = process.env.LIFF_ID;
+    const liffUrl = liffId ? `https://liff.line.me/${liffId}` : undefined;
+
+    // 發送卡片
+    const card = createTransactionSuccessCard({
+      type: 'expense',
+      amount,
+      category,
+      monthlyIncome,
+      monthlyExpense,
+      monthlyBalance: monthlyIncome - monthlyExpense,
+      recentTransactions,
+      liffUrl
+    });
+
+    await this.client.pushMessage(lineUserId, card);
   }
 
   /**
@@ -402,13 +448,57 @@ export class WebhookController {
     category: string,
     amount: number
   ): Promise<void> {
+    // 創建交易
     await createTransaction(userId, 'income', amount, category);
     await clearConversationState(lineUserId);
 
-    await this.client.pushMessage(lineUserId, {
-      type: 'text',
-      text: `✅ 已記錄收入\n\n類別: ${category}\n金額: +$${amount}`
+    // 獲取本月統計
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const allTransactions = await getUserTransactions(userId, 100);
+
+    // 計算本月收支
+    let monthlyIncome = 0;
+    let monthlyExpense = 0;
+
+    allTransactions.forEach(tx => {
+      const txDate = new Date(tx.date);
+      if (txDate >= startOfMonth) {
+        if (tx.type === 'income') {
+          monthlyIncome += tx.amount;
+        } else {
+          monthlyExpense += tx.amount;
+        }
+      }
     });
+
+    // 獲取最近2筆交易（不包括剛剛的這筆）
+    const recentTransactions = allTransactions
+      .slice(1, 3)
+      .map(tx => ({
+        date: typeof tx.date === 'string' ? tx.date : tx.date.toISOString(),
+        type: tx.type as 'income' | 'expense',
+        amount: tx.amount,
+        category: tx.category
+      }));
+
+    // 獲取 LIFF URL
+    const liffId = process.env.LIFF_ID;
+    const liffUrl = liffId ? `https://liff.line.me/${liffId}` : undefined;
+
+    // 發送卡片
+    const card = createTransactionSuccessCard({
+      type: 'income',
+      amount,
+      category,
+      monthlyIncome,
+      monthlyExpense,
+      monthlyBalance: monthlyIncome - monthlyExpense,
+      recentTransactions,
+      liffUrl
+    });
+
+    await this.client.pushMessage(lineUserId, card);
   }
 
   /**
