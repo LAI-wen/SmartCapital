@@ -394,5 +394,19 @@ export function setUserId(userId: string) {
 }
 
 export function getUserId(): string {
+  // 優先從 localStorage 讀取（LIFF 登入後會儲存）
+  const storedUserId = localStorage.getItem('lineUserId');
+  if (storedUserId) {
+    return storedUserId;
+  }
+  
+  // 檢查 URL 參數（開發模式）
+  const params = new URLSearchParams(window.location.search);
+  const userIdFromUrl = params.get('userId');
+  if (userIdFromUrl) {
+    return userIdFromUrl;
+  }
+  
+  // 最後才用 mock ID（本地測試）
   return currentUserId;
 }

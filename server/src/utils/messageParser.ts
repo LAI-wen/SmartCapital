@@ -18,6 +18,9 @@ export type MessageIntent =
   | { type: 'HELP' }
   | { type: 'PORTFOLIO' }
   | { type: 'WEBSITE' }
+  | { type: 'ACCOUNT_LIST' }
+  | { type: 'CREATE_ACCOUNT' }
+  | { type: 'TOTAL_ASSETS' }
   | { type: 'UNKNOWN' };
 
 /**
@@ -95,12 +98,26 @@ export function parseMessage(text: string): MessageIntent {
     return { type: 'HELP' };
   }
 
-  if (/(資產|持倉|portfolio)/i.test(trimmed)) {
+  if (/(我的投資組合|持倉|portfolio)/i.test(trimmed)) {
     return { type: 'PORTFOLIO' };
   }
 
   if (/(網站|查看|website|web|app|連結)/i.test(trimmed)) {
     return { type: 'WEBSITE' };
+  }
+
+  // 帳戶管理指令
+  if (/(帳戶列表|我的帳戶|accounts)/i.test(trimmed)) {
+    return { type: 'ACCOUNT_LIST' };
+  }
+
+  if (/(建立帳戶|新增帳戶|create\s*account)/i.test(trimmed)) {
+    return { type: 'CREATE_ACCOUNT' };
+  }
+
+  // 資產查詢指令
+  if (/(總資產|資產總覽|total\s*assets)/i.test(trimmed)) {
+    return { type: 'TOTAL_ASSETS' };
   }
 
   // 未知訊息

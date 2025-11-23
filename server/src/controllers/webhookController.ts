@@ -133,6 +133,18 @@ export class WebhookController {
         await this.handleWebsiteLink(lineUserId);
         break;
 
+      case 'ACCOUNT_LIST':
+        await this.handleAccountList(lineUserId, userId);
+        break;
+
+      case 'CREATE_ACCOUNT':
+        await this.handleCreateAccount(lineUserId, userId);
+        break;
+
+      case 'TOTAL_ASSETS':
+        await this.handleTotalAssets(lineUserId, userId);
+        break;
+
       default:
         await this.client.pushMessage(lineUserId, {
           type: 'text',
@@ -312,7 +324,7 @@ export class WebhookController {
     const stockCurrency = symbol.endsWith('.TW') || symbol.endsWith('.TWO') ? 'TWD' : 'USD';
     
     // 過濾可用帳戶
-    const availableAccounts = accounts.filter(acc => {
+    const availableAccounts = accounts.filter((acc: any) => {
       // 台股：只允許 TWD 證券戶
       if (stockCurrency === 'TWD') {
         return acc.currency === 'TWD' && acc.type === 'BROKERAGE';
@@ -366,7 +378,7 @@ export class WebhookController {
         price: quote.price,
         name: quote.name,
         stockCurrency,
-        availableAccounts: availableAccounts.map(a => ({
+        availableAccounts: availableAccounts.map((a: any) => ({
           id: a.id,
           name: a.name,
           currency: a.currency,
@@ -745,6 +757,155 @@ export class WebhookController {
 
     const card = createPortfolioSummaryCard(totalValue, totalCost, assetDetails);
     await this.client.pushMessage(lineUserId, card);
+  }
+
+  /**
+   * 處理帳戶列表查詢
+   */
+  private async handleAccountList(lineUserId: string, userId: string): Promise<void> {
+    const accounts = await getUserAccounts(userId);
+
+    if (accounts.length === 0) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '您目前沒有任何帳戶。\n\n請輸入「建立帳戶」開始設定。'
+      });
+      return;
+    }
+
+    // 計算總資產
+    let totalTWD = 0;
+    let totalUSD = 0;
+
+    accounts.forEach((acc: any) => {
+      if (acc.currency === 'TWD') {
+        totalTWD += acc.balance;
+      } else if (acc.currency === 'USD') {
+        totalUSD += acc.balance;
+      }
+    });
+
+    // 格式化帳戶清單
+    let message = '💰 您的帳戶列表\n\n';
+    
+    accounts.forEach((acc: any) => {
+      const icon = acc.type === 'CASH' ? '💵' : '🏦';
+      const subIcon = acc.isSub ? ' (複委託)' : '';
+      const defaultIcon = acc.isDefault ? ' ⭐' : '';
+      const balanceStr = acc.currency === 'TWD' 
+        ? `NT$ ${acc.balance.toLocaleString()}`
+        : `$ ${acc.balance.toLocaleString()}`;
+
+      message += `${icon} ${acc.name}${subIcon}${defaultIcon}\n`;
+      message += `   ${balanceStr}\n\n`;
+    });
+
+    message += `📊 總資產\n`;
+    if (totalTWD > 0) {
+      message += `💰 台幣：NT$ ${totalTWD.toLocaleString()}\n`;
+    }
+    if (totalUSD > 0) {
+      message += `💵 美金：$ ${totalUSD.toLocaleString()}\n`;
+    }
+
+    await this.client.pushMessage(lineUserId, {
+      type: 'text',
+      text: message
+    });
+  }
+
+  /**
+   * 處理建立帳戶請求（引導至網頁版）
+   */
+  private async handleCreateAccount(lineUserId: string, userId: string): Promise<void> {
+    const liffId = process.env.LIFF_ID;
+    const webUrl = liffId
+      ? `https://liff.line.me/${liffId}/#/settings`
+      : `${process.env.FRONTEND_URL || 'http://localhost:3001'}/#/settings?userId=${encodeURIComponent(lineUserId)}`;
+
+    await this.client.pushMessage(lineUserId, {
+      type: 'template',
+      altText: '建立新帳戶',
+      template: {
+        type: 'buttons',
+        text: '💳 建立新帳戶\n\n請前往網頁版進行設定：\n\n• 選擇帳戶類型\n• 設定初始餘額\n• 選擇幣別 (TWD/USD)',
+        actions: [
+          {
+            type: 'uri',
+            label: '🌐 開啟設定頁面',
+            uri: webUrl
+          }
+        ]
+      }
+    });
+  }
+
+  /**
+   * 處理總資產查詢
+   */
+  private async handleTotalAssets(lineUserId: string, userId: string): Promise<void> {
+    const accounts = await getUserAccounts(userId);
+    const assets = await getUserAssets(userId);
+
+    // 計算現金總資產
+    let cashTWD = 0;
+    let cashUSD = 0;
+
+    accounts.forEach((acc: any) => {
+      if (acc.currency === 'TWD') {
+        cashTWD += acc.balance;
+      } else if (acc.currency === 'USD') {
+        cashUSD += acc.balance;
+      }
+    });
+
+    // 計算投資組合總值
+    let stockValueTWD = 0;
+    let stockValueUSD = 0;
+
+    for (const asset of assets) {
+      const quote = await getStockQuote(asset.symbol);
+      const currentPrice = quote?.price || asset.avgPrice;
+      const value = currentPrice * asset.quantity;
+
+      // 判斷是台股還是美股
+      if (asset.symbol.includes('.TW') || asset.symbol.includes('.TWO')) {
+        stockValueTWD += value;
+      } else {
+        stockValueUSD += value;
+      }
+    }
+
+    // 總資產
+    const totalTWD = cashTWD + stockValueTWD;
+    const totalUSD = cashUSD + stockValueUSD;
+
+    let message = '📊 總資產概覽\n\n';
+    
+    message += '💰 台幣資產\n';
+    message += `   現金：NT$ ${cashTWD.toLocaleString()}\n`;
+    message += `   股票：NT$ ${stockValueTWD.toLocaleString()}\n`;
+    message += `   小計：NT$ ${totalTWD.toLocaleString()}\n\n`;
+    
+    if (totalUSD > 0 || cashUSD > 0 || stockValueUSD > 0) {
+      message += '💵 美金資產\n';
+      message += `   現金：$ ${cashUSD.toLocaleString()}\n`;
+      message += `   股票：$ ${stockValueUSD.toLocaleString()}\n`;
+      message += `   小計：$ ${totalUSD.toLocaleString()}\n\n`;
+    }
+
+    // 獲取 LIFF URL
+    const liffId = process.env.LIFF_ID;
+    const webUrl = liffId
+      ? `https://liff.line.me/${liffId}`
+      : `${process.env.FRONTEND_URL || 'http://localhost:3001'}/#/?userId=${encodeURIComponent(lineUserId)}`;
+
+    message += `🌐 查看詳細分析 → ${webUrl}`;
+
+    await this.client.pushMessage(lineUserId, {
+      type: 'text',
+      text: message
+    });
   }
 
   /**

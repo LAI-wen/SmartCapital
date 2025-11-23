@@ -39,6 +39,9 @@ const webhookController = new WebhookController(client);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// JSON Body Parser（必須在 LINE middleware 之前）
+app.use('/api', express.json());
+
 // 健康檢查端點
 app.get('/health', (req: Request, res: Response) => {
   res.json({
