@@ -8,7 +8,10 @@ import {
   getOrCreateUser,
   getUserAssets,
   getUserTransactions,
-  getUserSettings
+  getUserSettings,
+  getUserNotifications,
+  markNotificationRead,
+  markAllNotificationsRead
 } from '../services/databaseService.js';
 import { getStockQuote } from '../services/stockService.js';
 
@@ -190,5 +193,67 @@ export async function getSettings(req: Request, res: Response) {
   } catch (error) {
     console.error('Error fetching settings:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch settings' });
+  }
+}
+
+/**
+ * GET /api/notifications/:lineUserId
+ * 取得用戶通知列表
+ */
+export async function getNotifications(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const limit = parseInt(req.query.limit as string) || 20;
+
+    const user = await getOrCreateUser(lineUserId);
+    const notifications = await getUserNotifications(user.id, limit);
+
+    res.json({
+      success: true,
+      data: notifications.map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        read: n.read,
+        time: n.createdAt.toISOString()
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch notifications' });
+  }
+}
+
+/**
+ * POST /api/notifications/:notificationId/read
+ * 標記通知為已讀
+ */
+export async function markNotificationAsRead(req: Request, res: Response) {
+  try {
+    const { notificationId } = req.params;
+    await markNotificationRead(notificationId);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({ success: false, error: 'Failed to mark notification as read' });
+  }
+}
+
+/**
+ * POST /api/notifications/:lineUserId/read-all
+ * 標記所有通知為已讀
+ */
+export async function markAllNotificationsAsRead(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const user = await getOrCreateUser(lineUserId);
+    await markAllNotificationsRead(user.id);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    res.status(500).json({ success: false, error: 'Failed to mark all notifications as read' });
   }
 }

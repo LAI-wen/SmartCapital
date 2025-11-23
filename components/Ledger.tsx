@@ -2,21 +2,21 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { MOCK_TRANSACTIONS, TRANSACTION_CATEGORIES, COLORS } from '../constants';
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Tag, FileText, Trash2, X, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, Zap, Gift, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Plus, DollarSign, Calendar, Tag, FileText, Trash2, X, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, TrendingUp, Gift, ChevronLeft, ChevronRight, BarChart2, ChevronDown, ChevronUp, CalendarDays } from 'lucide-react';
 import { 
   format, isSameDay, isSameWeek, isSameMonth, isSameYear, parseISO, 
   addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, 
-  startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval,
-  getYear
+  startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, eachMonthOfInterval, getDate
 } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 
 interface LedgerProps {
   isPrivacyMode: boolean;
   transactions: Transaction[];
 }
 
-type ViewMode = 'day' | 'week' | 'month' | 'year';
+type ViewMode = 'day' | 'week' | 'month' | 'year' | 'calendar';
 
 const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransactions }) => {
   // 使用真實資料，如果沒有則回退到 Mock 資料（Demo 模式）
@@ -28,9 +28,13 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
   // Navigation State
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [showStats, setShowStats] = useState(true);
   
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  
+  // Scroll & Header State
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
 
   // Form State
   const [newType, setNewType] = useState<TransactionType>('expense');
@@ -46,24 +50,55 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
     }
   }, [userTransactions]);
 
+  // --- SCROLL DETECTION ---
+  useEffect(() => {
+    const scrollContainer = document.getElementById('main-scroll-container');
+    if (!scrollContainer) return;
+
+    let lastScrollY = scrollContainer.scrollTop;
+    
+    const handleScroll = () => {
+      const currentScrollY = scrollContainer.scrollTop;
+      const threshold = 10;
+
+      // Don't collapse if we are at the very top
+      if (currentScrollY < 50) {
+        setIsHeaderExpanded(true);
+        return;
+      }
+
+      if (currentScrollY > lastScrollY + threshold) {
+        // Scrolling Down -> Collapse
+        setIsHeaderExpanded(false);
+      } else if (currentScrollY < lastScrollY - threshold) {
+        // Scrolling Up -> Expand
+        setIsHeaderExpanded(true);
+      }
+      lastScrollY = currentScrollY;
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // --- NAVIGATION HELPERS ---
   const handlePrev = () => {
     if (viewMode === 'day') setCurrentDate(d => subDays(d, 1));
     if (viewMode === 'week') setCurrentDate(d => subWeeks(d, 1));
-    if (viewMode === 'month') setCurrentDate(d => subMonths(d, 1));
+    if (viewMode === 'month' || viewMode === 'calendar') setCurrentDate(d => subMonths(d, 1));
     if (viewMode === 'year') setCurrentDate(d => subMonths(d, 12));
   };
 
   const handleNext = () => {
     if (viewMode === 'day') setCurrentDate(d => addDays(d, 1));
     if (viewMode === 'week') setCurrentDate(d => addWeeks(d, 1));
-    if (viewMode === 'month') setCurrentDate(d => addMonths(d, 1));
+    if (viewMode === 'month' || viewMode === 'calendar') setCurrentDate(d => addMonths(d, 1));
     if (viewMode === 'year') setCurrentDate(d => addMonths(d, 12));
   };
 
   const dateRangeLabel = useMemo(() => {
     if (viewMode === 'day') return format(currentDate, 'yyyy年 MM月 dd日 (eee)', { locale: zhTW });
-    if (viewMode === 'month') return format(currentDate, 'yyyy年 MM月', { locale: zhTW });
+    if (viewMode === 'month' || viewMode === 'calendar') return format(currentDate, 'yyyy年 MM月', { locale: zhTW });
     if (viewMode === 'year') return format(currentDate, 'yyyy年', { locale: zhTW });
     
     // Week
@@ -72,22 +107,24 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
     return `${format(start, 'MM/dd')} - ${format(end, 'MM/dd')}`;
   }, [currentDate, viewMode]);
 
-  // --- FILTERING LOGIC ---
+  // --- DATA PROCESSING ---
+
+  // 1. Filter Transactions
   const filteredTransactions = useMemo(() => {
     return transactions
       .filter(t => {
         const tDate = parseISO(t.date);
         
-        // 1. Time Filter
+        // Time Filter (Same logic for list views)
         let isTimeMatch = false;
         if (viewMode === 'day') isTimeMatch = isSameDay(tDate, currentDate);
         else if (viewMode === 'week') isTimeMatch = isSameWeek(tDate, currentDate, { weekStartsOn: 1 });
-        else if (viewMode === 'month') isTimeMatch = isSameMonth(tDate, currentDate);
+        else if (viewMode === 'month' || viewMode === 'calendar') isTimeMatch = isSameMonth(tDate, currentDate);
         else if (viewMode === 'year') isTimeMatch = isSameYear(tDate, currentDate);
         
         if (!isTimeMatch) return false;
 
-        // 2. Category Filter
+        // Category Filter
         if (selectedCategory !== 'All' && t.category !== selectedCategory) return false;
 
         return true;
@@ -95,19 +132,18 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [transactions, currentDate, viewMode, selectedCategory]);
 
-  // Group by Date for Display
+  // 2. Group by Date for List
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
     filteredTransactions.forEach(t => {
-        // 確保只使用日期部分 YYYY-MM-DD，移除時間
-        const dateKey = t.date.split('T')[0]; // 如果有時間戳就去掉
+        const dateKey = t.date; 
         if (!groups[dateKey]) groups[dateKey] = [];
         groups[dateKey].push(t);
     });
     return groups;
   }, [filteredTransactions]);
 
-  // Calculations
+  // 3. Summary Stats
   const summary = useMemo(() => {
     let income = 0;
     let expense = 0;
@@ -117,6 +153,58 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
     });
     return { income, expense, balance: income - expense };
   }, [filteredTransactions]);
+
+  // 4. Chart Data
+  const chartData = useMemo(() => {
+    if (viewMode === 'day' || viewMode === 'calendar') return [];
+    
+    let start, end, intervalFn, formatLabel;
+    
+    if (viewMode === 'week') {
+      start = startOfWeek(currentDate, { weekStartsOn: 1 });
+      end = endOfWeek(currentDate, { weekStartsOn: 1 });
+      intervalFn = eachDayOfInterval;
+      formatLabel = (d: Date) => format(d, 'EEE', { locale: zhTW }); 
+    } else if (viewMode === 'month') {
+      start = startOfMonth(currentDate);
+      end = endOfMonth(currentDate);
+      intervalFn = eachDayOfInterval;
+      formatLabel = (d: Date) => format(d, 'dd'); 
+    } else { // year
+      start = new Date(currentDate.getFullYear(), 0, 1);
+      end = new Date(currentDate.getFullYear(), 11, 31);
+      intervalFn = eachMonthOfInterval;
+      formatLabel = (d: Date) => format(d, 'MMM'); 
+    }
+
+    const intervals = intervalFn({ start, end });
+    
+    return intervals.map(date => {
+      let income = 0;
+      let expense = 0;
+
+      transactions.forEach(t => {
+        const tDate = parseISO(t.date);
+        let match = false;
+        if (viewMode === 'year') {
+           match = isSameMonth(date, tDate);
+        } else {
+           match = isSameDay(date, tDate);
+        }
+        
+        if (match) {
+           if (t.type === 'income') income += t.amount;
+           else expense += t.amount;
+        }
+      });
+
+      return {
+        name: formatLabel(date),
+        income,
+        expense
+      };
+    });
+  }, [transactions, currentDate, viewMode]);
 
   // --- ACTIONS ---
   const handleAddTransaction = () => {
@@ -162,144 +250,335 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
 
   const allCategories = ['All', ...TRANSACTION_CATEGORIES.expense, ...TRANSACTION_CATEGORIES.income];
 
+  // --- CALENDAR RENDERER ---
+  const renderCalendar = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const startDate = startOfWeek(monthStart);
+    const endDate = endOfWeek(monthEnd);
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    return (
+      <div className="bg-white rounded-2xl shadow-paper border border-stone-100 p-2 animate-fade-in">
+        {/* Week Headers */}
+        <div className="grid grid-cols-7 mb-2">
+          {weekDays.map(d => (
+            <div key={d} className="text-center text-[10px] text-ink-400 font-serif font-bold uppercase tracking-wider py-2">
+              {d}
+            </div>
+          ))}
+        </div>
+        
+        {/* Days Grid */}
+        <div className="grid grid-cols-7 gap-1">
+          {days.map(day => {
+            const isCurrentMonth = isSameMonth(day, monthStart);
+            const isToday = isSameDay(day, new Date());
+            
+            // Calculate stats for this day
+            let dayIncome = 0;
+            let dayExpense = 0;
+            transactions.forEach(t => {
+              if (isSameDay(parseISO(t.date), day)) {
+                if (t.type === 'income') dayIncome += t.amount;
+                else dayExpense += t.amount;
+              }
+            });
+
+            return (
+              <div 
+                key={day.toString()}
+                onClick={() => { setCurrentDate(day); setViewMode('day'); }}
+                className={`
+                  aspect-[4/5] md:aspect-square rounded-xl p-1 md:p-2 border transition-all cursor-pointer relative flex flex-col justify-between
+                  ${isCurrentMonth ? 'bg-white hover:border-morandi-blue/50' : 'bg-stone-50/50 text-ink-300 border-transparent'}
+                  ${isToday ? 'ring-1 ring-morandi-blue ring-offset-2' : 'border-stone-50'}
+                `}
+              >
+                <div className={`text-xs font-serif-num font-bold text-center ${isToday ? 'text-morandi-blue' : isCurrentMonth ? 'text-ink-900' : 'text-ink-300'}`}>
+                  {getDate(day)}
+                </div>
+                
+                {/* Dots / Indicators */}
+                <div className="flex flex-col gap-0.5 items-center justify-end h-full pb-1">
+                  {dayIncome > 0 && (
+                     <div className="flex items-center gap-0.5">
+                       <div className="w-1.5 h-1.5 rounded-full bg-morandi-sage"></div>
+                       <span className="text-[8px] font-serif-num text-morandi-sage hidden md:block">+{dayIncome >= 1000 ? (dayIncome/1000).toFixed(1) + 'k' : dayIncome}</span>
+                     </div>
+                  )}
+                  {dayExpense > 0 && (
+                     <div className="flex items-center gap-0.5">
+                       <div className="w-1.5 h-1.5 rounded-full bg-morandi-rose"></div>
+                       <span className="text-[8px] font-serif-num text-morandi-rose hidden md:block">-{dayExpense >= 1000 ? (dayExpense/1000).toFixed(1) + 'k' : dayExpense}</span>
+                     </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in relative pb-24 max-w-4xl mx-auto">
       
-      {/* --- STICKY HEADER (Date & Filters) --- */}
-      <div className="sticky top-0 z-20 bg-paper/95 backdrop-blur-sm pb-4 pt-1 transition-all space-y-4">
+      {/* --- STICKY HEADER --- */}
+      <div className={`sticky top-0 z-20 bg-paper/95 backdrop-blur-sm transition-all duration-300 border-stone-200/50 ${isHeaderExpanded ? 'pt-2 pb-2' : 'pt-0 pb-0 border-b shadow-sm'}`}>
         
-        {/* Row 1: Date Navigation */}
-        <div className="bg-white rounded-2xl p-4 shadow-paper border border-stone-100 flex flex-col md:flex-row justify-between items-center gap-4">
-          {/* View Mode Switcher */}
-          <div className="flex bg-paper p-1 rounded-xl">
+        {/* Collapsible Section 1: View Switcher */}
+        <div className={`overflow-hidden transition-all duration-300 ${isHeaderExpanded ? 'max-h-16 opacity-100 mb-3' : 'max-h-0 opacity-0 mb-0'}`}>
+          <div className="flex bg-paper p-1 rounded-xl justify-center shadow-inner border border-stone-100">
              {(['day', 'week', 'month', 'year'] as const).map(mode => (
                <button
                  key={mode}
                  onClick={() => { setViewMode(mode); setCurrentDate(new Date()); }}
-                 className={`px-4 py-1.5 rounded-lg text-sm font-serif transition-all ${
+                 className={`flex-1 px-3 py-2 rounded-lg text-xs font-serif transition-all ${
                    viewMode === mode 
-                     ? 'bg-white text-morandi-blue shadow-sm font-bold' 
+                     ? 'bg-white text-morandi-blue shadow-sm font-bold border border-stone-100' 
                      : 'text-ink-400 hover:text-ink-800'
                  }`}
                >
                  {mode === 'day' ? '日' : mode === 'week' ? '週' : mode === 'month' ? '月' : '年'}
                </button>
              ))}
+             {/* Calendar Mode Button */}
+             <button
+                 onClick={() => { setViewMode('calendar'); setCurrentDate(new Date()); }}
+                 className={`flex-1 px-3 py-2 rounded-lg text-xs font-serif transition-all flex items-center justify-center gap-1 ${
+                   viewMode === 'calendar' 
+                     ? 'bg-white text-morandi-blue shadow-sm font-bold border border-stone-100' 
+                     : 'text-ink-400 hover:text-ink-800'
+                 }`}
+               >
+                 <CalendarDays size={14} /> 月曆
+             </button>
           </div>
+        </div>
 
-          {/* Date Navigator */}
-          <div className="flex items-center gap-4">
-             <button onClick={handlePrev} className="p-2 hover:bg-paper rounded-full text-ink-400 hover:text-morandi-blue transition-colors">
+        {/* Persistent Section: Date Nav & Actions */}
+        <div className="bg-white rounded-2xl p-2 px-3 shadow-soft border border-stone-100 flex justify-between items-center gap-2">
+          
+          {/* Date Nav */}
+          <div className="flex items-center gap-1">
+             <button onClick={handlePrev} className="p-2 hover:bg-paper rounded-lg text-ink-400 hover:text-morandi-blue transition-colors">
                 <ChevronLeft size={20} />
              </button>
-             <span className="font-serif font-bold text-ink-900 text-lg min-w-[140px] text-center">
+             <span className="font-serif font-bold text-ink-900 text-sm md:text-lg min-w-[100px] text-center px-2 truncate">
                {dateRangeLabel}
              </span>
-             <button onClick={handleNext} className="p-2 hover:bg-paper rounded-full text-ink-400 hover:text-morandi-blue transition-colors">
+             <button onClick={handleNext} className="p-2 hover:bg-paper rounded-lg text-ink-400 hover:text-morandi-blue transition-colors">
                 <ChevronRight size={20} />
              </button>
           </div>
 
-          {/* Add Button */}
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-morandi-blue hover:bg-ink-900 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-colors"
-          >
-             <Plus size={20} />
-          </button>
-        </div>
-
-        {/* Row 2: Category Chips (Sticky along with header) */}
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar px-1">
-           {allCategories.map(cat => (
-             <button
-               key={cat}
-               onClick={() => setSelectedCategory(cat)}
-               className={`px-3 py-1.5 rounded-full text-xs font-serif whitespace-nowrap border transition-all ${
-                 selectedCategory === cat 
-                   ? 'bg-ink-800 text-white border-ink-800 shadow-sm' 
-                   : 'bg-white text-ink-400 border-stone-200 hover:border-ink-400'
-               }`}
-             >
-               {cat === 'All' ? '全部標籤' : cat}
-             </button>
-           ))}
-        </div>
-      </div>
-
-      {/* --- SUMMARY CARDS --- */}
-      <div className="grid grid-cols-3 gap-3 md:gap-6">
-        <div className="bg-white p-4 rounded-xl shadow-paper border border-stone-100 flex flex-col justify-center items-center text-center">
-           <span className="text-xs font-serif text-ink-400 mb-1">總收入</span>
-           <span className="text-lg md:text-xl font-serif-num font-bold text-morandi-sage">{formatCurrency(summary.income)}</span>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-paper border border-stone-100 flex flex-col justify-center items-center text-center">
-           <span className="text-xs font-serif text-ink-400 mb-1">總支出</span>
-           <span className="text-lg md:text-xl font-serif-num font-bold text-morandi-rose">{formatCurrency(summary.expense)}</span>
-        </div>
-        <div className="bg-morandi-blue/10 p-4 rounded-xl border border-morandi-blue/20 flex flex-col justify-center items-center text-center">
-           <span className="text-xs font-serif text-morandi-blue mb-1">結餘</span>
-           <span className="text-lg md:text-xl font-serif-num font-bold text-morandi-blue">{formatCurrency(summary.balance)}</span>
-        </div>
-      </div>
-
-      {/* --- LEDGER LIST (GROUPED BY DATE) --- */}
-      <div className="relative min-h-[400px]">
-        {/* Timeline Line */}
-        <div className="absolute left-6 top-0 bottom-0 w-px border-l border-dashed border-stone-300 hidden md:block"></div>
-        
-        {Object.keys(groupedTransactions).length === 0 ? (
-           <div className="flex flex-col items-center justify-center pt-20 text-ink-300 gap-3">
-              <FileText size={48} className="opacity-20" />
-              <p className="font-serif italic">這一頁是空白的，去喝杯咖啡吧...</p>
-           </div>
-        ) : (
-          <div className="space-y-6">
-            {Object.keys(groupedTransactions).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(dateKey => (
-              <div key={dateKey} className="relative">
-                 {/* Date Header */}
-                 <div className="flex items-center gap-4 mb-3">
-                    <div className="w-12 text-center hidden md:block">
-                       <div className="text-xs font-serif font-bold text-ink-400 uppercase">{format(parseISO(dateKey), 'MMM')}</div>
-                       <div className="text-lg font-serif-num font-bold text-ink-900">{format(parseISO(dateKey), 'dd')}</div>
-                    </div>
-                    <div className="md:hidden bg-paper px-3 py-1 rounded-lg text-sm font-bold font-serif text-ink-500 border border-stone-200">
-                       {format(parseISO(dateKey), 'MM/dd (eee)', { locale: zhTW })}
-                    </div>
-                    <div className="h-px bg-stone-200 flex-1"></div>
-                 </div>
-                 
-                 {/* Transactions for this date */}
-                 <div className="space-y-3 pl-0 md:pl-16">
-                    {groupedTransactions[dateKey].map(t => (
-                      <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-100 flex items-center justify-between group hover:shadow-md transition-shadow">
-                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                t.type === 'income' ? 'bg-morandi-sageLight text-morandi-sage' : 'bg-morandi-roseLight text-morandi-rose'
-                            }`}>
-                               {getCategoryIcon(t.category)}
-                            </div>
-                            <div>
-                               <div className="font-bold text-ink-900 text-sm font-serif">{t.category}</div>
-                               {t.note && <div className="text-xs text-ink-400 font-serif">{t.note}</div>}
-                            </div>
-                         </div>
-                         <div className="flex items-center gap-3">
-                             <div className={`font-serif-num font-bold ${t.type === 'income' ? 'text-morandi-sage' : 'text-ink-900'}`}>
-                                {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                             </div>
-                             <button onClick={() => handleDelete(t.id)} className="text-stone-300 hover:text-morandi-rose opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Trash2 size={14} />
-                             </button>
-                         </div>
-                      </div>
-                    ))}
-                 </div>
-              </div>
-            ))}
+          {/* Actions */}
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowStats(!showStats)}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all border ${
+                showStats 
+                  ? 'bg-ink-100 text-morandi-blue border-ink-200' 
+                  : 'bg-white text-ink-400 border-stone-100 hover:bg-paper'
+              }`}
+            >
+               <BarChart2 size={18} />
+            </button>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-morandi-blue hover:bg-ink-900 text-white w-9 h-9 rounded-xl flex items-center justify-center shadow-md transition-colors border border-transparent"
+            >
+               <Plus size={20} />
+            </button>
           </div>
-        )}
+        </div>
+
+        {/* Collapsible Section 2: Category Filters */}
+        <div className={`overflow-hidden transition-all duration-300 ${isHeaderExpanded ? 'max-h-16 opacity-100 mt-2' : 'max-h-0 opacity-0 mt-0'}`}>
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar px-1">
+             {allCategories.map(cat => (
+               <button
+                 key={cat}
+                 onClick={() => setSelectedCategory(cat)}
+                 className={`px-3 py-1.5 rounded-full text-xs font-serif whitespace-nowrap border transition-all ${
+                   selectedCategory === cat 
+                     ? 'bg-ink-800 text-white border-ink-800 shadow-sm' 
+                     : 'bg-white text-ink-400 border-stone-200 hover:border-ink-400'
+                 }`}
+               >
+                 {cat === 'All' ? '全部' : cat}
+               </button>
+             ))}
+          </div>
+        </div>
       </div>
+
+      {/* --- COLLAPSIBLE STATS SECTION (Hidden in Calendar Mode by default or user toggle) --- */}
+      {viewMode !== 'calendar' && (
+      <div className={`transition-all duration-500 ease-in-out overflow-hidden ${showStats ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+          
+          {/* Summary Cards */}
+          <div className="md:col-span-3 grid grid-cols-3 gap-4">
+             <div className="bg-white p-3 md:p-4 rounded-2xl shadow-paper border border-stone-100 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-12 h-12 bg-morandi-sageLight rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                <div className="relative z-10">
+                   <div className="text-[10px] md:text-xs font-serif text-ink-400 mb-1 flex items-center gap-1"><TrendingUp size={10}/> 收入</div>
+                   <div className="text-base md:text-xl font-serif-num font-bold text-morandi-sage truncate">{formatCurrency(summary.income)}</div>
+                </div>
+             </div>
+             
+             <div className="bg-white p-3 md:p-4 rounded-2xl shadow-paper border border-stone-100 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-12 h-12 bg-morandi-roseLight rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                <div className="relative z-10">
+                   <div className="text-[10px] md:text-xs font-serif text-ink-400 mb-1 flex items-center gap-1"><TrendingUp size={10} className="rotate-180"/> 支出</div>
+                   <div className="text-base md:text-xl font-serif-num font-bold text-morandi-rose truncate">{formatCurrency(summary.expense)}</div>
+                </div>
+             </div>
+
+             <div className="bg-white p-3 md:p-4 rounded-2xl shadow-paper border border-stone-100 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-12 h-12 bg-morandi-blueLight rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                <div className="relative z-10">
+                   <div className="text-[10px] md:text-xs font-serif text-ink-400 mb-1 flex items-center gap-1"><DollarSign size={10}/> 結餘</div>
+                   <div className={`text-base md:text-xl font-serif-num font-bold truncate ${summary.balance >= 0 ? 'text-morandi-blue' : 'text-morandi-rose'}`}>
+                      {formatCurrency(summary.balance)}
+                   </div>
+                </div>
+             </div>
+          </div>
+
+          {/* Trend Chart (Only for Week/Month/Year) */}
+          {viewMode !== 'day' && (
+             <div className="md:col-span-3 bg-white p-5 rounded-2xl shadow-paper border border-stone-100 h-64">
+                <h4 className="text-xs font-bold text-ink-400 uppercase tracking-wider mb-4 font-serif">收支趨勢 (Income vs Expense)</h4>
+                <ResponsiveContainer width="100%" height="85%">
+                   <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{fill: '#78716C', fontSize: 10, fontFamily: 'Lora'}} 
+                        dy={10}
+                      />
+                      <YAxis 
+                         axisLine={false} 
+                         tickLine={false} 
+                         tick={{fill: '#78716C', fontSize: 10, fontFamily: 'Lora'}} 
+                         tickFormatter={(val) => `${val/1000}k`}
+                      />
+                      <Tooltip 
+                         cursor={{ fill: '#F9F7F2' }}
+                         contentStyle={{ backgroundColor: '#fff', borderColor: '#E6E2D6', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontFamily: 'Lora', fontSize: '12px' }}
+                         formatter={(value: number) => isPrivacyMode ? '••••' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)}
+                      />
+                      <Bar dataKey="income" name="收入" fill={COLORS.profit} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                      <Bar dataKey="expense" name="支出" fill={COLORS.loss} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                   </BarChart>
+                </ResponsiveContainer>
+             </div>
+          )}
+        </div>
+        
+        {/* Toggle Hint */}
+        <div className="flex justify-center -mt-2 mb-4">
+           <button onClick={() => setShowStats(false)} className="text-ink-300 hover:text-ink-500 transition-colors">
+              <ChevronUp size={16} />
+           </button>
+        </div>
+      </div>
+      )}
+      
+      {/* Show Hint when hidden */}
+      {!showStats && viewMode !== 'calendar' && (
+        <div className="flex justify-center -mt-4 mb-4">
+           <button 
+             onClick={() => setShowStats(true)} 
+             className="flex items-center gap-1 text-xs text-ink-400 hover:text-morandi-blue transition-colors bg-white px-3 py-1 rounded-full border border-stone-100 shadow-sm"
+           >
+              顯示統計圖表 <ChevronDown size={14} />
+           </button>
+        </div>
+      )}
+
+      {/* --- CONTENT AREA: CALENDAR OR LIST --- */}
+      {viewMode === 'calendar' ? (
+        renderCalendar()
+      ) : (
+        /* --- LEDGER LIST (GROUPED BY DATE) --- */
+        <div className="relative min-h-[400px]">
+          {/* Timeline Line */}
+          <div className="absolute left-6 top-4 bottom-0 w-px border-l border-dashed border-stone-200 hidden md:block"></div>
+          
+          {Object.keys(groupedTransactions).length === 0 ? (
+            <div className="flex flex-col items-center justify-center pt-20 text-ink-300 gap-3">
+                <div className="w-20 h-20 bg-stone-50 rounded-full flex items-center justify-center">
+                  <FileText size={32} className="opacity-30" />
+                </div>
+                <p className="font-serif italic text-sm">這一頁是空白的...</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {Object.keys(groupedTransactions).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(dateKey => (
+                <div key={dateKey} className="relative">
+                  {/* Date Header */}
+                  <div className="flex items-center gap-4 mb-4 sticky top-28 z-10 md:static">
+                      <div className="w-12 text-center hidden md:block bg-paper pt-2 pb-2">
+                        <div className="text-[10px] font-serif font-bold text-ink-400 uppercase tracking-widest">{format(parseISO(dateKey), 'MMM')}</div>
+                        <div className="text-xl font-serif-num font-bold text-ink-900 leading-none">{format(parseISO(dateKey), 'dd')}</div>
+                      </div>
+                      
+                      {/* Mobile Date Sticky Header */}
+                      <div className="md:hidden flex items-center gap-2 bg-paper/90 backdrop-blur-sm px-3 py-1 rounded-r-full shadow-sm border border-l-0 border-stone-100">
+                        <div className="w-2 h-2 rounded-full bg-morandi-blue"></div>
+                        <span className="font-serif font-bold text-ink-800 text-sm">
+                            {format(parseISO(dateKey), 'MM/dd (eee)', { locale: zhTW })}
+                        </span>
+                      </div>
+
+                      <div className="h-px bg-stone-100 flex-1 ml-2 hidden md:block"></div>
+                  </div>
+                  
+                  {/* Transactions for this date */}
+                  <div className="space-y-3 pl-0 md:pl-16">
+                      {groupedTransactions[dateKey].map(t => (
+                        <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-100 flex items-center justify-between group hover:shadow-soft hover:border-morandi-blue/20 transition-all cursor-default">
+                          <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                                  t.type === 'income' ? 'bg-morandi-sageLight text-morandi-sage' : 'bg-morandi-roseLight text-morandi-rose'
+                              }`}>
+                                {getCategoryIcon(t.category)}
+                              </div>
+                              <div>
+                                <div className="font-bold text-ink-900 text-sm font-serif">{t.category}</div>
+                                {t.note && <div className="text-xs text-ink-400 font-serif mt-0.5">{t.note}</div>}
+                              </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                              <div className={`font-serif-num font-bold ${t.type === 'income' ? 'text-morandi-sage' : 'text-ink-900'}`}>
+                                  {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                              </div>
+                              <button 
+                                onClick={() => handleDelete(t.id)} 
+                                className="w-8 h-8 flex items-center justify-center rounded-full text-stone-300 hover:text-morandi-rose hover:bg-morandi-roseLight opacity-0 group-hover:opacity-100 transition-all"
+                                title="刪除"
+                              >
+                                  <Trash2 size={14} />
+                              </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add Modal */}
       {isModalOpen && (

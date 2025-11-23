@@ -276,6 +276,74 @@ export async function clearConversationState(lineUserId: string) {
 }
 
 /**
+ * 創建通知
+ */
+export async function createNotification(
+  userId: string,
+  type: 'info' | 'alert' | 'success',
+  title: string,
+  message: string
+) {
+  return prisma.notification.create({
+    data: {
+      userId,
+      type,
+      title,
+      message
+    }
+  });
+}
+
+/**
+ * 取得用戶通知列表
+ */
+export async function getUserNotifications(userId: string, limit: number = 20) {
+  return prisma.notification.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: limit
+  });
+}
+
+/**
+ * 標記通知為已讀
+ */
+export async function markNotificationRead(notificationId: string) {
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { read: true }
+  });
+}
+
+/**
+ * 標記所有通知為已讀
+ */
+export async function markAllNotificationsRead(userId: string) {
+  return prisma.notification.updateMany({
+    where: { userId, read: false },
+    data: { read: true }
+  });
+}
+
+/**
+ * 刪除通知
+ */
+export async function deleteNotification(notificationId: string) {
+  return prisma.notification.delete({
+    where: { id: notificationId }
+  });
+}
+
+/**
+ * 取得未讀通知數量
+ */
+export async function getUnreadNotificationCount(userId: string) {
+  return prisma.notification.count({
+    where: { userId, read: false }
+  });
+}
+
+/**
  * 關閉資料庫連線 (應用程式關閉時調用)
  */
 export async function disconnectDatabase() {

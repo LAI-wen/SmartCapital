@@ -12,6 +12,7 @@ import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification } from './types';
 import { LiffProvider, useLiff } from './contexts/LiffContext';
 import { useUserData } from './hooks/useUserData';
+import * as api from './services/api';
 
 const AppContent: React.FC = () => {
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
@@ -23,7 +24,7 @@ const AppContent: React.FC = () => {
   const { portfolio, transactions, isLoading } = useUserData();
 
   // Notification State
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +34,32 @@ const AppContent: React.FC = () => {
 
   // 決定使用真實資料還是 Mock 資料
   const assets = (isLoggedIn && portfolio) ? portfolio.assets : MOCK_ASSETS;
+
+  // Fetch notifications from API
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (isLoggedIn) {
+        try {
+          const notifs = await api.getNotifications(20);
+          if (notifs.length > 0) {
+            setNotifications(notifs);
+          } else {
+            // 如果後端沒有通知，使用 Mock 資料作為示例
+            setNotifications(MOCK_NOTIFICATIONS);
+          }
+        } catch (error) {
+          console.error('Failed to fetch notifications:', error);
+          // 出錯時使用 Mock 資料
+          setNotifications(MOCK_NOTIFICATIONS);
+        }
+      } else {
+        // Demo 模式使用 Mock 資料
+        setNotifications(MOCK_NOTIFICATIONS);
+      }
+    };
+    
+    fetchNotifications();
+  }, [isLoggedIn]);
 
   // Close notifications when clicking outside
   useEffect(() => {
@@ -45,8 +72,15 @@ const AppContent: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    if (isLoggedIn) {
+      const success = await api.markAllNotificationsAsRead(api.getUserId());
+      if (success) {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      }
+    } else {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    }
   };
 
   const deleteNotification = (id: string, e: React.MouseEvent) => {
@@ -54,8 +88,15 @@ const AppContent: React.FC = () => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const handleNotificationClick = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const handleNotificationClick = async (id: string) => {
+    if (isLoggedIn) {
+      const success = await api.markNotificationAsRead(id);
+      if (success) {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      }
+    } else {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    }
   };
 
   // Helper to determine page title
@@ -131,7 +172,7 @@ const AppContent: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-paper">
         {/* Header */}
-        <header className="h-20 flex items-center justify-between px-6 md:px-10 border-b border-stone-200/50 bg-paper/80 backdrop-blur-md sticky top-0 z-20">
+        <header className="h-20 flex items-center justify-between px-6 md:px-10 border-b border-stone-200/50 bg-paper/80 backdrop-blur-md sticky top-0 z-30">
           <div className="md:hidden font-serif font-bold text-xl text-ink-900">
             {getPageTitle(location.pathname)}
           </div>
@@ -159,7 +200,7 @@ const AppContent: React.FC = () => {
 
                {/* Dropdown Panel */}
                {showNotifications && (
-                 <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-xl border border-stone-100 z-[9999] overflow-hidden animate-fade-in origin-top-right">
+                 <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-xl border border-stone-100 z-[100] overflow-hidden animate-fade-in origin-top-right">
                     <div className="p-4 border-b border-stone-100 flex items-center justify-between bg-paper/50">
                        <h3 className="font-serif font-bold text-ink-900">通知中心</h3>
                        {unreadCount > 0 && (
@@ -225,7 +266,7 @@ const AppContent: React.FC = () => {
         </header>
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-10 scroll-smooth">
+        <div id="main-scroll-container" className="flex-1 overflow-y-auto p-4 md:p-10 scroll-smooth">
           <div className="max-w-6xl mx-auto h-full pb-20 md:pb-0">
             {isLoading ? (
               <div className="flex items-center justify-center h-full">

@@ -61,6 +61,15 @@ interface Settings {
   martingaleMultiplier: number;
 }
 
+interface Notification {
+  id: string;
+  type: 'info' | 'alert' | 'success';
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+}
+
 /**
  * 取得用戶資料
  */
@@ -128,6 +137,58 @@ export async function getSettings(): Promise<Settings | null> {
   } catch (error) {
     console.error('Failed to fetch settings:', error);
     return null;
+  }
+}
+
+/**
+ * 取得通知列表
+ */
+export async function getNotifications(limit = 20): Promise<Notification[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/notifications/${MOCK_LINE_USER_ID}?limit=${limit}`);
+    const result: ApiResponse<Notification[]> = await response.json();
+    return result.success ? result.data || [] : [];
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error);
+    return [];
+  }
+}
+
+/**
+ * 標記通知為已讀
+ */
+export async function markNotificationAsRead(notificationId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/notifications/${notificationId}/read`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    const result: ApiResponse<void> = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Failed to mark notification as read:', error);
+    return false;
+  }
+}
+
+/**
+ * 標記所有通知為已讀
+ */
+export async function markAllNotificationsAsRead(userId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/notifications/${userId}/read-all`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    const result: ApiResponse<void> = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Failed to mark all notifications as read:', error);
+    return false;
   }
 }
 

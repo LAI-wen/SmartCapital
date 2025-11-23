@@ -66,6 +66,11 @@ app.get('/api/transactions/:lineUserId', apiController.getTransactions);
 app.get('/api/portfolio/:lineUserId', apiController.getPortfolio);
 app.get('/api/settings/:lineUserId', apiController.getSettings);
 
+// 通知 API 端點
+app.get('/api/notifications/:lineUserId', apiController.getNotifications);
+app.post('/api/notifications/:notificationId/read', apiController.markNotificationAsRead);
+app.post('/api/notifications/:lineUserId/read-all', apiController.markAllNotificationsAsRead);
+
 // LINE Webhook 端點
 app.post('/webhook', middleware(middlewareConfig), async (req: Request, res: Response) => {
   const events: WebhookEvent[] = req.body.events;
