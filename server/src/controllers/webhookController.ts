@@ -455,9 +455,11 @@ export class WebhookController {
    * 處理網站連結請求
    */
   private async handleWebsiteLink(lineUserId: string): Promise<void> {
-    // 使用環境變數 `FRONTEND_URL`（若未設定則回退到 localhost）
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    const webUrl = `${baseUrl}/#/?userId=${encodeURIComponent(lineUserId)}`;
+    // 優先使用 LIFF URL（生產環境），回退到 FRONTEND_URL（開發環境）
+    const liffId = process.env.LIFF_ID;
+    const webUrl = liffId
+      ? `https://liff.line.me/${liffId}`
+      : `${process.env.FRONTEND_URL || 'http://localhost:3001'}/#/?userId=${encodeURIComponent(lineUserId)}`;
 
     await this.client.pushMessage(lineUserId, {
       type: 'template',
