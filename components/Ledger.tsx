@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { MOCK_TRANSACTIONS, TRANSACTION_CATEGORIES, COLORS } from '../constants';
 import * as api from '../services/api';
-import { Plus, DollarSign, Calendar, Tag, FileText, Trash2, X, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, TrendingUp, Gift, ChevronLeft, ChevronRight, BarChart2, ChevronDown, ChevronUp, CalendarDays } from 'lucide-react';
+import { Plus, DollarSign, Calendar, Tag, FileText, Trash2, X, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, TrendingUp, Gift, ChevronLeft, ChevronRight, BarChart2, ChevronDown, ChevronUp, CalendarDays, PenTool } from 'lucide-react';
 import { 
   format, isSameDay, isSameWeek, isSameMonth, isSameYear, parseISO, 
   addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, 
@@ -25,6 +25,7 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
     userTransactions.length > 0 ? userTransactions : MOCK_TRANSACTIONS
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   
   // Navigation State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -201,6 +202,21 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
   const handleAddTransaction = async () => {
     if (!newAmount) return;
     
+    // 樂觀更新：先建立臨時交易
+    const tempTransaction: Transaction = {
+      id: `temp-${Date.now()}`,
+      type: newType,
+      amount: parseFloat(newAmount),
+      category: newCategory,
+      date: newDate,
+      note: newNote
+    };
+    
+    setTransactions(prev => [tempTransaction, ...prev]);
+    setIsModalOpen(false);
+    setNewAmount('');
+    setNewNote('');
+    
     // 調用後端 API 新增交易記錄
     const createdTransaction = await api.createTransaction(
       newType,
@@ -211,23 +227,50 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
     );
     
     if (createdTransaction) {
-      setTransactions([createdTransaction, ...transactions]);
+      // 用真實 ID 替換臨時交易
+      setTransactions(prev => prev.map(t => 
+        t.id === tempTransaction.id ? createdTransaction : t
+      ));
     } else {
-      // API 失敗，使用本地新增作為 fallback
-      const newTransaction: Transaction = {
-        id: Date.now().toString(),
-        type: newType,
-        amount: parseFloat(newAmount),
-        category: newCategory,
-        date: newDate,
-        note: newNote
-      };
-      setTransactions([newTransaction, ...transactions]);
+      console.error('新增失敗，但保留本地顯示');
     }
+  };
+
+  const handleEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setNewType(transaction.type);
+    setNewAmount(transaction.amount.toString());
+    setNewCategory(transaction.category);
+    setNewDate(transaction.date.split('T')[0]);
+    setNewNote(transaction.note || '');
+    setIsModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!newAmount || !editingTransaction) return;
+    
+    const updatedTransaction: Transaction = {
+      ...editingTransaction,
+      type: newType,
+      amount: parseFloat(newAmount),
+      category: newCategory,
+      date: newDate,
+      note: newNote
+    };
+    
+    // 樂觀更新 UI
+    setTransactions(prev => prev.map(t => 
+      t.id === editingTransaction.id ? updatedTransaction : t
+    ));
     
     setIsModalOpen(false);
+    setEditingTransaction(null);
     setNewAmount('');
     setNewNote('');
+    
+    // TODO: 實作後端編輯 API
+    // const success = await api.updateTransaction(updatedTransaction.id, updatedTransaction);
+    console.log('編輯功能：等待後端 API 實作');
   };
 
   const handleDelete = async (id: string) => {
@@ -244,6 +287,13 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
         // 可選：顯示錯誤提示給用戶
       }
     }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingTransaction(null);
+    setNewAmount('');
+    setNewNote('');
   };
 
   const formatCurrency = (val: number) => {
@@ -573,17 +623,26 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
                                 {t.note && <div className="text-xs text-ink-400 font-serif mt-0.5">{t.note}</div>}
                               </div>
                           </div>
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
                               <div className={`font-serif-num font-bold ${t.type === 'income' ? 'text-morandi-sage' : 'text-ink-900'}`}>
                                   {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
                               </div>
-                              <button 
-                                onClick={() => handleDelete(t.id)} 
-                                className="w-8 h-8 flex items-center justify-center rounded-full text-stone-300 hover:text-morandi-rose hover:bg-morandi-roseLight opacity-0 group-hover:opacity-100 transition-all"
-                                title="刪除"
-                              >
-                                  <Trash2 size={14} />
-                              </button>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                  <button 
+                                    onClick={() => handleEdit(t)} 
+                                    className="w-8 h-8 flex items-center justify-center rounded-full text-stone-300 hover:text-morandi-blue hover:bg-morandi-blueLight transition-all"
+                                    title="編輯"
+                                  >
+                                      <PenTool size={14} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDelete(t.id)} 
+                                    className="w-8 h-8 flex items-center justify-center rounded-full text-stone-300 hover:text-morandi-rose hover:bg-morandi-roseLight transition-all"
+                                    title="刪除"
+                                  >
+                                      <Trash2 size={14} />
+                                  </button>
+                              </div>
                           </div>
                         </div>
                       ))}
@@ -600,8 +659,10 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/20 backdrop-blur-sm animate-fade-in">
            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-stone-200">
               <div className="p-5 border-b border-stone-100 flex justify-between items-center bg-paper">
-                 <h3 className="font-bold text-ink-900 text-lg font-serif">寫入手帳</h3>
-                 <button onClick={() => setIsModalOpen(false)} className="text-ink-400 hover:text-ink-900">
+                 <h3 className="font-bold text-ink-900 text-lg font-serif">
+                   {editingTransaction ? '編輯記錄' : '寫入手帳'}
+                 </h3>
+                 <button onClick={handleCloseModal} className="text-ink-400 hover:text-ink-900">
                    <X size={20} />
                  </button>
               </div>
@@ -693,10 +754,10 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
                  </div>
 
                  <button 
-                   onClick={handleAddTransaction}
+                   onClick={editingTransaction ? handleSaveEdit : handleAddTransaction}
                    className="w-full bg-ink-900 hover:bg-ink-800 text-white font-bold py-4 rounded-xl mt-2 transition-colors font-serif shadow-lg"
                  >
-                   確認寫入
+                   {editingTransaction ? '確認修改' : '確認寫入'}
                  </button>
               </div>
            </div>
