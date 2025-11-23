@@ -99,8 +99,8 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
     filteredTransactions.forEach(t => {
-        // Just date string YYYY-MM-DD
-        const dateKey = t.date; 
+        // 確保只使用日期部分 YYYY-MM-DD，移除時間
+        const dateKey = t.date.split('T')[0]; // 如果有時間戳就去掉
         if (!groups[dateKey]) groups[dateKey] = [];
         groups[dateKey].push(t);
     });
