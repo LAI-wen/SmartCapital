@@ -13,11 +13,15 @@ import HelpPage from './components/HelpPage';
 import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification, Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets } from './services/api';
+import { useLiff } from './contexts/LiffContext';
 
 const AppContent: React.FC = () => {
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // 🔐 整合 LIFF 登入
+  const { isLoggedIn, isLiffReady, lineUserId, displayName, error: liffError } = useLiff();
 
   // Assets & Accounts State (Lifted for Logic)
   const [assets, setAssets] = useState<Asset[]>(MOCK_ASSETS);
@@ -31,22 +35,57 @@ const AppContent: React.FC = () => {
     crypto: true // Default true
   });
 
-  // Load accounts from API on mount
+  // ⚠️ LIFF 初始化中，顯示載入畫面
+  if (!isLiffReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-paper">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-ink-400 font-serif">正在初始化...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ⚠️ LIFF 初始化失敗
+  if (liffError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-paper">
+        <div className="text-center max-w-md p-8">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-ink-900 mb-2">初始化失敗</h2>
+          <p className="text-ink-400 mb-4">{liffError}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-6 py-2 bg-morandi-blue text-white rounded-lg hover:bg-opacity-90 transition"
+          >
+            重新載入
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Load accounts from API on mount (等 LIFF ready 後才載入)
   useEffect(() => {
     const loadAccounts = async () => {
+      if (!isLiffReady) return;
+      
       setIsLoadingAccounts(true);
       try {
         const fetchedAccounts = await getAccounts();
         setAccounts(fetchedAccounts);
+        console.log('✅ 已載入帳戶:', fetchedAccounts.length, '個帳戶');
+        console.log('👤 當前用戶 ID:', lineUserId || 'Mock User');
       } catch (error) {
-        console.error('Failed to load accounts:', error);
+        console.error('❌ 載入帳戶失敗:', error);
       } finally {
         setIsLoadingAccounts(false);
       }
     };
 
     loadAccounts();
-  }, []);
+  }, [isLiffReady, lineUserId]);
 
   // Notification State
   const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);

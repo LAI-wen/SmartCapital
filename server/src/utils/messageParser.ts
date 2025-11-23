@@ -583,7 +583,7 @@ export function getHelpCard(): FlexMessage {
                     contents: [
                       {
                         type: 'text',
-                        text: '查看資產',
+                        text: '帳戶管理',
                         color: '#78716C',
                         size: 'sm',
                         weight: 'bold',
@@ -598,7 +598,37 @@ export function getHelpCard(): FlexMessage {
                     contents: [
                       {
                         type: 'text',
-                        text: '輸入「資產」或「持倉」',
+                        text: '「帳戶列表」「建立帳戶」',
+                        size: 'sm',
+                        color: '#A8A29E',
+                        wrap: true
+                      }
+                    ],
+                    margin: 'sm',
+                    paddingStart: 'md'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'horizontal',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '資產查詢',
+                        color: '#78716C',
+                        size: 'sm',
+                        weight: 'bold',
+                        flex: 0
+                      }
+                    ],
+                    margin: 'lg'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '「總資產」「持倉」',
                         size: 'sm',
                         color: '#A8A29E',
                         wrap: true
