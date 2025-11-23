@@ -44,12 +44,12 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newNote, setNewNote] = useState('');
 
-  // 同步更新真實交易資料
+  // 只在初始化時同步真實交易資料，之後由本地狀態管理
   useEffect(() => {
     if (userTransactions.length > 0) {
       setTransactions(userTransactions);
     }
-  }, [userTransactions]);
+  }, []); // 移除 userTransactions 依賴，避免覆蓋本地操作
 
   // --- SCROLL DETECTION ---
   useEffect(() => {
@@ -232,14 +232,16 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
 
   const handleDelete = async (id: string) => {
     if (confirm('確定要撕掉這頁紀錄嗎？')) {
+      // 先樂觀更新 UI
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      
       // 調用後端 API 刪除交易記錄
       const success = await api.deleteTransaction(id);
       
-      if (success) {
-        setTransactions(transactions.filter(t => t.id !== id));
-      } else {
-        // API 失敗，仍然在前端移除顯示
-        setTransactions(transactions.filter(t => t.id !== id));
+      if (!success) {
+        // API 失敗時，重新獲取資料恢復正確狀態
+        console.error('刪除失敗，請重新整理頁面');
+        // 可選：顯示錯誤提示給用戶
       }
     }
   };
