@@ -26,7 +26,7 @@ import {
   createPortfolioSummaryCard,
   createTransactionSuccessCard
 } from '../utils/flexMessages.js';
-import { parseMessage, getHelpMessage, validateQuantity, validateAmount } from '../utils/messageParser.js';
+import { parseMessage, getHelpMessage, getHelpCard, validateQuantity, validateAmount } from '../utils/messageParser.js';
 
 export class WebhookController {
   private client: Client;
@@ -118,7 +118,7 @@ export class WebhookController {
         break;
 
       case 'HELP':
-        await this.client.pushMessage(lineUserId, { type: 'text', text: getHelpMessage() });
+        await this.client.pushMessage(lineUserId, getHelpCard());
         break;
 
       case 'PORTFOLIO':

@@ -4,6 +4,7 @@
  */
 
 import { isValidStockSymbol } from '../services/stockService.js';
+import { FlexMessage } from '@line/bot-sdk';
 
 export type MessageIntent =
   | { type: 'EXPENSE'; amount: number }
@@ -103,7 +104,7 @@ export function parseMessage(text: string): MessageIntent {
 }
 
 /**
- * 生成幫助訊息
+ * 生成幫助訊息 (純文字版 - 備用)
  */
 export function getHelpMessage(): string {
   return `📖 SmartCapital 使用說明
@@ -122,6 +123,534 @@ export function getHelpMessage(): string {
 • 查看說明：輸入 "說明" 或 "help"
 
 🚀 開始記帳與投資吧！`;
+}
+
+/**
+ * 生成幫助訊息卡片 (Flex Message)
+ */
+export function getHelpCard(): FlexMessage {
+  return {
+    type: 'flex',
+    altText: '📖 SmartCapital 使用說明',
+    contents: {
+      type: 'carousel',
+      contents: [
+        // 第一張卡片 - 生活記帳
+        {
+          type: 'bubble',
+          size: 'mega',
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'text',
+                    text: '💰',
+                    size: '3xl',
+                    align: 'center'
+                  },
+                  {
+                    type: 'text',
+                    text: '生活記帳',
+                    weight: 'bold',
+                    size: 'xl',
+                    align: 'center',
+                    color: '#44403C',
+                    margin: 'md'
+                  }
+                ],
+                spacing: 'none',
+                margin: 'none',
+                paddingBottom: 'lg'
+              },
+              {
+                type: 'separator',
+                margin: 'lg'
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'box',
+                    layout: 'horizontal',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '記錄支出',
+                        color: '#78716C',
+                        size: 'sm',
+                        weight: 'bold',
+                        flex: 0
+                      }
+                    ],
+                    margin: 'lg'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '輸入 "-120" 或 "120"',
+                        size: 'sm',
+                        color: '#A8A29E',
+                        wrap: true
+                      },
+                      {
+                        type: 'text',
+                        text: '系統會跳出分類選單',
+                        size: 'xs',
+                        color: '#D6D3D1',
+                        margin: 'sm'
+                      }
+                    ],
+                    margin: 'sm',
+                    paddingStart: 'md'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'horizontal',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '記錄收入',
+                        color: '#78716C',
+                        size: 'sm',
+                        weight: 'bold',
+                        flex: 0
+                      }
+                    ],
+                    margin: 'lg'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '輸入 "+5000"',
+                        size: 'sm',
+                        color: '#A8A29E',
+                        wrap: true
+                      },
+                      {
+                        type: 'text',
+                        text: '選擇收入類別',
+                        size: 'xs',
+                        color: '#D6D3D1',
+                        margin: 'sm'
+                      }
+                    ],
+                    margin: 'sm',
+                    paddingStart: 'md'
+                  }
+                ],
+                spacing: 'none'
+              }
+            ],
+            paddingAll: 'xl',
+            backgroundColor: '#F9F7F2'
+          },
+          styles: {
+            body: {
+              separator: true
+            }
+          }
+        },
+        // 第二張卡片 - 投資助理
+        {
+          type: 'bubble',
+          size: 'mega',
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'text',
+                    text: '📈',
+                    size: '3xl',
+                    align: 'center'
+                  },
+                  {
+                    type: 'text',
+                    text: '投資助理',
+                    weight: 'bold',
+                    size: 'xl',
+                    align: 'center',
+                    color: '#44403C',
+                    margin: 'md'
+                  }
+                ],
+                spacing: 'none',
+                margin: 'none',
+                paddingBottom: 'lg'
+              },
+              {
+                type: 'separator',
+                margin: 'lg'
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'box',
+                    layout: 'horizontal',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '查詢股價',
+                        color: '#78716C',
+                        size: 'sm',
+                        weight: 'bold',
+                        flex: 0
+                      }
+                    ],
+                    margin: 'lg'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '輸入股票代號',
+                        size: 'sm',
+                        color: '#A8A29E',
+                        wrap: true
+                      },
+                      {
+                        type: 'text',
+                        text: '例如：TSLA, AAPL, 2330',
+                        size: 'xs',
+                        color: '#D6D3D1',
+                        margin: 'sm'
+                      }
+                    ],
+                    margin: 'sm',
+                    paddingStart: 'md'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'horizontal',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '買入/賣出',
+                        color: '#78716C',
+                        size: 'sm',
+                        weight: 'bold',
+                        flex: 0
+                      }
+                    ],
+                    margin: 'lg'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '查詢股價後點擊按鈕',
+                        size: 'sm',
+                        color: '#A8A29E',
+                        wrap: true
+                      },
+                      {
+                        type: 'text',
+                        text: '系統會引導您完成交易',
+                        size: 'xs',
+                        color: '#D6D3D1',
+                        margin: 'sm'
+                      }
+                    ],
+                    margin: 'sm',
+                    paddingStart: 'md'
+                  }
+                ],
+                spacing: 'none'
+              }
+            ],
+            paddingAll: 'xl',
+            backgroundColor: '#F9F7F2'
+          },
+          styles: {
+            body: {
+              separator: true
+            }
+          }
+        },
+        // 第三張卡片 - 策略實驗室
+        {
+          type: 'bubble',
+          size: 'mega',
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'text',
+                    text: '🧮',
+                    size: '3xl',
+                    align: 'center'
+                  },
+                  {
+                    type: 'text',
+                    text: '策略實驗室',
+                    weight: 'bold',
+                    size: 'xl',
+                    align: 'center',
+                    color: '#44403C',
+                    margin: 'md'
+                  }
+                ],
+                spacing: 'none',
+                margin: 'none',
+                paddingBottom: 'lg'
+              },
+              {
+                type: 'separator',
+                margin: 'lg'
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'box',
+                    layout: 'horizontal',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '凱利公式',
+                        color: '#78716C',
+                        size: 'sm',
+                        weight: 'bold',
+                        flex: 0
+                      }
+                    ],
+                    margin: 'lg'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '智慧倉位建議',
+                        size: 'sm',
+                        color: '#A8A29E',
+                        wrap: true
+                      },
+                      {
+                        type: 'text',
+                        text: '根據勝率與賠率計算',
+                        size: 'xs',
+                        color: '#D6D3D1',
+                        margin: 'sm'
+                      }
+                    ],
+                    margin: 'sm',
+                    paddingStart: 'md'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'horizontal',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '馬丁格爾',
+                        color: '#78716C',
+                        size: 'sm',
+                        weight: 'bold',
+                        flex: 0
+                      }
+                    ],
+                    margin: 'lg'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '救援點位計算',
+                        size: 'sm',
+                        color: '#A8A29E',
+                        wrap: true
+                      },
+                      {
+                        type: 'text',
+                        text: '規劃加碼策略',
+                        size: 'xs',
+                        color: '#D6D3D1',
+                        margin: 'sm'
+                      }
+                    ],
+                    margin: 'sm',
+                    paddingStart: 'md'
+                  }
+                ],
+                spacing: 'none'
+              }
+            ],
+            paddingAll: 'xl',
+            backgroundColor: '#F9F7F2'
+          },
+          styles: {
+            body: {
+              separator: true
+            }
+          }
+        },
+        // 第四張卡片 - 其他功能
+        {
+          type: 'bubble',
+          size: 'mega',
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'text',
+                    text: '🎯',
+                    size: '3xl',
+                    align: 'center'
+                  },
+                  {
+                    type: 'text',
+                    text: '快捷指令',
+                    weight: 'bold',
+                    size: 'xl',
+                    align: 'center',
+                    color: '#44403C',
+                    margin: 'md'
+                  }
+                ],
+                spacing: 'none',
+                margin: 'none',
+                paddingBottom: 'lg'
+              },
+              {
+                type: 'separator',
+                margin: 'lg'
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'box',
+                    layout: 'horizontal',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '查看資產',
+                        color: '#78716C',
+                        size: 'sm',
+                        weight: 'bold',
+                        flex: 0
+                      }
+                    ],
+                    margin: 'lg'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '輸入「資產」或「持倉」',
+                        size: 'sm',
+                        color: '#A8A29E',
+                        wrap: true
+                      }
+                    ],
+                    margin: 'sm',
+                    paddingStart: 'md'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'horizontal',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '查看說明',
+                        color: '#78716C',
+                        size: 'sm',
+                        weight: 'bold',
+                        flex: 0
+                      }
+                    ],
+                    margin: 'lg'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '輸入「說明」或「help」',
+                        size: 'sm',
+                        color: '#A8A29E',
+                        wrap: true
+                      }
+                    ],
+                    margin: 'sm',
+                    paddingStart: 'md'
+                  },
+                  {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      {
+                        type: 'text',
+                        text: '🚀 開始記帳與投資吧！',
+                        size: 'md',
+                        color: '#8FA5B5',
+                        weight: 'bold',
+                        align: 'center',
+                        wrap: true
+                      }
+                    ],
+                    margin: 'xl',
+                    paddingAll: 'md',
+                    backgroundColor: '#E6ECF0',
+                    cornerRadius: 'md'
+                  }
+                ],
+                spacing: 'none'
+              }
+            ],
+            paddingAll: 'xl',
+            backgroundColor: '#F9F7F2'
+          },
+          styles: {
+            body: {
+              separator: true
+            }
+          }
+        }
+      ]
+    }
+  };
 }
 
 /**
