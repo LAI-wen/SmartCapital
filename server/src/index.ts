@@ -63,6 +63,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.get('/api/user/:lineUserId', apiController.getUser);
 app.get('/api/assets/:lineUserId', apiController.getAssets);
 app.get('/api/transactions/:lineUserId', apiController.getTransactions);
+app.post('/api/transactions/:lineUserId', apiController.createTransaction);
+app.delete('/api/transactions/:transactionId', apiController.deleteTransaction);
 app.get('/api/portfolio/:lineUserId', apiController.getPortfolio);
 app.get('/api/settings/:lineUserId', apiController.getSettings);
 

@@ -1,8 +1,9 @@
 
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Asset } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, Activity, Wallet, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Activity, Wallet, TrendingUp, ReceiptText } from 'lucide-react';
 import { COLORS } from '../constants';
 
 interface DashboardProps {
@@ -11,6 +12,8 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ assets, isPrivacyMode }) => {
+  const navigate = useNavigate();
+  
   // Calculate Totals
   const summary = useMemo(() => {
     let totalValue = 0;
@@ -160,8 +163,12 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, isPrivacyMode }) => {
                </div>
              ))}
           </div>
-          <button className="w-full mt-6 py-3 bg-stone-50 hover:bg-stone-100 text-sm font-medium text-ink-400 rounded-xl transition-colors font-serif">
-            查看更多市場數據
+          <button 
+            onClick={() => navigate('/ledger')}
+            className="w-full mt-6 py-3 bg-morandi-blueLight hover:bg-morandi-blue text-sm font-medium text-morandi-blue hover:text-white rounded-xl transition-all font-serif flex items-center justify-center gap-2 group"
+          >
+            <ReceiptText size={16} className="group-hover:scale-110 transition-transform" />
+            查看完整記帳
           </button>
         </div>
       </div>

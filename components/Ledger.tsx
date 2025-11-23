@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { MOCK_TRANSACTIONS, TRANSACTION_CATEGORIES, COLORS } from '../constants';
+import * as api from '../services/api';
 import { Plus, DollarSign, Calendar, Tag, FileText, Trash2, X, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, TrendingUp, Gift, ChevronLeft, ChevronRight, BarChart2, ChevronDown, ChevronUp, CalendarDays } from 'lucide-react';
 import { 
   format, isSameDay, isSameWeek, isSameMonth, isSameYear, parseISO, 
@@ -136,7 +137,8 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
     filteredTransactions.forEach(t => {
-        const dateKey = t.date; 
+        // 只取日期部分 YYYY-MM-DD，移除時間戳
+        const dateKey = t.date.split('T')[0];
         if (!groups[dateKey]) groups[dateKey] = [];
         groups[dateKey].push(t);
     });
@@ -207,27 +209,49 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
   }, [transactions, currentDate, viewMode]);
 
   // --- ACTIONS ---
-  const handleAddTransaction = () => {
+  const handleAddTransaction = async () => {
     if (!newAmount) return;
     
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      type: newType,
-      amount: parseFloat(newAmount),
-      category: newCategory,
-      date: newDate,
-      note: newNote
-    };
-
-    setTransactions([newTransaction, ...transactions]);
+    // 調用後端 API 新增交易記錄
+    const createdTransaction = await api.createTransaction(
+      newType,
+      parseFloat(newAmount),
+      newCategory,
+      newDate,
+      newNote
+    );
+    
+    if (createdTransaction) {
+      setTransactions([createdTransaction, ...transactions]);
+    } else {
+      // API 失敗，使用本地新增作為 fallback
+      const newTransaction: Transaction = {
+        id: Date.now().toString(),
+        type: newType,
+        amount: parseFloat(newAmount),
+        category: newCategory,
+        date: newDate,
+        note: newNote
+      };
+      setTransactions([newTransaction, ...transactions]);
+    }
+    
     setIsModalOpen(false);
     setNewAmount('');
     setNewNote('');
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('確定要撕掉這頁紀錄嗎？')) {
-      setTransactions(transactions.filter(t => t.id !== id));
+      // 調用後端 API 刪除交易記錄
+      const success = await api.deleteTransaction(id);
+      
+      if (success) {
+        setTransactions(transactions.filter(t => t.id !== id));
+      } else {
+        // API 失敗，仍然在前端移除顯示
+        setTransactions(transactions.filter(t => t.id !== id));
+      }
     }
   };
 

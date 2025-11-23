@@ -193,6 +193,48 @@ export async function markAllNotificationsAsRead(userId: string): Promise<boolea
 }
 
 /**
+ * 新增交易記錄
+ */
+export async function createTransaction(
+  type: 'income' | 'expense',
+  amount: number,
+  category: string,
+  date: string,
+  note?: string
+): Promise<Transaction | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/transactions/${MOCK_LINE_USER_ID}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ type, amount, category, date, note }),
+    });
+    const result: ApiResponse<Transaction> = await response.json();
+    return result.success ? result.data || null : null;
+  } catch (error) {
+    console.error('Failed to create transaction:', error);
+    return null;
+  }
+}
+
+/**
+ * 刪除交易記錄
+ */
+export async function deleteTransaction(transactionId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/transactions/${transactionId}`, {
+      method: 'DELETE',
+    });
+    const result: ApiResponse<void> = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Failed to delete transaction:', error);
+    return false;
+  }
+}
+
+/**
  * 設定當前用戶 ID（用於 LINE Login 整合）
  */
 let currentUserId = MOCK_LINE_USER_ID;

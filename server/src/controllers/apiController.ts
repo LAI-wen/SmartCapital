@@ -197,6 +197,60 @@ export async function getSettings(req: Request, res: Response) {
 }
 
 /**
+ * POST /api/transactions/:lineUserId
+ * 新增交易記錄
+ */
+export async function createTransaction(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const { type, amount, category, note, date } = req.body;
+
+    const user = await getOrCreateUser(lineUserId);
+    const transaction = await require('../services/databaseService.js').createTransaction(
+      user.id,
+      type,
+      amount,
+      category,
+      note
+    );
+
+    res.json({
+      success: true,
+      data: {
+        id: transaction.id,
+        date: transaction.date,
+        type: transaction.type,
+        amount: transaction.amount,
+        category: transaction.category,
+        note: transaction.note
+      }
+    });
+  } catch (error) {
+    console.error('Error creating transaction:', error);
+    res.status(500).json({ success: false, error: 'Failed to create transaction' });
+  }
+}
+
+/**
+ * DELETE /api/transactions/:transactionId
+ * 刪除交易記錄
+ */
+export async function deleteTransaction(req: Request, res: Response) {
+  try {
+    const { transactionId } = req.params;
+
+    await require('../services/databaseService.js').prisma.transaction.delete({
+      where: { id: transactionId }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete transaction' });
+  }
+}
+
+/**
  * GET /api/notifications/:lineUserId
  * 取得用戶通知列表
  */
