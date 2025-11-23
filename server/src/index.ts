@@ -3,7 +3,7 @@
  * Express + LINE Bot SDK + Prisma
  */
 
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { middleware, MiddlewareConfig, WebhookEvent, Client, ClientConfig } from '@line/bot-sdk';
 import dotenv from 'dotenv';
 import { WebhookController } from './controllers/webhookController.js';
@@ -49,7 +49,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // CORS 設定（允許前端存取）
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
