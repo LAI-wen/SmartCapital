@@ -15,7 +15,11 @@ import {
   getUserAssets,
   getConversationState,
   updateConversationState,
-  clearConversationState
+  clearConversationState,
+  getUserAccounts,
+  getAccount,
+  updateAccountBalance,
+  createAccount
 } from '../services/databaseService.js';
 import { getStockQuote } from '../services/stockService.js';
 import { calculateKelly, calculateMartingale, calculateReturn } from '../services/strategyService.js';
@@ -159,6 +163,10 @@ export class WebhookController {
     const context = convState.context ? JSON.parse(convState.context) : {};
 
     switch (convState.state) {
+      case 'WAITING_ACCOUNT_SELECT':
+        await this.handleAccountSelection(lineUserId, userId, text, context);
+        break;
+
       case 'WAITING_BUY_QUANTITY':
         await this.handleBuyQuantityInput(lineUserId, userId, text, context);
         break;
@@ -220,6 +228,62 @@ export class WebhookController {
   }
 
   /**
+   * 處理帳戶選擇
+   */
+  private async handleAccountSelection(
+    lineUserId: string,
+    userId: string,
+    text: string,
+    context: any
+  ): Promise<void> {
+    const match = text.match(/選擇帳戶\s+(\d+)/);
+    
+    if (!match) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '請點擊下方按鈕選擇帳戶'
+      });
+      return;
+    }
+
+    const accountIndex = parseInt(match[1]) - 1;
+    const { availableAccounts, symbol, price, name, stockCurrency } = context;
+
+    if (accountIndex < 0 || accountIndex >= availableAccounts.length) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '無效的帳戶選擇'
+      });
+      return;
+    }
+
+    const selectedAccount = availableAccounts[accountIndex];
+    const needsExchange = selectedAccount.currency !== stockCurrency;
+    const exchangeRate = needsExchange ? 32.5 : 1;
+
+    // 更新狀態為等待輸入數量
+    await updateConversationState(lineUserId, 'WAITING_BUY_QUANTITY', {
+      symbol,
+      price,
+      name,
+      accountId: selectedAccount.id,
+      accountName: selectedAccount.name,
+      accountCurrency: selectedAccount.currency,
+      stockCurrency
+    });
+
+    await this.client.pushMessage(lineUserId, {
+      type: 'text',
+      text: `請輸入要買入的股數\n` +
+        `股票：${symbol} @ $${price}\n` +
+        `帳戶：${selectedAccount.name} (${selectedAccount.currency})\n` +
+        `餘額：${selectedAccount.currency === 'TWD' ? 'NT$' : '$'}${selectedAccount.balance.toLocaleString()}\n` +
+        (needsExchange ? `\n⚠️ 將以複委託方式下單\n匯率：1 USD ≈ ${exchangeRate} TWD\n` : '') +
+        `\n例如: 10`
+    });
+  }
+
+  /**
    * 處理買入操作
    */
   private async handleBuyAction(lineUserId: string, userId: string, symbol: string): Promise<void> {
@@ -233,17 +297,102 @@ export class WebhookController {
       return;
     }
 
-    // 設定狀態，等待用戶輸入數量
-    await updateConversationState(lineUserId, 'WAITING_BUY_QUANTITY', {
-      symbol,
-      price: quote.price,
-      name: quote.name
+    // 取得用戶帳戶
+    const accounts = await getUserAccounts(userId);
+    
+    if (accounts.length === 0) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '您還沒有任何帳戶，請先在網站設定帳戶。'
+      });
+      return;
+    }
+
+    // 判斷股票幣別
+    const stockCurrency = symbol.endsWith('.TW') || symbol.endsWith('.TWO') ? 'TWD' : 'USD';
+    
+    // 過濾可用帳戶
+    const availableAccounts = accounts.filter(acc => {
+      // 台股：只允許 TWD 證券戶
+      if (stockCurrency === 'TWD') {
+        return acc.currency === 'TWD' && acc.type === 'BROKERAGE';
+      }
+      // 美股：允許 USD 或 TWD (複委託)
+      if (stockCurrency === 'USD') {
+        return acc.type === 'BROKERAGE';
+      }
+      return false;
     });
 
-    await this.client.pushMessage(lineUserId, {
-      type: 'text',
-      text: `請輸入要買入的股數\n(${symbol} @ $${quote.price})\n\n例如: 10`
-    });
+    if (availableAccounts.length === 0) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: stockCurrency === 'TWD' 
+          ? '您沒有台股證券帳戶，請先在網站新增。'
+          : '您沒有證券帳戶，請先在網站新增。'
+      });
+      return;
+    }
+
+    // 如果只有一個帳戶，直接使用
+    if (availableAccounts.length === 1) {
+      const account = availableAccounts[0];
+      await updateConversationState(lineUserId, 'WAITING_BUY_QUANTITY', {
+        symbol,
+        price: quote.price,
+        name: quote.name,
+        accountId: account.id,
+        accountName: account.name,
+        accountCurrency: account.currency,
+        stockCurrency
+      });
+
+      const needsExchange = account.currency !== stockCurrency;
+      const exchangeRate = needsExchange ? 32.5 : 1; // Mock 匯率
+
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: `請輸入要買入的股數\n` +
+          `股票：${symbol} @ $${quote.price}\n` +
+          `帳戶：${account.name} (${account.currency})\n` +
+          `餘額：${account.currency === 'TWD' ? 'NT$' : '$'}${account.balance.toLocaleString()}\n` +
+          (needsExchange ? `\n⚠️ 將以複委託方式下單\n匯率：1 USD ≈ ${exchangeRate} TWD\n` : '') +
+          `\n例如: 10`
+      });
+    } else {
+      // 多個帳戶，讓用戶選擇
+      await updateConversationState(lineUserId, 'WAITING_ACCOUNT_SELECT', {
+        symbol,
+        price: quote.price,
+        name: quote.name,
+        stockCurrency,
+        availableAccounts: availableAccounts.map(a => ({
+          id: a.id,
+          name: a.name,
+          currency: a.currency,
+          balance: a.balance,
+          isSub: a.isSub
+        }))
+      });
+
+      // 發送帳戶選擇 Quick Reply
+      const buttons = availableAccounts.map((acc: any, idx: number) => ({
+        type: 'action' as const,
+        action: {
+          type: 'message' as const,
+          label: `${acc.name} (${acc.currency === 'TWD' ? 'NT$' : '$'}${acc.balance.toLocaleString()})`,
+          text: `選擇帳戶 ${idx + 1}`
+        }
+      }));
+
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: `請選擇扣款帳戶：`,
+        quickReply: {
+          items: buttons.slice(0, 13) // LINE 限制最多 13 個按鈕
+        }
+      });
+    }
   }
 
   /**
@@ -277,19 +426,76 @@ export class WebhookController {
       return;
     }
 
-    const { symbol, price, name } = context;
-    const totalCost = price * quantity;
+    const { symbol, price, name, accountId, accountCurrency, stockCurrency } = context;
+    const account = await getAccount(accountId);
 
-    // 儲存至資料庫
-    await upsertAsset(userId, symbol, name, 'Stock', quantity, price);
+    if (!account) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '帳戶不存在，請重新操作。'
+      });
+      await clearConversationState(lineUserId);
+      return;
+    }
 
-    // 清除狀態
-    await clearConversationState(lineUserId);
+    // 計算成本（考慮匯率）
+    const needsExchange = accountCurrency !== stockCurrency;
+    const exchangeRate = needsExchange ? 32.5 : 1; // TODO: 使用真實匯率 API
+    const baseCost = price * quantity;
+    const totalCost = needsExchange ? baseCost * exchangeRate : baseCost;
 
-    await this.client.pushMessage(lineUserId, {
-      type: 'text',
-      text: `✅ 買入成功！\n\n${symbol} x ${quantity} 股\n單價: $${price}\n總計: $${totalCost.toFixed(2)}`
-    });
+    // 檢查餘額
+    if (account.balance < totalCost) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: `⚠️ 餘額不足\n\n` +
+          `需要：${accountCurrency === 'TWD' ? 'NT$' : '$'}${totalCost.toLocaleString()}\n` +
+          `可用：${accountCurrency === 'TWD' ? 'NT$' : '$'}${account.balance.toLocaleString()}\n` +
+          `不足：${accountCurrency === 'TWD' ? 'NT$' : '$'}${(totalCost - account.balance).toLocaleString()}\n\n` +
+          `💡 請先入金或減少買入數量`
+      });
+      await clearConversationState(lineUserId);
+      return;
+    }
+
+    try {
+      // 1. 更新帳戶餘額
+      await updateAccountBalance(accountId, totalCost, 'subtract');
+
+      // 2. 新增持股
+      await upsertAsset(userId, symbol, name, 'Stock', quantity, price);
+
+      // 3. 記錄交易
+      await createTransaction(
+        userId,
+        'expense',
+        totalCost,
+        'investment',
+        `買入 ${symbol} ${quantity}股 @ ${stockCurrency === 'TWD' ? 'NT$' : '$'}${price}`,
+        accountId
+      );
+
+      // 清除狀態
+      await clearConversationState(lineUserId);
+
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: `✅ 買入成功！\n\n` +
+          `${symbol} x ${quantity} 股\n` +
+          `單價: ${stockCurrency === 'TWD' ? 'NT$' : '$'}${price}\n` +
+          (needsExchange ? `原始成本: $${baseCost.toFixed(2)}\n` : '') +
+          `扣款: ${accountCurrency === 'TWD' ? 'NT$' : '$'}${totalCost.toLocaleString()}\n` +
+          (needsExchange ? `(匯率 1:${exchangeRate})\n` : '') +
+          `\n帳戶餘額: ${accountCurrency === 'TWD' ? 'NT$' : '$'}${(account.balance - totalCost).toLocaleString()}`
+      });
+    } catch (error) {
+      console.error('Buy stock error:', error);
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '買入失敗，請稍後再試。'
+      });
+      await clearConversationState(lineUserId);
+    }
   }
 
   /**

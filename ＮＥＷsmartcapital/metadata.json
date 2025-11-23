@@ -1,0 +1,5 @@
+{
+  "name": "SmartCapital",
+  "description": "專業的個人投資管理 App，具備資產追蹤、投資組合分析，以及凱利公式與馬丁格爾等進階策略計算器。",
+  "requestFramePermissions": []
+}

@@ -71,17 +71,61 @@ export async function createTransaction(
   type: 'income' | 'expense',
   amount: number,
   category: string,
-  note?: string
+  note?: string,
+  accountId?: string
 ) {
-  return prisma.transaction.create({
-    data: {
-      userId,
-      type,
-      amount,
-      category,
-      note: note || ''
+  // 如果有指定帳戶，更新帳戶餘額
+  if (accountId) {
+    const account = await getAccount(accountId);
+    if (!account) {
+      throw new Error('帳戶不存在');
     }
-  });
+
+    if (account.userId !== userId) {
+      throw new Error('無權限操作此帳戶');
+    }
+
+    // 檢查餘額（支出時）
+    if (type === 'expense' && account.balance < amount) {
+      throw new Error(`帳戶餘額不足 (需要 ${amount}，僅有 ${account.balance})`);
+    }
+
+    // 使用 transaction 確保原子性
+    return prisma.$transaction(async (tx) => {
+      // 1. 更新帳戶餘額
+      const newBalance = type === 'income' 
+        ? account.balance + amount 
+        : account.balance - amount;
+
+      await tx.account.update({
+        where: { id: accountId },
+        data: { balance: newBalance }
+      });
+
+      // 2. 創建交易記錄
+      return tx.transaction.create({
+        data: {
+          userId,
+          accountId,
+          type,
+          amount,
+          category,
+          note: note || ''
+        }
+      });
+    });
+  } else {
+    // 沒有指定帳戶，僅創建記錄（向後兼容）
+    return prisma.transaction.create({
+      data: {
+        userId,
+        type,
+        amount,
+        category,
+        note: note || ''
+      }
+    });
+  }
 }
 
 /**
@@ -340,6 +384,256 @@ export async function deleteNotification(notificationId: string) {
 export async function getUnreadNotificationCount(userId: string) {
   return prisma.notification.count({
     where: { userId, read: false }
+  });
+}
+
+/**
+ * ============================================================
+ * Account Management Functions
+ * ============================================================
+ */
+
+/**
+ * 取得用戶所有帳戶
+ */
+export async function getUserAccounts(userId: string) {
+  return prisma.account.findMany({
+    where: { userId },
+    orderBy: [
+      { isDefault: 'desc' },
+      { createdAt: 'asc' }
+    ]
+  });
+}
+
+/**
+ * 取得單一帳戶
+ */
+export async function getAccount(accountId: string) {
+  return prisma.account.findUnique({
+    where: { id: accountId }
+  });
+}
+
+/**
+ * 創建新帳戶
+ */
+export async function createAccount(
+  userId: string,
+  name: string,
+  type: 'CASH' | 'BANK' | 'BROKERAGE' | 'EXCHANGE',
+  currency: 'TWD' | 'USD',
+  balance: number = 0,
+  isDefault: boolean = false,
+  isSub: boolean = false
+) {
+  // 如果設為預設，先將其他帳戶的 isDefault 設為 false
+  if (isDefault) {
+    await prisma.account.updateMany({
+      where: { userId, isDefault: true },
+      data: { isDefault: false }
+    });
+  }
+
+  return prisma.account.create({
+    data: {
+      userId,
+      name,
+      type,
+      currency,
+      balance,
+      isDefault,
+      isSub
+    }
+  });
+}
+
+/**
+ * 更新帳戶餘額
+ */
+export async function updateAccountBalance(
+  accountId: string,
+  amount: number,
+  operation: 'add' | 'subtract' = 'add'
+) {
+  const account = await getAccount(accountId);
+  if (!account) {
+    throw new Error('帳戶不存在');
+  }
+
+  const newBalance = operation === 'add' 
+    ? account.balance + amount 
+    : account.balance - amount;
+
+  if (newBalance < 0) {
+    throw new Error('餘額不足');
+  }
+
+  return prisma.account.update({
+    where: { id: accountId },
+    data: { balance: newBalance }
+  });
+}
+
+/**
+ * 更新帳戶資訊
+ */
+export async function updateAccount(
+  accountId: string,
+  data: {
+    name?: string;
+    isDefault?: boolean;
+  }
+) {
+  const account = await getAccount(accountId);
+  if (!account) {
+    throw new Error('帳戶不存在');
+  }
+
+  // 如果設為預設，先將其他帳戶的 isDefault 設為 false
+  if (data.isDefault) {
+    await prisma.account.updateMany({
+      where: { userId: account.userId, isDefault: true },
+      data: { isDefault: false }
+    });
+  }
+
+  return prisma.account.update({
+    where: { id: accountId },
+    data
+  });
+}
+
+/**
+ * 刪除帳戶
+ */
+export async function deleteAccount(accountId: string) {
+  const account = await getAccount(accountId);
+  if (!account) {
+    throw new Error('帳戶不存在');
+  }
+
+  // 檢查是否有相關交易
+  const transactionCount = await prisma.transaction.count({
+    where: { 
+      OR: [
+        { accountId },
+        { toAccountId: accountId }
+      ]
+    }
+  });
+
+  if (transactionCount > 0) {
+    throw new Error('此帳戶有相關交易記錄，無法刪除');
+  }
+
+  return prisma.account.delete({
+    where: { id: accountId }
+  });
+}
+
+/**
+ * 創建帳戶間轉帳記錄
+ */
+export async function createTransfer(
+  userId: string,
+  fromAccountId: string,
+  toAccountId: string,
+  amount: number,
+  exchangeRate?: number,
+  fee?: number,
+  note?: string
+) {
+  const fromAccount = await getAccount(fromAccountId);
+  const toAccount = await getAccount(toAccountId);
+
+  if (!fromAccount || !toAccount) {
+    throw new Error('帳戶不存在');
+  }
+
+  if (fromAccount.userId !== userId || toAccount.userId !== userId) {
+    throw new Error('無權限操作此帳戶');
+  }
+
+  // 檢查餘額
+  const totalDeduction = amount + (fee || 0);
+  if (fromAccount.balance < totalDeduction) {
+    throw new Error(`轉出帳戶餘額不足 (需要 ${totalDeduction}，僅有 ${fromAccount.balance})`);
+  }
+
+  // 計算實際轉入金額（考慮匯率）
+  const actualAmount = exchangeRate ? amount * exchangeRate : amount;
+
+  // 使用 transaction 確保原子性
+  return prisma.$transaction(async (tx) => {
+    // 1. 扣除來源帳戶餘額
+    await tx.account.update({
+      where: { id: fromAccountId },
+      data: { balance: fromAccount.balance - totalDeduction }
+    });
+
+    // 2. 增加目標帳戶餘額
+    await tx.account.update({
+      where: { id: toAccountId },
+      data: { balance: toAccount.balance + actualAmount }
+    });
+
+    // 3. 創建轉帳記錄
+    const transfer = await tx.transfer.create({
+      data: {
+        userId,
+        fromAccountId,
+        toAccountId,
+        amount,
+        exchangeRate,
+        fee,
+        note,
+        date: new Date()
+      }
+    });
+
+    // 4. 創建兩筆交易記錄（轉出和轉入）
+    await tx.transaction.create({
+      data: {
+        userId,
+        accountId: fromAccountId,
+        toAccountId,
+        type: 'expense',
+        amount: totalDeduction,
+        category: 'transfer',
+        note: `轉出至 ${toAccount.name}${note ? ` - ${note}` : ''}`,
+        date: new Date()
+      }
+    });
+
+    await tx.transaction.create({
+      data: {
+        userId,
+        accountId: toAccountId,
+        type: 'income',
+        amount: actualAmount,
+        category: 'transfer',
+        note: `從 ${fromAccount.name} 轉入${note ? ` - ${note}` : ''}`,
+        date: new Date()
+      }
+    });
+
+    return transfer;
+  });
+}
+
+/**
+ * 取得用戶轉帳記錄
+ */
+export async function getUserTransfers(userId: string, limit: number = 20) {
+  return prisma.transfer.findMany({
+    where: { userId },
+    include: {
+      fromAccount: { select: { name: true, currency: true } },
+      toAccount: { select: { name: true, currency: true } }
+    },
+    orderBy: { date: 'desc' },
+    take: limit
   });
 }
 

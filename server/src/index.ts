@@ -73,6 +73,16 @@ app.get('/api/notifications/:lineUserId', apiController.getNotifications);
 app.post('/api/notifications/:notificationId/read', apiController.markNotificationAsRead);
 app.post('/api/notifications/:lineUserId/read-all', apiController.markAllNotificationsAsRead);
 
+// 帳戶管理 API 端點
+app.get('/api/accounts/:lineUserId', apiController.getAccounts);
+app.post('/api/accounts/:lineUserId', apiController.createNewAccount);
+app.patch('/api/accounts/:accountId', apiController.updateAccountInfo);
+app.delete('/api/accounts/:accountId', apiController.removeAccount);
+
+// 轉帳 API 端點
+app.post('/api/transfers/:lineUserId', apiController.createNewTransfer);
+app.get('/api/transfers/:lineUserId', apiController.getTransfers);
+
 // LINE Webhook 端點
 app.post('/webhook', middleware(middlewareConfig), async (req: Request, res: Response) => {
   const events: WebhookEvent[] = req.body.events;

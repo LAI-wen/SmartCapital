@@ -193,22 +193,23 @@ export async function markAllNotificationsAsRead(userId: string): Promise<boolea
 }
 
 /**
- * 新增交易記錄
+ * 新增交易記錄（更新版：支援 accountId）
  */
 export async function createTransaction(
   type: 'income' | 'expense',
   amount: number,
   category: string,
   date: string,
-  note?: string
+  note?: string,
+  accountId?: string
 ): Promise<Transaction | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/transactions/${MOCK_LINE_USER_ID}`, {
+    const response = await fetch(`${API_BASE_URL}/api/transactions/${currentUserId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ type, amount, category, date, note }),
+      body: JSON.stringify({ type, amount, category, date, note, accountId }),
     });
     const result: ApiResponse<Transaction> = await response.json();
     return result.success ? result.data || null : null;
@@ -231,6 +232,155 @@ export async function deleteTransaction(transactionId: string): Promise<boolean>
   } catch (error) {
     console.error('Failed to delete transaction:', error);
     return false;
+  }
+}
+
+/**
+ * ============================================================
+ * Account Management APIs
+ * ============================================================
+ */
+
+interface Account {
+  id: string;
+  name: string;
+  type: 'CASH' | 'BANK' | 'BROKERAGE' | 'EXCHANGE';
+  currency: 'TWD' | 'USD';
+  balance: number;
+  isDefault: boolean;
+  isSub: boolean;
+  createdAt: string;
+}
+
+interface Transfer {
+  id: string;
+  fromAccount: { name: string; currency: string };
+  toAccount: { name: string; currency: string };
+  amount: number;
+  exchangeRate?: number;
+  fee?: number;
+  note?: string;
+  date: string;
+}
+
+/**
+ * 取得用戶所有帳戶
+ */
+export async function getAccounts(): Promise<Account[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/accounts/${currentUserId}`);
+    const result: ApiResponse<Account[]> = await response.json();
+    return result.success ? result.data || [] : [];
+  } catch (error) {
+    console.error('Failed to fetch accounts:', error);
+    return [];
+  }
+}
+
+/**
+ * 創建新帳戶
+ */
+export async function createAccount(accountData: {
+  name: string;
+  type: 'CASH' | 'BANK' | 'BROKERAGE' | 'EXCHANGE';
+  currency: 'TWD' | 'USD';
+  balance?: number;
+  isDefault?: boolean;
+  isSub?: boolean;
+}): Promise<Account | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/accounts/${currentUserId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(accountData),
+    });
+    const result: ApiResponse<Account> = await response.json();
+    return result.success ? result.data || null : null;
+  } catch (error) {
+    console.error('Failed to create account:', error);
+    return null;
+  }
+}
+
+/**
+ * 更新帳戶資訊
+ */
+export async function updateAccount(
+  accountId: string,
+  data: { name?: string; isDefault?: boolean }
+): Promise<Account | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/accounts/${accountId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    const result: ApiResponse<Account> = await response.json();
+    return result.success ? result.data || null : null;
+  } catch (error) {
+    console.error('Failed to update account:', error);
+    return null;
+  }
+}
+
+/**
+ * 刪除帳戶
+ */
+export async function deleteAccount(accountId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/accounts/${accountId}`, {
+      method: 'DELETE',
+    });
+    const result: ApiResponse<void> = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Failed to delete account:', error);
+    return false;
+  }
+}
+
+/**
+ * 創建轉帳記錄
+ */
+export async function createTransfer(transferData: {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  exchangeRate?: number;
+  fee?: number;
+  note?: string;
+}): Promise<Transfer | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/transfers/${currentUserId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(transferData),
+    });
+    const result: ApiResponse<Transfer> = await response.json();
+    return result.success ? result.data || null : null;
+  } catch (error) {
+    console.error('Failed to create transfer:', error);
+    return null;
+  }
+}
+
+/**
+ * 取得轉帳記錄
+ */
+export async function getTransfers(limit = 20): Promise<Transfer[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/transfers/${currentUserId}?limit=${limit}`);
+    const result: ApiResponse<Transfer[]> = await response.json();
+    return result.success ? result.data || [] : [];
+  } catch (error) {
+    console.error('Failed to fetch transfers:', error);
+    return [];
   }
 }
 

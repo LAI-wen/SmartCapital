@@ -28,7 +28,6 @@ export interface Account {
   currency: Currency;
   balance: number;   // 當前餘額
   isDefault?: boolean;
-  isSub?: boolean;   // 是否為複委託帳戶
 }
 
 export interface PortfolioSummary {

@@ -21,14 +21,6 @@ export const MOCK_ACCOUNTS: Account[] = [
   },
   {
     id: 'acc_3',
-    name: '國泰證券 (複委託)',
-    type: 'BROKERAGE',
-    currency: 'TWD',
-    balance: 300000,
-    isSub: true
-  },
-  {
-    id: 'acc_4',
     name: 'Firstrade (美股)',
     type: 'BROKERAGE',
     currency: 'USD',

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { HashRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, ReceiptText, Bell, Menu, Settings, ChevronRight, TrendingUp, Calculator, HelpCircle } from 'lucide-react';
 import Dashboard from './components/Dashboard';
@@ -10,9 +10,8 @@ import NotificationsPage from './components/NotificationsPage';
 import AnalyticsPage from './components/AnalyticsPage';
 import SettingsPage from './components/SettingsPage';
 import HelpPage from './components/HelpPage';
-import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
+import { MOCK_ASSETS, MOCK_NOTIFICATIONS, MOCK_ACCOUNTS } from './constants';
 import { Notification, Asset, Account, InvestmentScope } from './types';
-import { getAccounts, getAssets as fetchAssets } from './services/api';
 
 const AppContent: React.FC = () => {
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
@@ -21,8 +20,7 @@ const AppContent: React.FC = () => {
 
   // Assets & Accounts State (Lifted for Logic)
   const [assets, setAssets] = useState<Asset[]>(MOCK_ASSETS);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+  const [accounts, setAccounts] = useState<Account[]>(MOCK_ACCOUNTS);
   
   // Investment Scope (Onboarding/Settings State)
   const [investmentScope, setInvestmentScope] = useState<InvestmentScope>({
@@ -30,23 +28,6 @@ const AppContent: React.FC = () => {
     us: true,    // Default true, user can toggle in Settings
     crypto: true // Default true
   });
-
-  // Load accounts from API on mount
-  useEffect(() => {
-    const loadAccounts = async () => {
-      setIsLoadingAccounts(true);
-      try {
-        const fetchedAccounts = await getAccounts();
-        setAccounts(fetchedAccounts);
-      } catch (error) {
-        console.error('Failed to load accounts:', error);
-      } finally {
-        setIsLoadingAccounts(false);
-      }
-    };
-
-    loadAccounts();
-  }, []);
 
   // Notification State
   const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);

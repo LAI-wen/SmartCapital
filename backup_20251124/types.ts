@@ -1,12 +1,4 @@
 
-export type Currency = 'TWD' | 'USD';
-export type AccountType = 'CASH' | 'BANK' | 'BROKERAGE';
-
-export interface InvestmentScope {
-  tw: boolean;     // 台股
-  us: boolean;     // 美股/海外
-  crypto: boolean; // 加密貨幣
-}
 
 export interface Asset {
   id: string;
@@ -16,19 +8,18 @@ export interface Asset {
   quantity: number;
   avgPrice: number;
   currentPrice: number;
-  currency: Currency; // 新增幣別
   change24h: number; // Percentage
   history: number[]; // Simple array for sparklines
+  currency: Currency; // 新增：資產的計價幣別
 }
 
-export interface Account {
-  id: string;
-  name: string;      // 例如："我的錢包", "台新銀行", "Firstrade"
-  type: AccountType;
+export interface Stock {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
   currency: Currency;
-  balance: number;   // 當前餘額
-  isDefault?: boolean;
-  isSub?: boolean;   // 是否為複委託帳戶
 }
 
 export interface PortfolioSummary {
@@ -79,6 +70,31 @@ export interface VAInput {
   currentPortfolioValue: number;
 }
 
+// Account & Currency Types
+export type Currency = 'TWD' | 'USD' | 'USDT';
+export type AccountType = 'CASH' | 'BANK' | 'BROKERAGE' | 'EXCHANGE';
+
+export interface Account {
+  id: string;
+  name: string;           // "台新銀行", "Firstrade", "國泰複委託"
+  type: AccountType;
+  currency: Currency;
+  balance: number;        // 當前餘額（購買力）
+  isDefault?: boolean;    // 記帳時的預設帳戶
+  isSub?: boolean;        // 是否為複委託帳戶
+  icon?: string;
+}
+
+// Investment Scope (Progressive Disclosure)
+export type InvestmentScope = 'TW' | 'US' | 'CRYPTO';
+
+export interface UserPreferences {
+  enableTWStock: boolean;   // 台股
+  enableUSStock: boolean;   // 美股
+  enableCrypto: boolean;    // 加密貨幣
+  investmentScope: InvestmentScope[];
+}
+
 // Ledger (Bookkeeping) Types
 export type TransactionType = 'income' | 'expense' | 'transfer' | 'invest';
 
@@ -88,9 +104,12 @@ export interface Transaction {
   type: TransactionType;
   amount: number;
   category: string;
-  accountId: string; // Source of fund
-  toAccountId?: string; // For transfer
   note: string;
+  
+  // 資金來源
+  accountId: string;
+  // 如果是轉帳，需要目標帳戶
+  toAccountId?: string;
 }
 
 // Notification Types
