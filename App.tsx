@@ -159,7 +159,7 @@ const AppContent: React.FC = () => {
 
                {/* Dropdown Panel */}
                {showNotifications && (
-                 <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-xl border border-stone-100 z-50 overflow-hidden animate-fade-in origin-top-right">
+                 <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-xl border border-stone-100 z-[9999] overflow-hidden animate-fade-in origin-top-right">
                     <div className="p-4 border-b border-stone-100 flex items-center justify-between bg-paper/50">
                        <h3 className="font-serif font-bold text-ink-900">通知中心</h3>
                        {unreadCount > 0 && (
@@ -238,7 +238,7 @@ const AppContent: React.FC = () => {
               <Routes>
                 <Route path="/" element={<Dashboard assets={assets} isPrivacyMode={isPrivacyMode} />} />
                 <Route path="/portfolio" element={<Portfolio assets={assets} isPrivacyMode={isPrivacyMode} />} />
-                <Route path="/ledger" element={<Ledger isPrivacyMode={isPrivacyMode} />} />
+                <Route path="/ledger" element={<Ledger isPrivacyMode={isPrivacyMode} transactions={transactions} />} />
                 <Route path="/strategy" element={<StrategyLab />} />
                 <Route path="/linebot" element={<LineBotData />} />
               </Routes>
@@ -246,15 +246,17 @@ const AppContent: React.FC = () => {
           </div>
         </div>
 
-        {/* Floating Action Button (Mobile) */}
-        <div className="md:hidden fixed bottom-24 right-4 z-40">
-           <button 
-             onClick={() => navigate('/ledger')}
-             className="w-14 h-14 bg-morandi-blue rounded-full shadow-soft flex items-center justify-center text-white active:scale-95 transition-transform border-4 border-paper"
-           >
-             <Plus size={24} />
-           </button>
-        </div>
+        {/* Floating Action Button (Mobile) - 只在非記帳頁面顯示 */}
+        {location.pathname !== '/ledger' && (
+          <div className="md:hidden fixed bottom-24 right-4 z-40">
+            <button
+              onClick={() => navigate('/ledger')}
+              className="w-14 h-14 bg-morandi-blue rounded-full shadow-soft flex items-center justify-center text-white active:scale-95 transition-transform border-4 border-paper"
+            >
+              <Plus size={24} />
+            </button>
+          </div>
+        )}
 
         {/* Bottom Nav (Mobile) */}
         <nav className="md:hidden bg-white border-t border-stone-200 h-20 fixed bottom-0 left-0 right-0 z-30 flex justify-around items-center px-4 pb-2 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">

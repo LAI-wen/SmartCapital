@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { MOCK_TRANSACTIONS, TRANSACTION_CATEGORIES, COLORS } from '../constants';
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Tag, FileText, Trash2, X, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, Zap, Gift, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
@@ -13,12 +13,16 @@ import { zhTW } from 'date-fns/locale';
 
 interface LedgerProps {
   isPrivacyMode: boolean;
+  transactions: Transaction[];
 }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year';
 
-const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode }) => {
-  const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
+const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransactions }) => {
+  // 使用真實資料，如果沒有則回退到 Mock 資料（Demo 模式）
+  const [transactions, setTransactions] = useState<Transaction[]>(
+    userTransactions.length > 0 ? userTransactions : MOCK_TRANSACTIONS
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Navigation State
@@ -34,6 +38,13 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode }) => {
   const [newCategory, setNewCategory] = useState(TRANSACTION_CATEGORIES.expense[0]);
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newNote, setNewNote] = useState('');
+
+  // 同步更新真實交易資料
+  useEffect(() => {
+    if (userTransactions.length > 0) {
+      setTransactions(userTransactions);
+    }
+  }, [userTransactions]);
 
   // --- NAVIGATION HELPERS ---
   const handlePrev = () => {
