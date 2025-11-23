@@ -1,0 +1,97 @@
+// Prisma Schema for SmartCapital LINE Bot
+// Database: SQLite (development) / PostgreSQL (production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 用戶表 - 儲存 LINE 用戶基本資料
+model User {
+  id          String   @id @default(cuid())
+  lineUserId  String   @unique
+  displayName String?
+  bankroll    Float    @default(10000) // 預設本金 $10,000
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions Transaction[]
+  assets       Asset[]
+  settings     UserSettings?
+
+  @@map("users")
+}
+
+// 交易記錄表 - 生活記帳
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date      DateTime @default(now())
+  type      String   // "income" | "expense"
+  amount    Float
+  category  String   // 飲食、交通、居住、投資等
+  note      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+  @@map("transactions")
+}
+
+// 資產持倉表 - 投資記錄
+model Asset {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  symbol    String   // TSLA, BTC, 2330 等
+  name      String?  // Tesla Inc., Bitcoin
+  type      String   // "Stock" | "Crypto" | "ETF"
+  quantity  Float
+  avgPrice  Float    // 平均買入價
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, symbol])
+  @@index([userId])
+  @@map("assets")
+}
+
+// 用戶策略參數設定
+model UserSettings {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 凱利公式參數
+  kellyWinProbability   Float    @default(55.0)  // 預設勝率 55%
+  kellyOdds             Float    @default(2.0)   // 預設賠率 1:1 (2.0)
+
+  // 馬丁格爾參數
+  martingaleMultiplier  Float    @default(2.0)   // 預設倍數 2x
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+// 對話狀態表 - 追蹤用戶當前操作狀態 (例如等待輸入股數)
+model ConversationState {
+  id            String   @id @default(cuid())
+  lineUserId    String   @unique
+
+  state         String   // "IDLE" | "WAITING_EXPENSE_CATEGORY" | "WAITING_BUY_QUANTITY" | "WAITING_SELL_PRICE"
+  context       String?  // JSON 格式，儲存臨時資料 (例如 {"symbol": "TSLA", "price": 240.5})
+
+  updatedAt     DateTime @updatedAt
+
+  @@map("conversation_states")
+}

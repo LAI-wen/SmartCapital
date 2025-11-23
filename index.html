@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartCapital - 智投手帳</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+TC:wght@400;500;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              serif: ['"Noto Serif TC"', '"Lora"', 'serif'],
+              mono: ['"Lora"', 'monospace'], // Using Lora for numbers for that old-style figure look
+            },
+            colors: {
+              paper: '#F9F7F2', // Warm parchment background
+              ink: {
+                900: '#2C3E50', // Deep Blue-Black Ink
+                800: '#44403C', // Warm Charcoal
+                400: '#78716C', // Stone Grey
+                100: '#F5F5F4', // Light Stone
+              },
+              morandi: {
+                blue: '#64748B', // Slate Blue (Brand)
+                blueLight: '#E2E8F0',
+                sage: '#84A98C', // Muted Green (Win)
+                sageLight: '#E8F3EB',
+                rose: '#D68C92', // Dusty Rose (Loss)
+                roseLight: '#FBEBEB',
+                sand: '#E6E2D6', // Accents
+                clay: '#C2B280',
+              }
+            },
+            boxShadow: {
+              'soft': '0 4px 20px -2px rgba(68, 64, 60, 0.08)',
+              'paper': '2px 4px 12px rgba(0,0,0,0.03)',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #F9F7F2;
+        color: #44403C;
+      }
+      /* Custom scrollbar to match paper theme */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #F9F7F2; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #D6D3C9; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #A8A29E; 
+      }
+      
+      .font-serif-num {
+        font-family: 'Lora', serif;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
+    "date-fns": "https://aistudiocdn.com/date-fns@^3.6.0",
+    "date-fns/": "https://aistudiocdn.com/date-fns@^4.1.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
