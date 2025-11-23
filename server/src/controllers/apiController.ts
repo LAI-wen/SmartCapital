@@ -136,6 +136,7 @@ export async function getPortfolio(req: Request, res: Response) {
         totalCost += cost;
 
         return {
+          id: asset.id,
           symbol: asset.symbol,
           name: asset.name,
           type: asset.type,
@@ -145,7 +146,9 @@ export async function getPortfolio(req: Request, res: Response) {
           value,
           cost,
           profit: value - cost,
-          profitPercent: ((value - cost) / cost) * 100
+          profitPercent: ((value - cost) / cost) * 100,
+          change24h: quote?.changePercent || 0,
+          history: [] // Placeholder for now
         };
       })
     );

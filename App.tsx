@@ -10,11 +10,17 @@ import Ledger from './components/Ledger';
 import LineBotData from './components/LineBotData';
 import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification } from './types';
+import { LiffProvider, useLiff } from './contexts/LiffContext';
+import { useUserData } from './hooks/useUserData';
 
 const AppContent: React.FC = () => {
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // LIFF 和用戶資料
+  const { isLoggedIn, displayName, pictureUrl } = useLiff();
+  const { portfolio, transactions, isLoading } = useUserData();
 
   // Notification State
   const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
@@ -24,6 +30,9 @@ const AppContent: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const togglePrivacy = () => setIsPrivacyMode(!isPrivacyMode);
+
+  // 決定使用真實資料還是 Mock 資料
+  const assets = (isLoggedIn && portfolio) ? portfolio.assets : MOCK_ASSETS;
 
   // Close notifications when clicking outside
   useEffect(() => {
@@ -101,10 +110,18 @@ const AppContent: React.FC = () => {
 
         <div className="p-6">
            <div className="flex items-center gap-3 p-4 rounded-xl bg-paper border border-stone-200 shadow-sm">
-             <div className="w-10 h-10 rounded-full bg-morandi-clay flex items-center justify-center text-white font-serif font-bold">A</div>
+             {pictureUrl ? (
+               <img src={pictureUrl} alt="Profile" className="w-10 h-10 rounded-full" />
+             ) : (
+               <div className="w-10 h-10 rounded-full bg-morandi-clay flex items-center justify-center text-white font-serif font-bold">
+                 {displayName ? displayName[0].toUpperCase() : 'U'}
+               </div>
+             )}
              <div>
-               <div className="text-sm font-bold font-serif text-ink-900">Alex's Journal</div>
-               <div className="text-xs text-ink-400">Pro Member</div>
+               <div className="text-sm font-bold font-serif text-ink-900">
+                 {displayName || (isLoggedIn ? '載入中...' : 'Guest')}
+               </div>
+               <div className="text-xs text-ink-400">{isLoggedIn ? 'LINE User' : 'Demo Mode'}</div>
              </div>
              <Settings size={16} className="ml-auto text-ink-400 cursor-pointer hover:text-morandi-blue" />
            </div>
@@ -210,13 +227,22 @@ const AppContent: React.FC = () => {
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-10 scroll-smooth">
           <div className="max-w-6xl mx-auto h-full pb-20 md:pb-0">
-            <Routes>
-              <Route path="/" element={<Dashboard assets={MOCK_ASSETS} isPrivacyMode={isPrivacyMode} />} />
-              <Route path="/portfolio" element={<Portfolio assets={MOCK_ASSETS} isPrivacyMode={isPrivacyMode} />} />
-              <Route path="/ledger" element={<Ledger isPrivacyMode={isPrivacyMode} />} />
-              <Route path="/strategy" element={<StrategyLab />} />
-              <Route path="/linebot" element={<LineBotData />} />
-            </Routes>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="w-12 h-12 border-4 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-ink-400">載入資料中...</p>
+                </div>
+              </div>
+            ) : (
+              <Routes>
+                <Route path="/" element={<Dashboard assets={assets} isPrivacyMode={isPrivacyMode} />} />
+                <Route path="/portfolio" element={<Portfolio assets={assets} isPrivacyMode={isPrivacyMode} />} />
+                <Route path="/ledger" element={<Ledger isPrivacyMode={isPrivacyMode} />} />
+                <Route path="/strategy" element={<StrategyLab />} />
+                <Route path="/linebot" element={<LineBotData />} />
+              </Routes>
+            )}
           </div>
         </div>
 
@@ -273,7 +299,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <HashRouter>
-      <AppContent />
+      <LiffProvider>
+        <AppContent />
+      </LiffProvider>
     </HashRouter>
   );
 };
