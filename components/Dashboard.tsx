@@ -289,6 +289,108 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, isPrivacyMode }) => {
           </button>
         </div>
       </div>
+      
+      {/* 投資組合列表 */}
+      {assets.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-xl font-serif font-bold text-ink-900 flex items-center gap-2">
+              <TrendingUp size={20} className="text-morandi-blue" />
+              我的持股
+            </h3>
+            <button 
+              onClick={() => navigate('/portfolio')}
+              className="text-sm text-morandi-blue hover:text-ink-900 font-medium transition-colors"
+            >
+              查看全部 →
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {assets.map(asset => {
+              const totalCost = asset.avgPrice * asset.quantity;
+              const totalValue = asset.currentPrice * asset.quantity;
+              const pl = totalValue - totalCost;
+              const plPercent = (pl / totalCost) * 100;
+              
+              return (
+                <div 
+                  key={asset.id}
+                  className="bg-white p-5 rounded-2xl border border-stone-100 shadow-paper hover:shadow-soft transition-all group cursor-pointer"
+                  onClick={() => navigate('/portfolio')}
+                >
+                  {/* 標題列 */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-ink-900 font-serif text-lg">{asset.symbol}</h4>
+                        {asset.symbol.endsWith('.TW') && (
+                          <span className="text-xs bg-morandi-blueLight text-morandi-blue px-2 py-0.5 rounded-full">台股</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-ink-400 mt-0.5">{asset.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-serif-num font-bold text-ink-900 text-lg">
+                        {formatCurrency(asset.currentPrice)}
+                      </div>
+                      <div className={`text-xs font-medium ${asset.change24h >= 0 ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
+                        {asset.change24h > 0 ? '+' : ''}{asset.change24h}%
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 持股資訊 */}
+                  <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-paper rounded-xl">
+                    <div>
+                      <div className="text-xs text-ink-400 mb-1">持有</div>
+                      <div className="font-serif-num font-medium text-ink-900">{asset.quantity} 股</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-ink-400 mb-1">市值</div>
+                      <div className="font-serif-num font-medium text-ink-900">{formatCurrency(totalValue)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-ink-400 mb-1">成本</div>
+                      <div className="font-serif-num text-sm text-ink-600">{formatCurrency(asset.avgPrice)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-ink-400 mb-1">損益</div>
+                      <div className={`font-serif-num font-bold text-sm ${pl >= 0 ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
+                        {pl >= 0 ? '+' : ''}{formatCurrency(pl)} ({plPercent.toFixed(2)}%)
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 操作按鈕 */}
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: 實作買入功能
+                        alert('買入功能開發中');
+                      }}
+                      className="flex-1 bg-morandi-sageLight text-morandi-sage py-2 rounded-lg text-xs font-bold hover:bg-morandi-sage hover:text-white transition-colors"
+                    >
+                      買入
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: 實作賣出功能
+                        alert('賣出功能開發中');
+                      }}
+                      className="flex-1 bg-morandi-roseLight text-morandi-rose py-2 rounded-lg text-xs font-bold hover:bg-morandi-rose hover:text-white transition-colors"
+                    >
+                      賣出
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       </>
       )}
     </div>
