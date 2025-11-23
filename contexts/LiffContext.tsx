@@ -39,16 +39,35 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
 
       // 如果沒有 LIFF ID，則跳過 LIFF 初始化（本地開發模式）
       if (!liffId) {
-        console.log('No LIFF_ID found, running in development mode');
+        console.log('🔧 No LIFF_ID found, running in development mode');
         setIsLiffReady(true);
+        
+        // 檢查 localStorage 中的 userId
+        const storedUserId = localStorage.getItem('lineUserId');
+        if (storedUserId) {
+          console.log('✅ 從 localStorage 載入 userId:', storedUserId);
+          setLineUserId(storedUserId);
+          setIsLoggedIn(true);
+          return;
+        }
+        
         // 檢查 URL 參數中的 userId（開發模式）
         const params = new URLSearchParams(window.location.search);
         const userIdFromUrl = params.get('userId');
         if (userIdFromUrl) {
+          console.log('✅ 從 URL 載入 userId:', userIdFromUrl);
           setLineUserId(userIdFromUrl);
           setIsLoggedIn(true);
           localStorage.setItem('lineUserId', userIdFromUrl);
+          return;
         }
+        
+        // 如果都沒有，使用 Mock ID（本地測試）
+        const mockUserId = 'Ucb528757211bf9eef17f7f0a391dd56e';
+        console.log('⚠️ 使用 Mock User ID:', mockUserId);
+        setLineUserId(mockUserId);
+        setIsLoggedIn(true);
+        localStorage.setItem('lineUserId', mockUserId);
         return;
       }
 

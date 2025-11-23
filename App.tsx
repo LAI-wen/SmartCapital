@@ -21,9 +21,10 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   
   // 🔐 整合 LIFF 登入
-  const { isLoggedIn, isLiffReady, lineUserId, displayName, error: liffError } = useLiff();
+  const liffContext = useLiff();
+  const { isLoggedIn, isLiffReady, lineUserId, displayName, error: liffError } = liffContext;
 
-  // Assets & Accounts State (Lifted for Logic)
+  // Assets & Accounts State (Lifted for Logic) - 必須在所有條件判斷之前宣告
   const [assets, setAssets] = useState<Asset[]>(MOCK_ASSETS);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
@@ -35,7 +36,32 @@ const AppContent: React.FC = () => {
     crypto: true // Default true
   });
 
-  // ⚠️ LIFF 初始化中，顯示載入畫面
+  // Notification State
+  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Load accounts from API on mount (等 LIFF ready 後才載入)
+  useEffect(() => {
+    const loadAccounts = async () => {
+      if (!isLiffReady) return;
+      
+      setIsLoadingAccounts(true);
+      try {
+        const fetchedAccounts = await getAccounts();
+        setAccounts(fetchedAccounts);
+        console.log('✅ 已載入帳戶:', fetchedAccounts.length, '個帳戶');
+        console.log('👤 當前用戶 ID:', lineUserId || 'Mock User');
+      } catch (error) {
+        console.error('❌ 載入帳戶失敗:', error);
+      } finally {
+        setIsLoadingAccounts(false);
+      }
+    };
+
+    loadAccounts();
+  }, [isLiffReady, lineUserId]);
+
+  // ⚠️ LIFF 初始化中，顯示載入畫面（必須在所有 hooks 之後）
   if (!isLiffReady) {
     return (
       <div className="flex h-screen items-center justify-center bg-paper">
@@ -65,31 +91,6 @@ const AppContent: React.FC = () => {
       </div>
     );
   }
-
-  // Load accounts from API on mount (等 LIFF ready 後才載入)
-  useEffect(() => {
-    const loadAccounts = async () => {
-      if (!isLiffReady) return;
-      
-      setIsLoadingAccounts(true);
-      try {
-        const fetchedAccounts = await getAccounts();
-        setAccounts(fetchedAccounts);
-        console.log('✅ 已載入帳戶:', fetchedAccounts.length, '個帳戶');
-        console.log('👤 當前用戶 ID:', lineUserId || 'Mock User');
-      } catch (error) {
-        console.error('❌ 載入帳戶失敗:', error);
-      } finally {
-        setIsLoadingAccounts(false);
-      }
-    };
-
-    loadAccounts();
-  }, [isLiffReady, lineUserId]);
-
-  // Notification State
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   const togglePrivacy = () => setIsPrivacyMode(!isPrivacyMode);
 
