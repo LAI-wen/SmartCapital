@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { MOCK_TRANSACTIONS, TRANSACTION_CATEGORIES, COLORS } from '../constants';
 import * as api from '../services/api';
-import { Plus, DollarSign, Calendar, Tag, FileText, Trash2, X, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, TrendingUp, Gift, ChevronLeft, ChevronRight, BarChart2, ChevronDown, ChevronUp, CalendarDays, PenTool } from 'lucide-react';
+import { Plus, DollarSign, Calendar, Tag, FileText, Trash2, X, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, TrendingUp, Gift, ChevronLeft, ChevronRight, BarChart2, ChevronDown, ChevronUp, CalendarDays, PenTool, ReceiptText, Info } from 'lucide-react';
 import { 
   format, isSameDay, isSameWeek, isSameMonth, isSameYear, parseISO, 
   addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, 
@@ -44,6 +44,21 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
   const [newCategory, setNewCategory] = useState(TRANSACTION_CATEGORIES.expense[0]);
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newNote, setNewNote] = useState('');
+  
+  // 快速記帳狀態
+  const [quickAmount, setQuickAmount] = useState('');
+  
+  // 最近使用的分類（從交易記錄中提取）
+  const recentCategories = useMemo(() => {
+    const categoryCount = new Map<string, number>();
+    transactions.slice(0, 20).forEach(t => {
+      categoryCount.set(t.category, (categoryCount.get(t.category) || 0) + 1);
+    });
+    return Array.from(categoryCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([cat]) => cat);
+  }, [transactions]);
 
   // 只在初始化時同步真實交易資料，之後由本地狀態管理
   useEffect(() => {
@@ -295,6 +310,79 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
     setNewAmount('');
     setNewNote('');
   };
+  
+  // 快速記帳：按 Enter 直接記錄（使用最近分類）
+  const handleQuickAdd = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && quickAmount) {
+      const amount = parseFloat(quickAmount);
+      if (isNaN(amount) || amount <= 0) return;
+      
+      // 使用最近最常用的分類，或預設分類
+      const defaultCategory = recentCategories[0] || TRANSACTION_CATEGORIES.expense[0];
+      
+      // 樂觀更新
+      const tempTransaction: Transaction = {
+        id: `temp-${Date.now()}`,
+        type: 'expense',
+        amount,
+        category: defaultCategory,
+        date: new Date().toISOString(),
+        note: ''
+      };
+      
+      setTransactions(prev => [tempTransaction, ...prev]);
+      setQuickAmount('');
+      
+      // 調用 API
+      const createdTransaction = await api.createTransaction(
+        'expense',
+        amount,
+        defaultCategory,
+        new Date().toISOString().split('T')[0],
+        ''
+      );
+      
+      if (createdTransaction) {
+        setTransactions(prev => prev.map(t => 
+          t.id === tempTransaction.id ? createdTransaction : t
+        ));
+      }
+    }
+  };
+  
+  // 快速記帳使用指定分類
+  const handleQuickAddWithCategory = async (category: string) => {
+    if (!quickAmount) return;
+    
+    const amount = parseFloat(quickAmount);
+    if (isNaN(amount) || amount <= 0) return;
+    
+    const tempTransaction: Transaction = {
+      id: `temp-${Date.now()}`,
+      type: 'expense',
+      amount,
+      category,
+      date: new Date().toISOString(),
+      note: ''
+    };
+    
+    setTransactions(prev => [tempTransaction, ...prev]);
+    setQuickAmount('');
+    
+    const createdTransaction = await api.createTransaction(
+      'expense',
+      amount,
+      category,
+      new Date().toISOString().split('T')[0],
+      ''
+    );
+    
+    if (createdTransaction) {
+      setTransactions(prev => prev.map(t => 
+        t.id === tempTransaction.id ? createdTransaction : t
+      ));
+    }
+  };
 
   const formatCurrency = (val: number) => {
     if (isPrivacyMode) return '••••••';
@@ -392,8 +480,50 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
   return (
     <div className="space-y-6 animate-fade-in relative pb-24 max-w-4xl mx-auto">
       
+      {/* --- QUICK ADD INPUT --- */}
+      <div className="sticky top-0 z-30 bg-white shadow-md rounded-b-2xl border-b border-stone-200 overflow-hidden">
+        <div className="p-4">
+          <div className="relative">
+            <input 
+              type="number"
+              value={quickAmount}
+              onChange={(e) => setQuickAmount(e.target.value)}
+              onKeyPress={handleQuickAdd}
+              placeholder="快速記帳：輸入金額按 Enter ⏎"
+              className="w-full text-2xl md:text-3xl font-serif-num py-3 px-4 border-2 border-stone-200 rounded-xl focus:outline-none focus:border-morandi-blue transition-colors bg-paper placeholder:text-ink-300"
+            />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-300">
+              <DollarSign size={28} />
+            </div>
+          </div>
+          
+          {/* 常用分類快捷按鈕 */}
+          {recentCategories.length > 0 && (
+            <div className="flex gap-2 mt-3">
+              <span className="text-xs text-ink-400 self-center mr-1">常用：</span>
+              {recentCategories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => handleQuickAddWithCategory(cat)}
+                  disabled={!quickAmount}
+                  className="px-3 py-1.5 rounded-full bg-morandi-blueLight text-morandi-blue text-xs font-medium hover:bg-morandi-blue hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {cat}
+                </button>
+              ))}
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-3 py-1.5 rounded-full bg-paper border border-stone-200 text-ink-600 text-xs font-medium hover:bg-stone-100 transition-all ml-auto"
+              >
+                更多選項 +
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      
       {/* --- STICKY HEADER --- */}
-      <div className={`sticky top-0 z-20 bg-paper/95 backdrop-blur-sm transition-all duration-300 border-stone-200/50 ${isHeaderExpanded ? 'pt-2 pb-2' : 'pt-0 pb-0 border-b shadow-sm'}`}>
+      <div className={`sticky top-[120px] z-20 bg-paper/95 backdrop-blur-sm transition-all duration-300 border-stone-200/50 ${isHeaderExpanded ? 'pt-2 pb-2' : 'pt-0 pb-0 border-b shadow-sm'}`}>
         
         {/* Collapsible Section 1: View Switcher */}
         <div className={`overflow-hidden transition-all duration-300 ${isHeaderExpanded ? 'max-h-16 opacity-100 mb-3' : 'max-h-0 opacity-0 mb-0'}`}>
@@ -580,18 +710,70 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
           <div className="absolute left-6 top-4 bottom-0 w-px border-l border-dashed border-stone-200 hidden md:block"></div>
           
           {Object.keys(groupedTransactions).length === 0 ? (
-            <div className="flex flex-col items-center justify-center pt-20 text-ink-300 gap-3">
-                <div className="w-20 h-20 bg-stone-50 rounded-full flex items-center justify-center">
-                  <FileText size={32} className="opacity-30" />
+            <div className="flex flex-col items-center justify-center pt-12 pb-20">
+                {/* 空狀態插圖 */}
+                <div className="w-32 h-32 bg-gradient-to-br from-morandi-blueLight to-morandi-sandLight rounded-full flex items-center justify-center mb-6 shadow-soft">
+                  <ReceiptText size={48} className="text-morandi-blue" />
                 </div>
-                <p className="font-serif italic text-sm">這一頁是空白的...</p>
+                
+                {/* 標題和描述 */}
+                <h3 className="text-2xl font-serif font-bold text-ink-900 mb-2">
+                  還沒有記帳紀錄
+                </h3>
+                <p className="text-ink-400 text-center mb-8 max-w-sm">
+                  開始記錄你的每一筆收入與支出<br/>
+                  掌握財務，從現在開始
+                </p>
+                
+                {/* 行動按鈕 */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex items-center gap-2 bg-morandi-blue text-white px-6 py-3 rounded-xl hover:bg-ink-900 transition-colors shadow-md font-medium"
+                  >
+                    <Plus size={20} />
+                    開始記帳
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setQuickAmount('100');
+                      document.querySelector<HTMLInputElement>('input[type="number"]')?.focus();
+                    }}
+                    className="flex items-center gap-2 bg-white text-ink-700 px-6 py-3 rounded-xl hover:bg-paper transition-colors border border-stone-200 font-medium"
+                  >
+                    <DollarSign size={20} />
+                    快速記帳
+                  </button>
+                </div>
+                
+                {/* 教學提示 */}
+                <div className="mt-12 p-6 bg-paper rounded-2xl border border-stone-100 max-w-md">
+                  <h4 className="text-sm font-bold text-ink-900 mb-3 flex items-center gap-2">
+                    <Info size={16} className="text-morandi-blue" />
+                    快速上手
+                  </h4>
+                  <ul className="space-y-2 text-xs text-ink-600">
+                    <li className="flex items-start gap-2">
+                      <span className="text-morandi-blue mt-0.5">•</span>
+                      <span><strong>頂部輸入框：</strong>輸入金額按 Enter，使用常用分類快速記帳</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-morandi-blue mt-0.5">•</span>
+                      <span><strong>+ 按鈕：</strong>打開完整表單，填寫詳細資訊</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-morandi-blue mt-0.5">•</span>
+                      <span><strong>LINE Bot：</strong>直接傳送金額即可記帳（例如：120）</span>
+                    </li>
+                  </ul>
+                </div>
             </div>
           ) : (
             <div className="space-y-8">
               {Object.keys(groupedTransactions).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(dateKey => (
                 <div key={dateKey} className="relative">
                   {/* Date Header */}
-                  <div className="flex items-center gap-4 mb-4 sticky top-[88px] z-10 md:static">
+                  <div className="flex items-center gap-4 mb-4 sticky top-[200px] z-10 md:static">
                       <div className="w-12 text-center hidden md:block bg-paper pt-2 pb-2">
                         <div className="text-[10px] font-serif font-bold text-ink-400 uppercase tracking-widest">{format(parseISO(dateKey), 'MMM')}</div>
                         <div className="text-xl font-serif-num font-bold text-ink-900 leading-none">{format(parseISO(dateKey), 'dd')}</div>

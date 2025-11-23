@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Asset } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, Activity, Wallet, TrendingUp, ReceiptText } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Activity, Wallet, TrendingUp, ReceiptText, FlaskConical } from 'lucide-react';
 import { COLORS } from '../constants';
 
 interface DashboardProps {
@@ -90,8 +90,78 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, isPrivacyMode }) => {
     return `${val > 0 ? '+' : ''}${val.toFixed(2)}%`;
   };
 
+  // 檢查是否為空狀態
+  const isEmpty = assets.length === 0 || summary.totalValue === 0;
+
   return (
     <div className="space-y-8 animate-fade-in">
+      {isEmpty ? (
+        /* 空狀態：新用戶引導 */
+        <div className="flex flex-col items-center justify-center pt-12 pb-20">
+          <div className="w-32 h-32 bg-gradient-to-br from-morandi-blueLight to-morandi-clayLight rounded-full flex items-center justify-center mb-6 shadow-soft">
+            <Wallet size={64} className="text-morandi-blue" />
+          </div>
+          
+          <h2 className="text-3xl font-serif font-bold text-ink-900 mb-3">
+            開始你的投資旅程
+          </h2>
+          <p className="text-ink-400 text-center mb-10 max-w-md text-lg">
+            記錄你的第一筆持股<br/>
+            追蹤資產成長，掌握財富密碼
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 mb-12">
+            <button 
+              onClick={() => navigate('/portfolio')}
+              className="flex items-center gap-2 bg-morandi-blue text-white px-8 py-4 rounded-xl hover:bg-ink-900 transition-colors shadow-md font-bold text-lg"
+            >
+              <TrendingUp size={24} />
+              新增持股
+            </button>
+            <button 
+              onClick={() => navigate('/ledger')}
+              className="flex items-center gap-2 bg-white text-ink-700 px-8 py-4 rounded-xl hover:bg-paper transition-colors border-2 border-stone-200 font-bold text-lg"
+            >
+              <ReceiptText size={24} />
+              開始記帳
+            </button>
+          </div>
+          
+          {/* 功能介紹卡片 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
+            <div className="bg-white p-6 rounded-2xl border border-stone-100 shadow-paper">
+              <div className="w-12 h-12 bg-morandi-blueLight rounded-xl flex items-center justify-center mb-4">
+                <Wallet size={24} className="text-morandi-blue" />
+              </div>
+              <h3 className="font-serif font-bold text-ink-900 mb-2">資產追蹤</h3>
+              <p className="text-sm text-ink-600">
+                記錄台股、美股、加密貨幣，自動同步即時報價
+              </p>
+            </div>
+            
+            <div className="bg-white p-6 rounded-2xl border border-stone-100 shadow-paper">
+              <div className="w-12 h-12 bg-morandi-sageLight rounded-xl flex items-center justify-center mb-4">
+                <ReceiptText size={24} className="text-morandi-sage" />
+              </div>
+              <h3 className="font-serif font-bold text-ink-900 mb-2">收支手帳</h3>
+              <p className="text-sm text-ink-600">
+                簡單快速記帳，掌握每一筆收入與支出
+              </p>
+            </div>
+            
+            <div className="bg-white p-6 rounded-2xl border border-stone-100 shadow-paper">
+              <div className="w-12 h-12 bg-morandi-clayLight rounded-xl flex items-center justify-center mb-4">
+                <FlaskConical size={24} className="text-morandi-clay" />
+              </div>
+              <h3 className="font-serif font-bold text-ink-900 mb-2">策略實驗室</h3>
+              <p className="text-sm text-ink-600">
+                凱利公式、馬丁格爾，科學化投資決策
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Hero Card - Clean Journal Style */}
       <div className="relative overflow-hidden rounded-2xl bg-white p-8 shadow-soft border border-stone-100">
         <div className="absolute top-0 right-0 w-64 h-64 bg-morandi-sand/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
@@ -110,6 +180,33 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, isPrivacyMode }) => {
               <span className="ml-1 font-bold">({formatPercent(summary.dayChangePercent)})</span>
             </div>
             <span className="text-ink-400 text-sm font-serif italic">今日損益變動</span>
+          </div>
+          
+          {/* 快捷操作按鈕 */}
+          <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t border-stone-100">
+            <button 
+              onClick={() => navigate('/ledger')}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-morandi-blueLight/30 hover:bg-morandi-blueLight transition-all group"
+            >
+              <ReceiptText size={24} className="text-morandi-blue group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-serif font-medium text-ink-700">記一筆</span>
+            </button>
+            
+            <button 
+              onClick={() => navigate('/portfolio')}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-morandi-sageLight/30 hover:bg-morandi-sageLight transition-all group"
+            >
+              <TrendingUp size={24} className="text-morandi-sage group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-serif font-medium text-ink-700">買股票</span>
+            </button>
+            
+            <button 
+              onClick={() => navigate('/strategy')}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-morandi-clayLight/30 hover:bg-morandi-clayLight transition-all group"
+            >
+              <FlaskConical size={24} className="text-morandi-clay group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-serif font-medium text-ink-700">策略</span>
+            </button>
           </div>
         </div>
       </div>
@@ -192,6 +289,8 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, isPrivacyMode }) => {
           </button>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };
