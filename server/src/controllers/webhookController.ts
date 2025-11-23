@@ -455,8 +455,9 @@ export class WebhookController {
    * 處理網站連結請求
    */
   private async handleWebsiteLink(lineUserId: string): Promise<void> {
-    // 開發環境使用 localhost，生產環境改為你的網域
-    const webUrl = `http://localhost:3001/#/?userId=${lineUserId}`;
+    // 使用環境變數 `FRONTEND_URL`（若未設定則回退到 localhost）
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const webUrl = `${baseUrl}/#/?userId=${encodeURIComponent(lineUserId)}`;
 
     await this.client.pushMessage(lineUserId, {
       type: 'template',
