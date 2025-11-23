@@ -55,27 +55,16 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
   useEffect(() => {
     const scrollContainer = document.getElementById('main-scroll-container');
     if (!scrollContainer) return;
-
-    let lastScrollY = scrollContainer.scrollTop;
     
     const handleScroll = () => {
       const currentScrollY = scrollContainer.scrollTop;
-      const threshold = 10;
-
-      // Don't collapse if we are at the very top
+      
+      // 只有在頂部(<50px)時展開，否則收合
       if (currentScrollY < 50) {
         setIsHeaderExpanded(true);
-        return;
-      }
-
-      if (currentScrollY > lastScrollY + threshold) {
-        // Scrolling Down -> Collapse
+      } else {
         setIsHeaderExpanded(false);
-      } else if (currentScrollY < lastScrollY - threshold) {
-        // Scrolling Up -> Expand
-        setIsHeaderExpanded(true);
       }
-      lastScrollY = currentScrollY;
     };
 
     scrollContainer.addEventListener('scroll', handleScroll);
@@ -550,7 +539,7 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, transactions: userTransa
               {Object.keys(groupedTransactions).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(dateKey => (
                 <div key={dateKey} className="relative">
                   {/* Date Header */}
-                  <div className="flex items-center gap-4 mb-4 sticky top-28 z-10 md:static">
+                  <div className="flex items-center gap-4 mb-4 sticky top-[88px] z-10 md:static">
                       <div className="w-12 text-center hidden md:block bg-paper pt-2 pb-2">
                         <div className="text-[10px] font-serif font-bold text-ink-400 uppercase tracking-widest">{format(parseISO(dateKey), 'MMM')}</div>
                         <div className="text-xl font-serif-num font-bold text-ink-900 leading-none">{format(parseISO(dateKey), 'dd')}</div>

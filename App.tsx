@@ -41,15 +41,11 @@ const AppContent: React.FC = () => {
       if (isLoggedIn) {
         try {
           const notifs = await api.getNotifications(20);
-          if (notifs.length > 0) {
-            setNotifications(notifs);
-          } else {
-            // 如果後端沒有通知，使用 Mock 資料作為示例
-            setNotifications(MOCK_NOTIFICATIONS);
-          }
+          // 始終使用 API 返回的數據，即使是空數組
+          setNotifications(notifs);
         } catch (error) {
           console.error('Failed to fetch notifications:', error);
-          // 出錯時使用 Mock 資料
+          // 只在 API 失敗時使用 Mock 資料
           setNotifications(MOCK_NOTIFICATIONS);
         }
       } else {

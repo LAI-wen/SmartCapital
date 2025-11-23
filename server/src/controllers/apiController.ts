@@ -11,7 +11,9 @@ import {
   getUserSettings,
   getUserNotifications,
   markNotificationRead,
-  markAllNotificationsRead
+  markAllNotificationsRead,
+  createTransaction as dbCreateTransaction,
+  prisma
 } from '../services/databaseService.js';
 import { getStockQuote } from '../services/stockService.js';
 
@@ -206,7 +208,7 @@ export async function createTransaction(req: Request, res: Response) {
     const { type, amount, category, note, date } = req.body;
 
     const user = await getOrCreateUser(lineUserId);
-    const transaction = await require('../services/databaseService.js').createTransaction(
+    const transaction = await dbCreateTransaction(
       user.id,
       type,
       amount,
@@ -239,7 +241,7 @@ export async function deleteTransaction(req: Request, res: Response) {
   try {
     const { transactionId } = req.params;
 
-    await require('../services/databaseService.js').prisma.transaction.delete({
+    await prisma.transaction.delete({
       where: { id: transactionId }
     });
 
