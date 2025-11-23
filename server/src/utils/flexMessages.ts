@@ -178,7 +178,8 @@ export function createStockQuoteCard(
     });
   }
 
-  bubble.body.contents = bodyContents;
+  // 使用非空斷言，因為我們已經在上面定義了 body
+  bubble.body!.contents = bodyContents;
 
   return {
     type: 'flex',
