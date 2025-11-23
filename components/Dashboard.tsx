@@ -38,31 +38,51 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, isPrivacyMode }) => {
     };
   }, [assets]);
 
-  // Data for Pie Chart
+  // Data for Pie Chart - 區分地區 + 類型
   const allocationData = useMemo(() => {
-    const typeMap = new Map<string, number>();
+    const regionMap = new Map<string, number>();
+    
     assets.forEach(asset => {
       const value = asset.quantity * asset.currentPrice;
-      typeMap.set(asset.type, (typeMap.get(asset.type) || 0) + value);
+      
+      // 根據代碼自動分類地區
+      let region = '其他';
+      if (asset.symbol.endsWith('.TW') || asset.symbol.endsWith('.TWO')) {
+        region = '🇹🇼 台股';
+      } else if (asset.type === 'Crypto' || asset.symbol.includes('BTC') || asset.symbol.includes('ETH')) {
+        region = '₿ 加密貨幣';
+      } else if (asset.type === 'ETF') {
+        // ETF 根據代碼判斷
+        if (asset.symbol.endsWith('.TW')) {
+          region = '🇹🇼 台股 ETF';
+        } else {
+          region = '🇺🇸 美股 ETF';
+        }
+      } else {
+        region = '🇺🇸 美股';
+      }
+      
+      regionMap.set(region, (regionMap.get(region) || 0) + value);
     });
     
-    // Map English types to Chinese for display
-    const typeNames: Record<string, string> = {
-      'Stock': '股票',
-      'Crypto': '加密貨幣',
-      'Cash': '現金',
-      'ETF': 'ETF'
-    };
-
-    return Array.from(typeMap).map(([name, value]) => ({ 
-      name: typeNames[name] || name, 
-      value 
-    }));
+    return Array.from(regionMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value); // 按金額排序
   }, [assets]);
 
-  const formatCurrency = (val: number) => {
+  const formatCurrency = (val: number, currency: string = 'TWD') => {
     if (isPrivacyMode) return '••••••';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
+    
+    // 根據幣別選擇格式
+    if (currency === 'TWD') {
+      return `NT$${val.toLocaleString('zh-TW', { maximumFractionDigits: 0 })}`;
+    }
+    
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: 'USD', 
+      maximumFractionDigits: 0 
+    }).format(val);
   };
 
   const formatPercent = (val: number) => {

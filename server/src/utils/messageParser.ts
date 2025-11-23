@@ -3,7 +3,7 @@
  * 判斷用戶輸入的意圖：記帳模式 or 投資模式
  */
 
-import { isValidStockSymbol } from '../services/stockService.js';
+import { isValidStockSymbol, formatTaiwanStockSymbol } from '../services/stockService.js';
 import { FlexMessage } from '@line/bot-sdk';
 
 export type MessageIntent =
@@ -45,19 +45,23 @@ export function parseMessage(text: string): MessageIntent {
   // 3. 檢查是否為股票代碼查詢 (例如: "TSLA", "2330")
   const upperText = trimmed.toUpperCase();
   if (isValidStockSymbol(upperText)) {
-    return { type: 'STOCK_QUERY', symbol: upperText };
+    // 自動轉換台股代碼格式 (2330 -> 2330.TW)
+    const formattedSymbol = formatTaiwanStockSymbol(upperText);
+    return { type: 'STOCK_QUERY', symbol: formattedSymbol };
   }
 
-  // 4. 檢查是否為買入操作 (例如: "買入 TSLA")
+  // 4. 檢查是否為買入操作 (例如: "買入 TSLA", "買入 2330")
   const buyMatch = trimmed.match(/^買入\s+([A-Z0-9]+)$/i);
   if (buyMatch) {
-    return { type: 'BUY_ACTION', symbol: buyMatch[1].toUpperCase() };
+    const formattedSymbol = formatTaiwanStockSymbol(buyMatch[1].toUpperCase());
+    return { type: 'BUY_ACTION', symbol: formattedSymbol };
   }
 
-  // 5. 檢查是否為賣出操作 (例如: "賣出 TSLA")
+  // 5. 檢查是否為賣出操作 (例如: "賣出 TSLA", "賣出 2330")
   const sellMatch = trimmed.match(/^賣出\s+([A-Z0-9]+)$/i);
   if (sellMatch) {
-    return { type: 'SELL_ACTION', symbol: sellMatch[1].toUpperCase() };
+    const formattedSymbol = formatTaiwanStockSymbol(sellMatch[1].toUpperCase());
+    return { type: 'SELL_ACTION', symbol: formattedSymbol };
   }
 
   // 6. 檢查是否為支出分類選擇 (例如: "飲食 120")

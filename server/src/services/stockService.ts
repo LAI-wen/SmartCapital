@@ -104,3 +104,39 @@ export function isValidStockSymbol(text: string): boolean {
   const pattern = /^[A-Z0-9]{1,5}$/i;
   return pattern.test(text.trim());
 }
+
+/**
+ * 自動轉換台股代碼格式
+ * 輸入: 2330 -> 輸出: 2330.TW
+ * 輸入: 0050 -> 輸出: 0050.TW
+ * 輸入: AAPL -> 輸出: AAPL
+ */
+export function formatTaiwanStockSymbol(input: string): string {
+  const clean = input.trim().toUpperCase();
+  
+  // 如果已經有後綴，直接返回
+  if (clean.includes('.')) {
+    return clean;
+  }
+  
+  // 台股上市股票：4 位數字（2330, 2454）
+  if (/^\d{4}$/.test(clean)) {
+    return `${clean}.TW`;
+  }
+  
+  // 台股 ETF：0 開頭的 4 位數字（0050, 0056）
+  if (/^0\d{3}$/.test(clean)) {
+    return `${clean}.TW`;
+  }
+  
+  // 美股或其他：保持原樣（AAPL, TSLA, BTC-USD）
+  return clean;
+}
+
+/**
+ * 台股專用：查詢股票（自動加上 .TW 後綴）
+ */
+export async function getTaiwanStockQuote(symbol: string): Promise<StockQuote | null> {
+  const formattedSymbol = formatTaiwanStockSymbol(symbol);
+  return getStockQuote(formattedSymbol);
+}
