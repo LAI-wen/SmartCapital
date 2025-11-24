@@ -233,7 +233,7 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
                
                <div className="mt-2">
                  <h3 className="text-xs font-bold text-ink-400 uppercase tracking-widest mb-3">搜尋結果</h3>
-                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                 <div className="space-y-2 h-[400px] overflow-y-auto">
                     {filteredSearch.length > 0 ? filteredSearch.map(stock => (
                       <div 
                         key={stock.symbol}

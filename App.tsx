@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ReceiptText, Bell, Menu, Settings, ChevronRight, TrendingUp, Calculator, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Bell, Menu, Settings, ChevronRight, TrendingUp, Calculator, HelpCircle, Wallet } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import StrategyLab from './components/StrategyLab';
 import Ledger from './components/Ledger';
@@ -266,6 +266,10 @@ const AppContent: React.FC = () => {
           </NavLink>
 
           <div className="pt-4 mt-4 border-t border-stone-100">
+             <NavLink to="/account-management" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
+              <Wallet size={18} />
+              <span className="font-medium tracking-wide">帳戶 (Accounts)</span>
+            </NavLink>
              <NavLink to="/settings" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
               <Settings size={18} />
               <span className="font-medium tracking-wide">設定 (Settings)</span>
@@ -335,14 +339,20 @@ const AppContent: React.FC = () => {
                   />
                 } 
               />
-              <Route 
-                path="/ledger" 
+              <Route
+                path="/ledger"
                 element={
-                  <Ledger 
+                  <Ledger
                     accounts={accounts}
-                    isPrivacyMode={isPrivacyMode} 
+                    isPrivacyMode={isPrivacyMode}
+                    onAccountsUpdate={async () => {
+                      console.log('🔄 Ledger 觸發帳戶刷新...');
+                      const fetchedAccounts = await getAccounts();
+                      setAccounts(fetchedAccounts);
+                      console.log('✅ App: 帳戶已刷新，共', fetchedAccounts.length, '個帳戶');
+                    }}
                   />
-                } 
+                }
               />
               <Route path="/strategy" element={<StrategyLab />} />
               <Route path="/notifications" element={<NotificationsPage notifications={notifications} setNotifications={setNotifications} />} />

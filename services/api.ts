@@ -45,6 +45,7 @@ interface Transaction {
   amount: number;
   category: string;
   note: string;
+  accountId: string;
 }
 
 interface Portfolio {

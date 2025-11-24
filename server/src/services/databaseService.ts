@@ -85,10 +85,8 @@ export async function createTransaction(
       throw new Error('無權限操作此帳戶');
     }
 
-    // 檢查餘額（支出時）
-    if (type === 'expense' && account.balance < amount) {
-      throw new Error(`帳戶餘額不足 (需要 ${amount}，僅有 ${account.balance})`);
-    }
+    // ⚠️ 記帳功能不檢查餘額，允許負數（信用卡、借貸等情況）
+    // 只有投資操作（買股票）才需要檢查餘額
 
     // 使用 transaction 確保原子性
     return prisma.$transaction(async (tx) => {

@@ -19,6 +19,7 @@ import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 interface LedgerProps {
   isPrivacyMode: boolean;
   accounts: Account[]; // New Prop
+  onAccountsUpdate?: () => void; // Callback to reload accounts after transactions
 }
 
 type ViewMode = 'month' | 'year';
@@ -29,7 +30,7 @@ const getChineseWeekDay = (dateStr: string) => {
   return days[date.getDay()];
 };
 
-const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
+const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpdate }) => {
   // --- STATE ---
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
@@ -124,7 +125,8 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
   const groupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
     filteredTransactions.forEach(t => {
-      const dateKey = t.date; 
+      // 只取日期部分，忽略時間
+      const dateKey = t.date.split('T')[0];
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(t);
     });
@@ -170,6 +172,8 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
         if (newTx) {
           console.log('✅ 快速記帳成功:', newTx);
           setTransactions([newTx, ...transactions]);
+          // 🔥 通知父組件刷新帳戶餘額
+          onAccountsUpdate?.();
         }
       } catch (error) {
         console.error('❌ 快速記帳失敗:', error);
@@ -186,19 +190,28 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
       setFormType(tx.type);
       setFormAmount(tx.amount.toString());
       setFormCategory(tx.category);
-      setFormDate(tx.date);
+      // 只取日期部分，去掉時間戳
+      setFormDate(tx.date.split('T')[0]);
       setFormNote(tx.note);
       setFormAccountId(tx.accountId);
     } else {
       // 新增模式：使用預設帳戶
       const defaultAccount = accounts.find(acc => acc.isDefault) || accounts[0];
+      const accountId = defaultAccount?.id || '';
+
+      console.log('📝 openModal (新增模式):', {
+        accountsCount: accounts.length,
+        defaultAccount: defaultAccount?.name,
+        accountId: accountId
+      });
+
       setEditingId(null);
       setFormType('expense');
       setFormAmount('');
       setFormCategory(TRANSACTION_CATEGORIES.expense[0]);
       setFormDate(new Date().toISOString().split('T')[0]);
       setFormNote('');
-      setFormAccountId(defaultAccount?.id || '');
+      setFormAccountId(accountId);
     }
     setIsModalOpen(true);
   };
@@ -215,13 +228,18 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
 
   const handleSave = async () => {
     if (!formAmount) return;
-    const amountVal = parseFloat(formAmount);
+    const amountVal = Math.abs(parseFloat(formAmount)); // 使用絕對值，確保金額為正
 
     // 確保有選擇帳戶
-    if (!formAccountId) {
+    if (!formAccountId || formAccountId === '') {
+      console.log('❌ 驗證失敗: formAccountId =', formAccountId, '| accounts length =', accounts.length);
+      console.log('📋 可用帳戶:', accounts.map(a => ({id: a.id, name: a.name})));
       alert('請選擇帳戶');
       return;
     }
+
+    console.log('✅ 驗證通過: accountId =', formAccountId);
+    console.log('📊 交易詳情:', { type: formType, amount: amountVal, category: formCategory, accountId: formAccountId });
 
     try {
       if (editingId) {
@@ -241,6 +259,8 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
           setIsModalOpen(false);
           // 刷新列表以取得最新資料
           await reloadTransactions();
+          // 🔥 通知父組件刷新帳戶餘額
+          onAccountsUpdate?.();
         }
       } else {
         // 新增模式
@@ -258,11 +278,26 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
           setIsModalOpen(false);
           // 刷新列表以取得最新資料
           await reloadTransactions();
+          // 🔥 通知父組件刷新帳戶餘額
+          onAccountsUpdate?.();
+        } else {
+          // API returned null, check if it's balance issue
+          const account = accounts.find(a => a.id === formAccountId);
+          if (formType === 'expense' && account && account.balance < amountVal) {
+            alert(`帳戶餘額不足！\n${account.name} 餘額：${account.currency === 'TWD' ? 'NT$' : '$'}${account.balance}\n需要金額：${account.currency === 'TWD' ? 'NT$' : '$'}${amountVal}`);
+          } else {
+            alert('儲存失敗，請重試');
+          }
         }
       }
     } catch (error) {
       console.error('❌ 儲存交易失敗:', error);
-      alert('儲存失敗，請重試');
+      // Try to parse error message from backend
+      if (error instanceof Error && error.message.includes('餘額不足')) {
+        alert(error.message);
+      } else {
+        alert('儲存失敗，請重試');
+      }
     }
   };
 
@@ -275,6 +310,8 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
           setIsModalOpen(false);
           // 刷新列表以取得最新資料
           await reloadTransactions();
+          // 🔥 通知父組件刷新帳戶餘額
+          onAccountsUpdate?.();
         }
       } catch (error) {
         console.error('❌ 刪除交易失敗:', error);
@@ -549,11 +586,17 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-ink-400 pointer-events-none">
                          <Wallet size={18} />
                        </div>
-                       <select 
-                         value={formAccountId}
-                         onChange={e => setFormAccountId(e.target.value)}
+                       <select
+                         value={formAccountId || ''}
+                         onChange={e => {
+                           console.log('🔄 帳戶選擇變更:', e.target.value);
+                           setFormAccountId(e.target.value);
+                         }}
                          className="w-full bg-white border border-stone-200 pl-10 pr-4 py-3 rounded-xl text-sm font-bold text-ink-900 focus:outline-none focus:border-morandi-blue appearance-none"
                        >
+                         {accounts.length === 0 && (
+                           <option value="">請先建立帳戶</option>
+                         )}
                          {accounts.map(acc => (
                            <option key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</option>
                          ))}

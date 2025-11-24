@@ -116,7 +116,8 @@ export async function getTransactions(req: Request, res: Response) {
         type: t.type,
         amount: t.amount,
         category: t.category,
-        note: t.note
+        note: t.note,
+        accountId: t.accountId
       }))
     });
   } catch (error) {
