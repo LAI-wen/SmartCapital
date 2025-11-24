@@ -75,7 +75,8 @@ interface Notification {
  */
 export async function getUser(): Promise<User | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/user/${MOCK_LINE_USER_ID}`);
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/user/${userId}`);
     const result: ApiResponse<User> = await response.json();
     return result.success ? result.data || null : null;
   } catch (error) {
@@ -89,7 +90,8 @@ export async function getUser(): Promise<User | null> {
  */
 export async function getAssets(): Promise<Asset[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/assets/${MOCK_LINE_USER_ID}`);
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/assets/${userId}`);
     const result: ApiResponse<Asset[]> = await response.json();
     return result.success ? result.data || [] : [];
   } catch (error) {
@@ -103,7 +105,8 @@ export async function getAssets(): Promise<Asset[]> {
  */
 export async function getTransactions(limit = 50): Promise<Transaction[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/transactions/${MOCK_LINE_USER_ID}?limit=${limit}`);
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/transactions/${userId}?limit=${limit}`);
     const result: ApiResponse<Transaction[]> = await response.json();
     return result.success ? result.data || [] : [];
   } catch (error) {
@@ -117,7 +120,8 @@ export async function getTransactions(limit = 50): Promise<Transaction[]> {
  */
 export async function getPortfolio(): Promise<Portfolio | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/portfolio/${MOCK_LINE_USER_ID}`);
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/portfolio/${userId}`);
     const result: ApiResponse<Portfolio> = await response.json();
     return result.success ? result.data || null : null;
   } catch (error) {
@@ -131,7 +135,8 @@ export async function getPortfolio(): Promise<Portfolio | null> {
  */
 export async function getSettings(): Promise<Settings | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/settings/${MOCK_LINE_USER_ID}`);
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/settings/${userId}`);
     const result: ApiResponse<Settings> = await response.json();
     return result.success ? result.data || null : null;
   } catch (error) {
@@ -145,7 +150,8 @@ export async function getSettings(): Promise<Settings | null> {
  */
 export async function getNotifications(limit = 20): Promise<Notification[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/notifications/${MOCK_LINE_USER_ID}?limit=${limit}`);
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/notifications/${userId}?limit=${limit}`);
     const result: ApiResponse<Notification[]> = await response.json();
     return result.success ? result.data || [] : [];
   } catch (error) {

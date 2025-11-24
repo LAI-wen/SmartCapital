@@ -1,8 +1,9 @@
 
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType, Account } from '../types';
 import { MOCK_TRANSACTIONS, TRANSACTION_CATEGORIES } from '../constants';
+import { getTransactions as fetchTransactions, createTransaction as apiCreateTransaction, deleteTransaction as apiDeleteTransaction } from '../services/api';
 import { 
   Plus, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, 
   TrendingUp, Gift, ChevronLeft, ChevronRight, 
@@ -30,7 +31,8 @@ const getChineseWeekDay = (dateStr: string) => {
 
 const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
   // --- STATE ---
-  const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   
@@ -47,6 +49,24 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
   const [formDate, setFormDate] = useState('');
   const [formNote, setFormNote] = useState('');
   const [formAccountId, setFormAccountId] = useState('');
+
+  // 🔥 載入交易記錄從資料庫
+  useEffect(() => {
+    const loadTransactions = async () => {
+      setIsLoadingTransactions(true);
+      try {
+        const txs = await fetchTransactions(200); // 載入最近 200 筆
+        console.log('✅ 已從資料庫載入交易:', txs.length, '筆');
+        setTransactions(txs);
+      } catch (error) {
+        console.error('❌ 載入交易失敗:', error);
+      } finally {
+        setIsLoadingTransactions(false);
+      }
+    };
+
+    loadTransactions();
+  }, []);
 
   // --- DATA COMPUTATION ---
 
@@ -125,22 +145,30 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
     setViewMode(prev => prev === 'month' ? 'year' : 'month');
   };
 
-  const handleQuickAdd = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleQuickAdd = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && quickAmount) {
       const amount = parseFloat(quickAmount);
       if (isNaN(amount) || amount <= 0) return;
-      
-      const newTx: Transaction = {
-        id: Date.now().toString(),
-        type: 'expense',
-        amount,
-        category: '其他', // Default category
-        date: new Date().toISOString().split('T')[0],
-        note: '快速記帳',
-        accountId: accounts[0]?.id || 'acc_1'
-      };
-      
-      setTransactions([newTx, ...transactions]);
+
+      try {
+        const newTx = await apiCreateTransaction(
+          'expense',
+          amount,
+          '其他', // Default category
+          new Date().toISOString().split('T')[0],
+          '快速記帳',
+          accounts[0]?.id
+        );
+
+        if (newTx) {
+          console.log('✅ 快速記帳成功:', newTx);
+          setTransactions([newTx, ...transactions]);
+        }
+      } catch (error) {
+        console.error('❌ 快速記帳失敗:', error);
+        alert('記帳失敗，請重試');
+      }
+
       setQuickAmount('');
     }
   };
@@ -166,39 +194,63 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formAmount) return;
     const amountVal = parseFloat(formAmount);
-    
-    if (editingId) {
-      setTransactions(prev => prev.map(t => t.id === editingId ? {
-        ...t,
-        type: formType,
-        amount: amountVal,
-        category: formCategory,
-        date: formDate,
-        note: formNote,
-        accountId: formAccountId
-      } : t));
-    } else {
-      const newTx: Transaction = {
-        id: Date.now().toString(),
-        type: formType,
-        amount: amountVal,
-        category: formCategory,
-        date: formDate,
-        note: formNote,
-        accountId: formAccountId
-      };
-      setTransactions([newTx, ...transactions]);
+
+    try {
+      if (editingId) {
+        // 編輯模式：先刪除舊的，再新增（因為沒有 update API）
+        await apiDeleteTransaction(editingId);
+        const newTx = await apiCreateTransaction(
+          formType,
+          amountVal,
+          formCategory,
+          formDate,
+          formNote,
+          formAccountId
+        );
+
+        if (newTx) {
+          setTransactions(prev => prev.map(t => t.id === editingId ? newTx : t));
+          console.log('✅ 交易更新成功');
+        }
+      } else {
+        // 新增模式
+        const newTx = await apiCreateTransaction(
+          formType,
+          amountVal,
+          formCategory,
+          formDate,
+          formNote,
+          formAccountId
+        );
+
+        if (newTx) {
+          setTransactions([newTx, ...transactions]);
+          console.log('✅ 交易新增成功');
+        }
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('❌ 儲存交易失敗:', error);
+      alert('儲存失敗，請重試');
     }
-    setIsModalOpen(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (editingId && confirm('確定要刪除此紀錄？')) {
-      setTransactions(prev => prev.filter(t => t.id !== editingId));
-      setIsModalOpen(false);
+      try {
+        const success = await apiDeleteTransaction(editingId);
+        if (success) {
+          setTransactions(prev => prev.filter(t => t.id !== editingId));
+          console.log('✅ 交易刪除成功');
+          setIsModalOpen(false);
+        }
+      } catch (error) {
+        console.error('❌ 刪除交易失敗:', error);
+        alert('刪除失敗，請重試');
+      }
     }
   };
 
@@ -245,9 +297,21 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
     </div>
   );
 
+  // 載入中顯示
+  if (isLoadingTransactions) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-ink-400 font-serif">載入交易記錄中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-xl mx-auto pb-48 md:pb-32 min-h-screen relative">
-      
+
       {/* === Sticky Date Header === */}
       <div className="sticky top-0 z-40 bg-paper/95 backdrop-blur-md transition-shadow shadow-sm">
         
