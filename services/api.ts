@@ -342,6 +342,30 @@ export async function updateAccount(
 }
 
 /**
+ * 更新帳戶餘額
+ */
+export async function updateAccountBalance(
+  accountId: string,
+  amount: number,
+  operation: 'add' | 'subtract'
+): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/accounts/${accountId}/balance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ amount, operation }),
+    });
+    const result: ApiResponse<{ id: string; balance: number }> = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Failed to update account balance:', error);
+    return false;
+  }
+}
+
+/**
  * 刪除帳戶
  */
 export async function deleteAccount(accountId: string): Promise<boolean> {

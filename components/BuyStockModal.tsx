@@ -62,6 +62,8 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
   // Reset state when opening
   useEffect(() => {
     if (isOpen) {
+      console.log('📂 Opening BuyStockModal with', accounts.length, 'accounts');
+
       if (existingAsset) {
         setSelectedStock({
           symbol: existingAsset.symbol,
@@ -80,7 +82,7 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
       setQuantity('');
       setDate(new Date().toISOString().split('T')[0]);
     }
-  }, [isOpen, existingAsset]);
+  }, [isOpen, existingAsset, accounts.length]);
 
   // Auto-select account when availableAccounts changes
   useEffect(() => {
@@ -141,7 +143,7 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
   // Calculations
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
   const rawCost = (parseFloat(quantity) || 0) * (parseFloat(price) || 0); // Cost in Asset Currency
-  
+
   // Exchange Rate Logic
   const isExchangeNeeded = isBuy && selectedStock?.currency === 'USD' && selectedAccount?.currency === 'TWD';
   const finalCost = isExchangeNeeded ? rawCost * MOCK_EXCHANGE_RATE : rawCost;
@@ -149,6 +151,16 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
   // Buying Power Check
   const buyingPower = selectedAccount ? selectedAccount.balance : 0;
   const isInsufficientFunds = isBuy && selectedAccount && finalCost > buyingPower;
+
+  // Debug logging
+  console.log('🔍 BuyStockModal Debug:', {
+    accountsCount: accounts.length,
+    selectedAccountId,
+    selectedAccount,
+    buyingPower,
+    finalCost,
+    isInsufficientFunds
+  });
 
   const filteredSearch = MOCK_SEARCH_RESULTS.filter(s => 
     s.symbol.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -178,7 +190,32 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
 
         {/* === Content === */}
         <div className="p-6 overflow-y-auto custom-scrollbar">
-          
+
+          {/* No Accounts Warning */}
+          {accounts.length === 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="text-yellow-600 shrink-0 mt-0.5" size={20} />
+                <div>
+                  <h4 className="font-bold text-yellow-900 text-sm mb-1">⚠️ 尚未建立帳戶</h4>
+                  <p className="text-xs text-yellow-700 leading-relaxed mb-2">
+                    請先建立證券帳戶才能進行股票交易。
+                  </p>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      // Navigate to account management (you can implement this)
+                      alert('請到「更多」→「帳戶管理」建立帳戶');
+                    }}
+                    className="text-xs bg-yellow-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-yellow-700 transition"
+                  >
+                    前往建立帳戶
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* STEP 1: Search (Only for New Buy) */}
           {step === 'search' && (
             <div className="space-y-4">
@@ -196,7 +233,7 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
                
                <div className="mt-2">
                  <h3 className="text-xs font-bold text-ink-400 uppercase tracking-widest mb-3">搜尋結果</h3>
-                 <div className="space-y-2">
+                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {filteredSearch.length > 0 ? filteredSearch.map(stock => (
                       <div 
                         key={stock.symbol}

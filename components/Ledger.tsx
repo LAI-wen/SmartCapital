@@ -150,6 +150,13 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
       const amount = parseFloat(quickAmount);
       if (isNaN(amount) || amount <= 0) return;
 
+      // 使用預設帳戶
+      const defaultAccount = accounts.find(acc => acc.isDefault) || accounts[0];
+      if (!defaultAccount) {
+        alert('請先建立帳戶');
+        return;
+      }
+
       try {
         const newTx = await apiCreateTransaction(
           'expense',
@@ -157,7 +164,7 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
           '其他', // Default category
           new Date().toISOString().split('T')[0],
           '快速記帳',
-          accounts[0]?.id
+          defaultAccount.id
         );
 
         if (newTx) {
@@ -183,13 +190,15 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
       setFormNote(tx.note);
       setFormAccountId(tx.accountId);
     } else {
+      // 新增模式：使用預設帳戶
+      const defaultAccount = accounts.find(acc => acc.isDefault) || accounts[0];
       setEditingId(null);
       setFormType('expense');
       setFormAmount('');
       setFormCategory(TRANSACTION_CATEGORIES.expense[0]);
       setFormDate(new Date().toISOString().split('T')[0]);
       setFormNote('');
-      setFormAccountId(accounts[0]?.id || '');
+      setFormAccountId(defaultAccount?.id || '');
     }
     setIsModalOpen(true);
   };

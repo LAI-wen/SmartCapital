@@ -487,6 +487,46 @@ export async function removeAccount(req: Request, res: Response) {
 }
 
 /**
+ * POST /api/accounts/:accountId/balance
+ * 更新帳戶餘額
+ */
+export async function updateBalance(req: Request, res: Response) {
+  try {
+    const { accountId } = req.params;
+    const { amount, operation } = req.body;
+
+    // 驗證必填欄位
+    if (typeof amount !== 'number' || !operation) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: amount, operation'
+      });
+    }
+
+    if (operation !== 'add' && operation !== 'subtract') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid operation. Must be "add" or "subtract"'
+      });
+    }
+
+    const account = await updateAccountBalance(accountId, amount, operation);
+
+    res.json({
+      success: true,
+      data: {
+        id: account.id,
+        balance: account.balance
+      }
+    });
+  } catch (error) {
+    console.error('Error updating account balance:', error);
+    const message = error instanceof Error ? error.message : 'Failed to update balance';
+    res.status(500).json({ success: false, error: message });
+  }
+}
+
+/**
  * POST /api/transfers/:lineUserId
  * 創建帳戶間轉帳
  */

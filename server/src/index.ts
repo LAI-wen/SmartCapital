@@ -80,6 +80,7 @@ app.post('/api/notifications/:lineUserId/read-all', apiController.markAllNotific
 app.get('/api/accounts/:lineUserId', apiController.getAccounts);
 app.post('/api/accounts/:lineUserId', apiController.createNewAccount);
 app.patch('/api/accounts/:accountId', apiController.updateAccountInfo);
+app.post('/api/accounts/:accountId/balance', apiController.updateBalance);
 app.delete('/api/accounts/:accountId', apiController.removeAccount);
 
 // 轉帳 API 端點

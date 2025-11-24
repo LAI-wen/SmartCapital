@@ -12,6 +12,7 @@ import SettingsPage from './components/SettingsPage';
 import HelpPage from './components/HelpPage';
 import WelcomePage from './components/WelcomePage';
 import OnboardingModal from './components/OnboardingModal';
+import AccountManagementPage from './components/AccountManagementPage';
 import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification, Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets } from './services/api';
@@ -216,6 +217,7 @@ const AppContent: React.FC = () => {
       case '/analytics': return '數據分析';
       case '/settings': return '系統設定';
       case '/help': return '使用指南';
+      case '/account-management': return '帳戶管理';
       default: return '智投手帳';
     }
   };
@@ -361,6 +363,17 @@ const AppContent: React.FC = () => {
                 } 
               />
               <Route path="/help" element={<HelpPage />} />
+              <Route
+                path="/account-management"
+                element={
+                  <AccountManagementPage
+                    onAccountsUpdate={async () => {
+                      const fetchedAccounts = await getAccounts();
+                      setAccounts(fetchedAccounts);
+                    }}
+                  />
+                }
+              />
             </Routes>
           </div>
         </div>

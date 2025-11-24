@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Calculator, Settings, Shield, ChevronRight, 
-  MessageCircle, FileText, PieChart, HelpCircle, 
-  LogOut 
+import {
+  Calculator, Settings, Shield, ChevronRight,
+  MessageCircle, FileText, PieChart, HelpCircle,
+  LogOut, Wallet
 } from 'lucide-react';
 
 interface MorePageProps {
@@ -36,26 +36,38 @@ const MorePage: React.FC<MorePageProps> = ({ onLogout, authMode }) => {
       ]
     },
     {
+      title: "帳戶管理",
+      items: [
+        {
+          label: "我的帳戶",
+          icon: <Wallet size={20} />,
+          desc: "管理資金帳戶和餘額",
+          action: () => navigate('/account-management'),
+          color: "bg-morandi-blueLight/30 text-morandi-blue"
+        }
+      ]
+    },
+    {
       title: "系統設定",
       items: [
-        { 
-          label: "偏好設定", 
-          icon: <Settings size={20} />, 
-          desc: "幣別、顯示語言", 
+        {
+          label: "偏好設定",
+          icon: <Settings size={20} />,
+          desc: "幣別、顯示語言",
           action: () => navigate('/settings'),
           color: "bg-stone-100 text-ink-500"
         },
-        { 
-          label: "隱私安全", 
-          icon: <Shield size={20} />, 
-          desc: "密碼鎖、隱藏金額", 
+        {
+          label: "隱私安全",
+          icon: <Shield size={20} />,
+          desc: "密碼鎖、隱藏金額",
           action: () => navigate('/settings'),
           color: "bg-stone-100 text-ink-500"
         },
-        { 
-          label: "LINE Bot 綁定", 
-          icon: <MessageCircle size={20} />, 
-          desc: "快速記帳通知", 
+        {
+          label: "LINE Bot 綁定",
+          icon: <MessageCircle size={20} />,
+          desc: "快速記帳通知",
           action: () => navigate('/settings'),
           color: "bg-[#06C755]/10 text-[#06C755]"
         }
