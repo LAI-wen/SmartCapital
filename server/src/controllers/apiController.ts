@@ -269,15 +269,54 @@ export async function createTransaction(req: Request, res: Response) {
 
 /**
  * DELETE /api/transactions/:transactionId
- * 刪除交易記錄
+ * 刪除交易記錄（並回滾帳戶餘額）
  */
 export async function deleteTransaction(req: Request, res: Response) {
   try {
     const { transactionId } = req.params;
 
-    await prisma.transaction.delete({
+    // 先查詢交易記錄以取得 accountId 和 amount
+    const transaction = await prisma.transaction.findUnique({
       where: { id: transactionId }
     });
+
+    if (!transaction) {
+      return res.status(404).json({ success: false, error: 'Transaction not found' });
+    }
+
+    // 如果交易有關聯帳戶，需要回滾餘額
+    if (transaction.accountId) {
+      await prisma.$transaction(async (tx) => {
+        // 1. 回滾帳戶餘額
+        const account = await tx.account.findUnique({
+          where: { id: transaction.accountId! }
+        });
+
+        if (account) {
+          // 刪除交易時反向操作：
+          // - 如果是 income，減少餘額
+          // - 如果是 expense，增加餘額
+          const newBalance = transaction.type === 'income'
+            ? account.balance - transaction.amount
+            : account.balance + transaction.amount;
+
+          await tx.account.update({
+            where: { id: transaction.accountId! },
+            data: { balance: newBalance }
+          });
+        }
+
+        // 2. 刪除交易記錄
+        await tx.transaction.delete({
+          where: { id: transactionId }
+        });
+      });
+    } else {
+      // 沒有關聯帳戶，直接刪除
+      await prisma.transaction.delete({
+        where: { id: transactionId }
+      });
+    }
 
     res.json({ success: true });
   } catch (error) {

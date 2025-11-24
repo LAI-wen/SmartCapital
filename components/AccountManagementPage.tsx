@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Account } from '../types';
-import { getAccounts, createAccount, updateAccountBalance, deleteAccount } from '../services/api';
+import { getAccounts, createAccount, updateAccountBalance, deleteAccount, updateAccount } from '../services/api';
 import {
   Wallet, Building2, Landmark, Coins, Plus, Edit3,
   Trash2, DollarSign, Check, X, AlertCircle
@@ -16,6 +16,8 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBalance, setEditBalance] = useState('');
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   // Form state for creating new account
   const [newAccountName, setNewAccountName] = useState('');
@@ -93,6 +95,26 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
       }
     } catch (error) {
       console.error('❌ 更新餘額失敗:', error);
+      alert('更新失敗，請重試');
+    }
+  };
+
+  const handleUpdateName = async (accountId: string) => {
+    if (!editName.trim()) {
+      alert('帳戶名稱不能為空');
+      return;
+    }
+
+    try {
+      const success = await updateAccount(accountId, { name: editName.trim() });
+      if (success) {
+        console.log('✅ 帳戶名稱更新成功');
+        await loadAccounts();
+        setEditingNameId(null);
+        onAccountsUpdate?.();
+      }
+    } catch (error) {
+      console.error('❌ 更新名稱失敗:', error);
       alert('更新失敗，請重試');
     }
   };
@@ -308,12 +330,48 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
                     {getAccountIcon(account.type)}
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-ink-900 font-serif">{account.name}</h3>
-                      {account.isDefault && (
-                        <span className="text-[10px] bg-morandi-sage text-white px-2 py-0.5 rounded-full font-bold">預設</span>
-                      )}
-                    </div>
+                    {/* Name Display/Edit */}
+                    {editingNameId === account.id ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={e => setEditName(e.target.value)}
+                          className="flex-1 border border-morandi-blue px-3 py-1.5 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-morandi-blue/20"
+                          autoFocus
+                          placeholder="帳戶名稱"
+                        />
+                        <button
+                          onClick={() => handleUpdateName(account.id)}
+                          className="bg-morandi-sage text-white p-1.5 rounded-lg hover:bg-opacity-90 transition"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          onClick={() => setEditingNameId(null)}
+                          className="bg-stone-200 text-ink-600 p-1.5 rounded-lg hover:bg-stone-300 transition"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-ink-900 font-serif">{account.name}</h3>
+                        <button
+                          onClick={() => {
+                            setEditingNameId(account.id);
+                            setEditName(account.name);
+                          }}
+                          className="text-morandi-blue hover:bg-morandi-blueLight/30 p-1 rounded transition"
+                          title="編輯名稱"
+                        >
+                          <Edit3 size={12} />
+                        </button>
+                        {account.isDefault && (
+                          <span className="text-[10px] bg-morandi-sage text-white px-2 py-0.5 rounded-full font-bold">預設</span>
+                        )}
+                      </div>
+                    )}
                     <p className="text-xs text-ink-400 font-serif mb-2">
                       {getAccountTypeLabel(account.type)} • {account.currency}
                       {account.isSub && ' • 複委託'}

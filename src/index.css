@@ -1,0 +1,22 @@
+/* Global Styles */
+
+/* Prevent iOS Safari from zooming on input focus */
+input,
+select,
+textarea {
+  font-size: 16px !important;
+}
+
+/* Keep larger font sizes intact */
+input.text-xl,
+input.text-2xl,
+input.text-3xl {
+  font-size: inherit !important;
+}
+
+/* Smooth transitions for all inputs */
+input,
+select,
+textarea {
+  transition: all 0.2s ease;
+}
