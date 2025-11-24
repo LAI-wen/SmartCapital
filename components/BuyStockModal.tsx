@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Asset, Account, Currency } from '../types';
 import { MOCK_EXCHANGE_RATE } from '../constants';
-import { X, Search, PlusCircle, MinusCircle, Wallet, AlertCircle, Info } from 'lucide-react';
-import { createTransaction } from '../services/api';
+import { X, Search, PlusCircle, MinusCircle, Wallet, AlertCircle, Info, Loader2 } from 'lucide-react';
+import { createTransaction, searchStocks, StockSearchResult } from '../services/api';
 
 interface BuyStockModalProps {
   isOpen: boolean;
@@ -24,28 +24,22 @@ export interface StockTransaction {
   currency: Currency; // Added currency to transaction
 }
 
-// Mock Search Data with Currencies
-const MOCK_SEARCH_RESULTS = [
-  { symbol: 'AAPL', name: 'Apple Inc.', price: 189.50, currency: 'USD' as Currency },
-  { symbol: 'TSLA', name: 'Tesla Inc.', price: 240.50, currency: 'USD' as Currency },
-  { symbol: 'NVDA', name: 'NVIDIA Corp', price: 890.00, currency: 'USD' as Currency },
-  { symbol: '2330.TW', name: '台積電', price: 580.00, currency: 'TWD' as Currency },
-  { symbol: '0050.TW', name: '元大台灣50', price: 145.30, currency: 'TWD' as Currency },
-  { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 140.20, currency: 'USD' as Currency },
-];
-
 const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, existingAsset, onConfirm, accounts }) => {
   const [step, setStep] = useState<'search' | 'form'>('search');
-  
+
   // Form State
   const [selectedStock, setSelectedStock] = useState<{ symbol: string; name: string; price: number; currency: Currency } | null>(null);
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Account State
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+
+  // Search State
+  const [searchResults, setSearchResults] = useState<StockSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // 1. Filter Available Accounts logic
   const availableAccounts = useMemo(() => {
@@ -77,12 +71,37 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
         setStep('search');
         setSelectedStock(null);
         setSearchTerm('');
+        setSearchResults([]);
         setPrice('');
       }
       setQuantity('');
       setDate(new Date().toISOString().split('T')[0]);
     }
   }, [isOpen, existingAsset, accounts.length]);
+
+  // Real-time stock search with debounce
+  useEffect(() => {
+    if (step !== 'search' || !searchTerm.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchStocks(searchTerm);
+        setSearchResults(results);
+        console.log('🔍 搜尋結果:', results);
+      } catch (error) {
+        console.error('搜尋失敗:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, step]);
 
   // Auto-select account when availableAccounts changes
   useEffect(() => {
@@ -100,8 +119,13 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
 
   if (!isOpen) return null;
 
-  const handleSearchSelect = (stock: typeof MOCK_SEARCH_RESULTS[0]) => {
-    setSelectedStock(stock);
+  const handleSearchSelect = (stock: StockSearchResult) => {
+    setSelectedStock({
+      symbol: stock.symbol,
+      name: stock.name,
+      price: stock.price,
+      currency: stock.currency
+    });
     setPrice(stock.price.toString());
     setStep('form');
   };
@@ -161,11 +185,6 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
     finalCost,
     isInsufficientFunds
   });
-
-  const filteredSearch = MOCK_SEARCH_RESULTS.filter(s => 
-    s.symbol.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-ink-900/40 backdrop-blur-sm animate-fade-in">
@@ -234,31 +253,45 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
                <div className="mt-2">
                  <h3 className="text-xs font-bold text-ink-400 uppercase tracking-widest mb-3">搜尋結果</h3>
                  <div className="space-y-2 h-[400px] overflow-y-auto">
-                    {filteredSearch.length > 0 ? filteredSearch.map(stock => (
-                      <div 
-                        key={stock.symbol}
-                        onClick={() => handleSearchSelect(stock)}
-                        className="flex items-center justify-between p-4 bg-white border border-stone-100 rounded-xl hover:border-morandi-blue hover:shadow-sm cursor-pointer transition-all"
-                      >
-                         <div className="flex items-center gap-3">
+                    {isSearching ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 text-morandi-blue animate-spin mb-2" />
+                        <p className="text-sm text-ink-400 font-serif">搜尋中...</p>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      searchResults.map(stock => (
+                        <div
+                          key={stock.symbol}
+                          onClick={() => handleSearchSelect(stock)}
+                          className="flex items-center justify-between p-4 bg-white border border-stone-100 rounded-xl hover:border-morandi-blue hover:shadow-sm cursor-pointer transition-all"
+                        >
+                          <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-stone-50 flex items-center justify-center text-xs font-bold text-morandi-blue font-serif">
                               {stock.symbol.substring(0, 2)}
                             </div>
                             <div>
-                               <div className="font-bold text-ink-900 font-serif">{stock.symbol}</div>
-                               <div className="text-xs text-ink-400 font-serif">{stock.name}</div>
+                              <div className="font-bold text-ink-900 font-serif">{stock.symbol}</div>
+                              <div className="text-xs text-ink-400 font-serif">{stock.name}</div>
                             </div>
-                         </div>
-                         <div className="text-right">
+                          </div>
+                          <div className="text-right">
                             <div className="font-serif-num font-bold text-ink-900">
-                               {stock.currency === 'USD' ? '$' : 'NT$'}{stock.price}
+                              {stock.currency === 'USD' ? '$' : 'NT$'}{stock.price.toFixed(2)}
                             </div>
-                            <div className="text-xs text-morandi-blue font-serif">選擇</div>
-                         </div>
-                      </div>
-                    )) : (
+                            <div className={`text-xs font-serif ${stock.changePercent >= 0 ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
+                              {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
                       <div className="text-center py-8 text-ink-300 text-sm font-serif">
-                        {searchTerm ? '查無此股票' : '輸入關鍵字開始搜尋'}
+                        {searchTerm ? '查無此股票，請嘗試其他關鍵字' : '輸入股票代碼或名稱開始搜尋'}
+                        {searchTerm && (
+                          <p className="text-xs text-ink-400 mt-2">
+                            試試：AAPL, 2330, 台積電
+                          </p>
+                        )}
                       </div>
                     )}
                  </div>

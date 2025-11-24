@@ -87,6 +87,9 @@ app.delete('/api/accounts/:accountId', apiController.removeAccount);
 app.post('/api/transfers/:lineUserId', apiController.createNewTransfer);
 app.get('/api/transfers/:lineUserId', apiController.getTransfers);
 
+// 股票搜尋 API 端點
+app.get('/api/stocks/search', apiController.searchStocksAPI);
+
 // LINE Webhook 端點
 app.post('/webhook', middleware(middlewareConfig), async (req: Request, res: Response) => {
   const events: WebhookEvent[] = req.body.events;

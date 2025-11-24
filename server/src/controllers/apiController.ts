@@ -23,7 +23,7 @@ import {
   getUserTransfers,
   prisma
 } from '../services/databaseService.js';
-import { getStockQuote } from '../services/stockService.js';
+import { getStockQuote, searchStocks } from '../services/stockService.js';
 
 /**
  * GET /api/user/:lineUserId
@@ -649,5 +649,45 @@ export async function getTransfers(req: Request, res: Response) {
   } catch (error) {
     console.error('Error fetching transfers:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch transfers' });
+  }
+}
+
+/**
+ * ============================================================
+ * Stock Search Endpoint
+ * ============================================================
+ */
+
+/**
+ * GET /api/stocks/search?q=keyword
+ * 搜尋股票
+ */
+export async function searchStocksAPI(req: Request, res: Response) {
+  try {
+    const query = req.query.q as string;
+
+    if (!query || query.trim().length === 0) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+
+    const results = await searchStocks(query);
+
+    res.json({
+      success: true,
+      data: results.map(stock => ({
+        symbol: stock.symbol,
+        name: stock.name,
+        price: stock.price,
+        currency: stock.currency,
+        change: stock.change,
+        changePercent: stock.changePercent
+      }))
+    });
+  } catch (error) {
+    console.error('Error searching stocks:', error);
+    res.status(500).json({ success: false, error: 'Failed to search stocks' });
   }
 }

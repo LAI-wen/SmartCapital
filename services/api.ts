@@ -438,14 +438,47 @@ export function getUserId(): string {
   if (storedUserId) {
     return storedUserId;
   }
-  
+
   // 檢查 URL 參數（開發模式）
   const params = new URLSearchParams(window.location.search);
   const userIdFromUrl = params.get('userId');
   if (userIdFromUrl) {
     return userIdFromUrl;
   }
-  
+
   // 最後才用 mock ID（本地測試）
   return currentUserId;
+}
+
+/**
+ * ============================================================
+ * Stock Search API
+ * ============================================================
+ */
+
+export interface StockSearchResult {
+  symbol: string;
+  name: string;
+  price: number;
+  currency: 'TWD' | 'USD';
+  change: number;
+  changePercent: number;
+}
+
+/**
+ * 搜尋股票
+ */
+export async function searchStocks(query: string): Promise<StockSearchResult[]> {
+  try {
+    if (!query || query.trim().length === 0) {
+      return [];
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/stocks/search?q=${encodeURIComponent(query)}`);
+    const result: ApiResponse<StockSearchResult[]> = await response.json();
+    return result.success ? result.data || [] : [];
+  } catch (error) {
+    console.error('Failed to search stocks:', error);
+    return [];
+  }
 }

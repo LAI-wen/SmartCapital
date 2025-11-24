@@ -140,3 +140,90 @@ export async function getTaiwanStockQuote(symbol: string): Promise<StockQuote | 
   const formattedSymbol = formatTaiwanStockSymbol(symbol);
   return getStockQuote(formattedSymbol);
 }
+
+/**
+ * 搜尋股票 - 支援多個常見股票代碼
+ * 輸入關鍵字，返回匹配的股票列表
+ */
+export async function searchStocks(query: string): Promise<StockQuote[]> {
+  if (!query || query.trim().length === 0) {
+    return [];
+  }
+
+  const searchTerm = query.trim().toUpperCase();
+
+  // 常見股票代碼列表（台股 + 美股）
+  const popularStocks: { [key: string]: string[] } = {
+    // 台股
+    'TSMC': ['2330.TW'],
+    '台積電': ['2330.TW'],
+    '2330': ['2330.TW'],
+    '0050': ['0050.TW'],
+    '元大': ['0050.TW'],
+    '2317': ['2317.TW'],
+    '鴻海': ['2317.TW'],
+    '2454': ['2454.TW'],
+    '聯發科': ['2454.TW'],
+    '2881': ['2881.TW'],
+    '富邦金': ['2881.TW'],
+    '2882': ['2882.TW'],
+    '國泰金': ['2882.TW'],
+
+    // 美股
+    'AAPL': ['AAPL'],
+    'APPLE': ['AAPL'],
+    'TSLA': ['TSLA'],
+    'TESLA': ['TSLA'],
+    'NVDA': ['NVDA'],
+    'NVIDIA': ['NVDA'],
+    'GOOGL': ['GOOGL'],
+    'GOOGLE': ['GOOGL'],
+    'MSFT': ['MSFT'],
+    'MICROSOFT': ['MSFT'],
+    'AMZN': ['AMZN'],
+    'AMAZON': ['AMZN'],
+    'META': ['META'],
+    'FACEBOOK': ['META'],
+    'NFLX': ['NFLX'],
+    'NETFLIX': ['NFLX'],
+    'SPY': ['SPY'],
+    'QQQ': ['QQQ'],
+    'VOO': ['VOO']
+  };
+
+  // 收集所有匹配的股票代碼
+  const matchedSymbols = new Set<string>();
+
+  // 1. 精確匹配 - 直接輸入股票代碼
+  if (/^\d{4}$/.test(searchTerm)) {
+    // 台股代碼（如 2330）
+    matchedSymbols.add(`${searchTerm}.TW`);
+  } else if (/^[A-Z]{1,5}$/.test(searchTerm)) {
+    // 美股代碼（如 AAPL）
+    matchedSymbols.add(searchTerm);
+  }
+
+  // 2. 模糊匹配 - 從常見股票列表搜尋
+  Object.entries(popularStocks).forEach(([key, symbols]) => {
+    if (key.includes(searchTerm) || searchTerm.includes(key)) {
+      symbols.forEach(symbol => matchedSymbols.add(symbol));
+    }
+  });
+
+  // 3. 批次查詢所有匹配的股票
+  const results: StockQuote[] = [];
+  const symbolsArray = Array.from(matchedSymbols).slice(0, 10); // 限制最多 10 個結果
+
+  for (const symbol of symbolsArray) {
+    try {
+      const quote = await getStockQuote(symbol);
+      if (quote) {
+        results.push(quote);
+      }
+    } catch (error) {
+      console.error(`Failed to fetch quote for ${symbol}:`, error);
+    }
+  }
+
+  return results;
+}
