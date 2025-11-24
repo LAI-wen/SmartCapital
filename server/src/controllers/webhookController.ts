@@ -148,7 +148,11 @@ export class WebhookController {
       default:
         await this.client.pushMessage(lineUserId, {
           type: 'text',
-          text: '抱歉，我不太理解您的意思。\n輸入「說明」查看使用指南。'
+          text: '💡 試試這些指令：\n\n' +
+            '📝 記帳：「午餐 120」「薪水 50000」\n' +
+            '📊 投資：「TSLA」「買 2330」\n' +
+            '📈 查詢：「帳戶」「資產」「持倉」\n\n' +
+            '輸入「說明」查看完整指南'
         });
     }
   }

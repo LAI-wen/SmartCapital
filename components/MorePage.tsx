@@ -7,7 +7,12 @@ import {
   LogOut 
 } from 'lucide-react';
 
-const MorePage: React.FC = () => {
+interface MorePageProps {
+  onLogout: () => void;
+  authMode: 'guest' | 'authenticated';
+}
+
+const MorePage: React.FC<MorePageProps> = ({ onLogout, authMode }) => {
   const navigate = useNavigate();
 
   const menuGroups = [
@@ -106,8 +111,15 @@ const MorePage: React.FC = () => {
        ))}
 
        <div className="mt-8 mb-4">
-         <button className="w-full py-3 rounded-xl border border-stone-200 text-ink-400 text-sm font-bold font-serif hover:bg-stone-100 hover:text-morandi-rose transition-colors flex items-center justify-center gap-2">
-            <LogOut size={16} /> 登出帳號
+         <button
+           onClick={() => {
+             if (confirm(authMode === 'guest' ? '確定要退出訪客模式？' : '確定要登出嗎？')) {
+               onLogout();
+             }
+           }}
+           className="w-full py-3 rounded-xl border border-stone-200 text-ink-400 text-sm font-bold font-serif hover:bg-stone-100 hover:text-morandi-rose transition-colors flex items-center justify-center gap-2"
+         >
+            <LogOut size={16} /> {authMode === 'guest' ? '退出訪客模式' : '登出帳號'}
          </button>
          <div className="text-center mt-4 text-[10px] text-stone-300 font-serif">
             SmartCapital v1.0.3 (Beta)

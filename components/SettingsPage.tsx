@@ -11,9 +11,20 @@ interface SettingsPageProps {
   togglePrivacy: () => void;
   investmentScope: InvestmentScope;
   setInvestmentScope: (scope: InvestmentScope) => void;
+  onLogout: () => void;
+  authMode: 'guest' | 'authenticated';
+  displayName: string;
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ isPrivacyMode, togglePrivacy, investmentScope, setInvestmentScope }) => {
+const SettingsPage: React.FC<SettingsPageProps> = ({
+  isPrivacyMode,
+  togglePrivacy,
+  investmentScope,
+  setInvestmentScope,
+  onLogout,
+  authMode,
+  displayName
+}) => {
   const [currency, setCurrency] = useState('TWD');
   const [language, setLanguage] = useState('zh-TW');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -147,10 +158,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ isPrivacyMode, togglePrivac
            value="已開啟 (每日)" 
            onClick={() => {}}
          />
-         <SettingItem 
-           icon={LogOut} 
-           label="登出帳號" 
-           onClick={() => alert('已登出')}
+         <SettingItem
+           icon={LogOut}
+           label={authMode === 'guest' ? '退出訪客模式' : '登出帳號'}
+           onClick={() => {
+             if (confirm(authMode === 'guest' ? '確定要退出訪客模式？' : '確定要登出嗎？')) {
+               onLogout();
+             }
+           }}
          />
       </SettingSection>
 

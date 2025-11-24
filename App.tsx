@@ -10,6 +10,8 @@ import NotificationsPage from './components/NotificationsPage';
 import AnalyticsPage from './components/AnalyticsPage';
 import SettingsPage from './components/SettingsPage';
 import HelpPage from './components/HelpPage';
+import WelcomePage from './components/WelcomePage';
+import OnboardingModal from './components/OnboardingModal';
 import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification, Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets } from './services/api';
@@ -19,15 +21,21 @@ const AppContent: React.FC = () => {
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // 🔐 整合 LIFF 登入
   const liffContext = useLiff();
   const { isLoggedIn, isLiffReady, lineUserId, displayName, error: liffError } = liffContext;
 
+  // 🎭 認證狀態管理
+  const [authMode, setAuthMode] = useState<'guest' | 'authenticated'>('guest');
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   // Assets & Accounts State (Lifted for Logic) - 必須在所有條件判斷之前宣告
-  const [assets, setAssets] = useState<Asset[]>(MOCK_ASSETS);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(true);
   
   // Investment Scope (Onboarding/Settings State)
   const [investmentScope, setInvestmentScope] = useState<InvestmentScope>({
@@ -40,34 +48,129 @@ const AppContent: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Load accounts from API on mount (等 LIFF ready 後才載入)
+  // 🔥 檢查認證狀態並決定是否顯示歡迎頁
   useEffect(() => {
-    const loadAccounts = async () => {
-      if (!isLiffReady) return;
-      
+    if (!isLiffReady) return;
+
+    // 檢查是否已經透過 LINE 登入或是訪客模式
+    const hasAuthenticated = localStorage.getItem('authMode');
+
+    if (isLoggedIn || hasAuthenticated === 'guest') {
+      setShowWelcome(false);
+      setAuthMode((hasAuthenticated as any) || 'authenticated');
+    } else {
+      setShowWelcome(true);
+    }
+  }, [isLiffReady, isLoggedIn]);
+
+  // 🔥 Load accounts and assets from API on mount (等認證完成後才載入)
+  useEffect(() => {
+    const loadData = async () => {
+      if (!isLiffReady || showWelcome) return;
+
+      // 載入帳戶
       setIsLoadingAccounts(true);
       try {
         const fetchedAccounts = await getAccounts();
         setAccounts(fetchedAccounts);
         console.log('✅ 已載入帳戶:', fetchedAccounts.length, '個帳戶');
-        console.log('👤 當前用戶 ID:', lineUserId || 'Mock User');
+
+        // 🎯 檢查是否需要顯示首次登入引導
+        if (fetchedAccounts.length === 0 && !localStorage.getItem('onboardingCompleted')) {
+          console.log('🎉 首次登入，顯示引導');
+          setShowOnboarding(true);
+        }
       } catch (error) {
         console.error('❌ 載入帳戶失敗:', error);
       } finally {
         setIsLoadingAccounts(false);
       }
+
+      // 載入資產
+      setIsLoadingAssets(true);
+      try {
+        const fetchedAssets = await fetchAssets();
+        setAssets(fetchedAssets);
+        console.log('✅ 已載入資產:', fetchedAssets.length, '個資產');
+        console.log('👤 當前用戶 ID:', lineUserId || 'Mock User');
+        console.log('🎭 認證模式:', authMode);
+      } catch (error) {
+        console.error('❌ 載入資產失敗:', error);
+      } finally {
+        setIsLoadingAssets(false);
+      }
     };
 
-    loadAccounts();
-  }, [isLiffReady, lineUserId]);
+    loadData();
+  }, [isLiffReady, showWelcome, lineUserId, authMode]);
 
-  // ⚠️ LIFF 初始化中，顯示載入畫面（必須在所有 hooks 之後）
+  // 處理登入相關的函數
+  const handleLineLogin = () => {
+    console.log('🔐 LINE 登入流程啟動');
+    // LIFF 會自動觸發登入，不需額外處理
+    localStorage.setItem('authMode', 'authenticated');
+    setAuthMode('authenticated');
+    setShowWelcome(false);
+  };
+
+  const handleGuestMode = () => {
+    console.log('🎭 進入訪客模式');
+    localStorage.setItem('authMode', 'guest');
+    setAuthMode('guest');
+    setShowWelcome(false);
+  };
+
+  const handleLogout = () => {
+    console.log('👋 登出');
+    localStorage.removeItem('authMode');
+    localStorage.removeItem('lineUserId');
+    localStorage.removeItem('displayName');
+    localStorage.removeItem('onboardingCompleted');
+    setAuthMode('guest');
+    setShowWelcome(true);
+    setShowOnboarding(false);
+    setAccounts([]);
+    setAssets([]);
+    navigate('/');
+  };
+
+  const handleOnboardingComplete = (newAccount: Account) => {
+    console.log('🎉 Onboarding 完成，新帳戶:', newAccount);
+    localStorage.setItem('onboardingCompleted', 'true');
+    setAccounts([newAccount]);
+    setShowOnboarding(false);
+  };
+
+  const handleOnboardingSkip = () => {
+    console.log('⏭️ 跳過 Onboarding');
+    localStorage.setItem('onboardingCompleted', 'true');
+    setShowOnboarding(false);
+  };
+
+  // ⚠️ LIFF 初始化中，顯示載入畫面
   if (!isLiffReady) {
     return (
       <div className="flex h-screen items-center justify-center bg-paper">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-ink-400 font-serif">正在初始化...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 🎉 顯示歡迎頁
+  if (showWelcome) {
+    return <WelcomePage onLineLogin={handleLineLogin} onGuestMode={handleGuestMode} />;
+  }
+
+  // 📊 載入資料中
+  if (isLoadingAccounts || isLoadingAssets) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-paper">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-ink-400 font-serif">載入資料中...</p>
         </div>
       </div>
     );
@@ -119,7 +222,15 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-paper text-ink-900 overflow-hidden font-sans selection:bg-morandi-clay selection:text-white">
-      
+
+      {/* 🎉 Onboarding Modal */}
+      {showOnboarding && (
+        <OnboardingModal
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+      )}
+
       {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-stone-200 z-30 shadow-soft">
         <div className="p-8 flex items-center gap-3">
@@ -165,14 +276,20 @@ const AppContent: React.FC = () => {
         </nav>
 
         <div className="p-6">
-           <div 
+           <div
              onClick={() => navigate('/settings')}
              className="flex items-center gap-3 p-4 rounded-xl bg-paper border border-stone-200 shadow-sm cursor-pointer hover:border-morandi-blue transition-colors"
             >
-             <div className="w-10 h-10 rounded-full bg-morandi-clay flex items-center justify-center text-white font-serif font-bold">A</div>
+             <div className="w-10 h-10 rounded-full bg-morandi-clay flex items-center justify-center text-white font-serif font-bold">
+               {displayName ? displayName[0].toUpperCase() : '智'}
+             </div>
              <div>
-               <div className="text-sm font-bold font-serif text-ink-900">Alex's Journal</div>
-               <div className="text-xs text-ink-400">Pro Member</div>
+               <div className="text-sm font-bold font-serif text-ink-900">
+                 {displayName || 'SmartCapital'}
+               </div>
+               <div className="text-xs text-ink-400">
+                 {isLoggedIn ? 'LINE 用戶' : '訪客模式'}
+               </div>
              </div>
              <Settings size={16} className="ml-auto text-ink-400" />
            </div>
@@ -227,16 +344,19 @@ const AppContent: React.FC = () => {
               />
               <Route path="/strategy" element={<StrategyLab />} />
               <Route path="/notifications" element={<NotificationsPage notifications={notifications} setNotifications={setNotifications} />} />
-              <Route path="/more" element={<MorePage />} />
+              <Route path="/more" element={<MorePage onLogout={handleLogout} authMode={authMode} />} />
               <Route path="/analytics" element={<AnalyticsPage isPrivacyMode={isPrivacyMode} />} />
-              <Route 
-                path="/settings" 
+              <Route
+                path="/settings"
                 element={
-                  <SettingsPage 
-                    isPrivacyMode={isPrivacyMode} 
-                    togglePrivacy={togglePrivacy} 
+                  <SettingsPage
+                    isPrivacyMode={isPrivacyMode}
+                    togglePrivacy={togglePrivacy}
                     investmentScope={investmentScope}
                     setInvestmentScope={setInvestmentScope}
+                    onLogout={handleLogout}
+                    authMode={authMode}
+                    displayName={displayName || 'SmartCapital'}
                   />
                 } 
               />
