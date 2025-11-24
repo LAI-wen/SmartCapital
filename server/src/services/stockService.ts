@@ -142,7 +142,7 @@ export async function getTaiwanStockQuote(symbol: string): Promise<StockQuote | 
 }
 
 /**
- * 搜尋股票 - 支援多個常見股票代碼
+ * 搜尋股票 - 支援任意股票代碼查詢
  * 輸入關鍵字，返回匹配的股票列表
  */
 export async function searchStocks(query: string): Promise<StockQuote[]> {
@@ -152,78 +152,99 @@ export async function searchStocks(query: string): Promise<StockQuote[]> {
 
   const searchTerm = query.trim().toUpperCase();
 
-  // 常見股票代碼列表（台股 + 美股）
+  // 常見股票代碼列表（用於中文關鍵字搜尋）
   const popularStocks: { [key: string]: string[] } = {
-    // 台股
+    // 台股中文名稱
     'TSMC': ['2330.TW'],
     '台積電': ['2330.TW'],
-    '2330': ['2330.TW'],
-    '0050': ['0050.TW'],
     '元大': ['0050.TW'],
-    '2317': ['2317.TW'],
     '鴻海': ['2317.TW'],
-    '2454': ['2454.TW'],
     '聯發科': ['2454.TW'],
-    '2881': ['2881.TW'],
     '富邦金': ['2881.TW'],
-    '2882': ['2882.TW'],
     '國泰金': ['2882.TW'],
+    '中華電': ['2412.TW'],
+    '台達電': ['2308.TW'],
+    '日月光': ['2311.TW'],
+    '南亞科': ['2408.TW'],
+    '聯電': ['2303.TW'],
+    '台塑': ['1301.TW'],
+    '中鋼': ['2002.TW'],
+    '長榮': ['2603.TW'],
+    '陽明': ['2609.TW'],
+    '玉山金': ['2884.TW'],
 
-    // 美股
-    'AAPL': ['AAPL'],
+    // 美股公司名稱
     'APPLE': ['AAPL'],
-    'TSLA': ['TSLA'],
     'TESLA': ['TSLA'],
-    'NVDA': ['NVDA'],
     'NVIDIA': ['NVDA'],
-    'GOOGL': ['GOOGL'],
     'GOOGLE': ['GOOGL'],
-    'MSFT': ['MSFT'],
     'MICROSOFT': ['MSFT'],
-    'AMZN': ['AMZN'],
     'AMAZON': ['AMZN'],
-    'META': ['META'],
     'FACEBOOK': ['META'],
-    'NFLX': ['NFLX'],
     'NETFLIX': ['NFLX'],
-    'SPY': ['SPY'],
-    'QQQ': ['QQQ'],
-    'VOO': ['VOO']
+    'INTEL': ['INTC'],
+    'AMD': ['AMD'],
+    'DISNEY': ['DIS'],
+    'NIKE': ['NKE'],
+    'STARBUCKS': ['SBUX'],
+    'VISA': ['V'],
+    'MASTERCARD': ['MA']
   };
 
   // 收集所有匹配的股票代碼
   const matchedSymbols = new Set<string>();
 
-  // 1. 精確匹配 - 直接輸入股票代碼
+  // 1. 直接股票代碼匹配
   if (/^\d{4}$/.test(searchTerm)) {
-    // 台股代碼（如 2330）
+    // 台股四位數代碼（如 2330）
     matchedSymbols.add(`${searchTerm}.TW`);
   } else if (/^[A-Z]{1,5}$/.test(searchTerm)) {
-    // 美股代碼（如 AAPL）
+    // 美股代碼（如 AAPL, TSLA）
+    matchedSymbols.add(searchTerm);
+  } else if (/^\d{4}\.TW$/.test(searchTerm)) {
+    // 已經是完整台股格式（2330.TW）
     matchedSymbols.add(searchTerm);
   }
 
-  // 2. 模糊匹配 - 從常見股票列表搜尋
+  // 2. 中文關鍵字匹配
   Object.entries(popularStocks).forEach(([key, symbols]) => {
     if (key.includes(searchTerm) || searchTerm.includes(key)) {
       symbols.forEach(symbol => matchedSymbols.add(symbol));
     }
   });
 
-  // 3. 批次查詢所有匹配的股票
+  // 3. 如果是數字開頭但不是 4 位數，可能是台股代碼的部分匹配
+  if (/^\d+$/.test(searchTerm) && searchTerm.length < 4) {
+    // 從常見台股中找開頭匹配的
+    const taiwanStocks = ['2330', '2317', '2454', '2881', '2882', '2412', '2308', '2311', '2408', '2303', '1301', '2002', '2603', '2609', '2884', '0050', '0056', '006208'];
+    taiwanStocks
+      .filter(code => code.startsWith(searchTerm))
+      .forEach(code => matchedSymbols.add(`${code}.TW`));
+  }
+
+  // 4. 批次查詢所有匹配的股票
   const results: StockQuote[] = [];
   const symbolsArray = Array.from(matchedSymbols).slice(0, 10); // 限制最多 10 個結果
 
-  for (const symbol of symbolsArray) {
+  // 並行查詢以提升速度
+  const promises = symbolsArray.map(async (symbol) => {
     try {
       const quote = await getStockQuote(symbol);
-      if (quote) {
-        results.push(quote);
-      }
+      return quote;
     } catch (error) {
       console.error(`Failed to fetch quote for ${symbol}:`, error);
+      return null;
     }
-  }
+  });
+
+  const quotes = await Promise.all(promises);
+
+  // 過濾掉 null 結果
+  quotes.forEach(quote => {
+    if (quote) {
+      results.push(quote);
+    }
+  });
 
   return results;
 }

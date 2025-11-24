@@ -51,6 +51,11 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
+  // Date picker modal state
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth() + 1);
+
   // Load data from API
   useEffect(() => {
     const loadData = async () => {
@@ -87,6 +92,20 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
     else if (viewMode === 'week') setCurrentDate(addWeeks(currentDate, 1));
     else if (viewMode === 'month' || viewMode === 'calendar') setCurrentDate(addMonths(currentDate, 1));
     else if (viewMode === 'year') setCurrentDate(addYears(currentDate, 1));
+  };
+
+  // Open date picker and initialize with current date
+  const handleOpenDatePicker = () => {
+    setPickerYear(currentDate.getFullYear());
+    setPickerMonth(currentDate.getMonth() + 1);
+    setIsDatePickerOpen(true);
+  };
+
+  // Apply selected date from picker
+  const handleApplyDatePicker = () => {
+    const newDate = new Date(pickerYear, pickerMonth - 1, 1);
+    setCurrentDate(newDate);
+    setIsDatePickerOpen(false);
   };
 
   // Date range label
@@ -410,9 +429,12 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
             <button onClick={handlePrev} className="p-2 hover:bg-paper rounded-lg text-ink-400 hover:text-morandi-blue transition-colors">
               <ChevronLeft size={20} />
             </button>
-            <span className="font-serif font-bold text-ink-900 text-sm md:text-lg min-w-[100px] text-center px-2 truncate">
+            <button
+              onClick={handleOpenDatePicker}
+              className="font-serif font-bold text-ink-900 text-sm md:text-lg min-w-[100px] text-center px-2 truncate hover:bg-paper rounded-lg transition-colors cursor-pointer"
+            >
               {dateRangeLabel}
-            </span>
+            </button>
             <button onClick={handleNext} className="p-2 hover:bg-paper rounded-lg text-ink-400 hover:text-morandi-blue transition-colors">
               <ChevronRight size={20} />
             </button>
@@ -615,6 +637,75 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
                  </div>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* Date Picker Modal */}
+      {isDatePickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full mx-4 animate-slide-up">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-ink-900 font-serif mb-6 text-center">選擇月份</h3>
+
+              {/* Year Selector */}
+              <div className="mb-6">
+                <label className="block text-xs font-bold text-ink-400 uppercase tracking-widest mb-3">年份</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setPickerYear(pickerYear - 1)}
+                    className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
+                  >
+                    <ChevronLeft size={20} className="text-ink-600" />
+                  </button>
+                  <div className="flex-1 text-center">
+                    <span className="text-3xl font-bold font-serif-num text-ink-900">{pickerYear}</span>
+                  </div>
+                  <button
+                    onClick={() => setPickerYear(pickerYear + 1)}
+                    className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
+                  >
+                    <ChevronRight size={20} className="text-ink-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Month Selector */}
+              <div className="mb-6">
+                <label className="block text-xs font-bold text-ink-400 uppercase tracking-widest mb-3">月份</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                    <button
+                      key={month}
+                      onClick={() => setPickerMonth(month)}
+                      className={`py-3 rounded-xl text-sm font-bold font-serif transition-all ${
+                        pickerMonth === month
+                          ? 'bg-morandi-blue text-white shadow-md'
+                          : 'bg-stone-50 text-ink-600 hover:bg-stone-100'
+                      }`}
+                    >
+                      {month}月
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsDatePickerOpen(false)}
+                  className="flex-1 py-3 rounded-xl border border-stone-200 text-ink-600 font-bold hover:bg-stone-50 transition-all"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleApplyDatePicker}
+                  className="flex-1 py-3 rounded-xl bg-morandi-blue text-white font-bold hover:bg-opacity-90 transition-all shadow-md"
+                >
+                  確定
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
