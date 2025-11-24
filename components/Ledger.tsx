@@ -194,9 +194,25 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
     setIsModalOpen(true);
   };
 
+  const reloadTransactions = async () => {
+    try {
+      const txs = await fetchTransactions(200);
+      setTransactions(txs);
+      console.log('✅ 交易列表已刷新:', txs.length, '筆');
+    } catch (error) {
+      console.error('❌ 刷新交易失敗:', error);
+    }
+  };
+
   const handleSave = async () => {
     if (!formAmount) return;
     const amountVal = parseFloat(formAmount);
+
+    // 確保有選擇帳戶
+    if (!formAccountId) {
+      alert('請選擇帳戶');
+      return;
+    }
 
     try {
       if (editingId) {
@@ -212,8 +228,10 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
         );
 
         if (newTx) {
-          setTransactions(prev => prev.map(t => t.id === editingId ? newTx : t));
           console.log('✅ 交易更新成功');
+          setIsModalOpen(false);
+          // 刷新列表以取得最新資料
+          await reloadTransactions();
         }
       } else {
         // 新增模式
@@ -227,11 +245,12 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
         );
 
         if (newTx) {
-          setTransactions([newTx, ...transactions]);
           console.log('✅ 交易新增成功');
+          setIsModalOpen(false);
+          // 刷新列表以取得最新資料
+          await reloadTransactions();
         }
       }
-      setIsModalOpen(false);
     } catch (error) {
       console.error('❌ 儲存交易失敗:', error);
       alert('儲存失敗，請重試');
@@ -243,9 +262,10 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
       try {
         const success = await apiDeleteTransaction(editingId);
         if (success) {
-          setTransactions(prev => prev.filter(t => t.id !== editingId));
           console.log('✅ 交易刪除成功');
           setIsModalOpen(false);
+          // 刷新列表以取得最新資料
+          await reloadTransactions();
         }
       } catch (error) {
         console.error('❌ 刪除交易失敗:', error);
@@ -451,13 +471,10 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts }) => {
          </div>
       </div>
 
-      {/* Mobile Quick Input (Fixed Bottom) */}
-      <QuickInput mobile />
-
-      {/* Floating Add Button (Secondary) */}
-      <button 
+      {/* Floating Add Button - Now primary action on mobile */}
+      <button
          onClick={() => openModal()}
-         className="fixed bottom-24 right-4 md:right-8 md:bottom-10 w-14 h-14 bg-ink-900 text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-30 ring-4 ring-paper"
+         className="fixed bottom-24 right-4 md:right-8 md:bottom-10 w-14 h-14 bg-morandi-blue text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-30 ring-4 ring-paper hover:bg-ink-900"
       >
          <Plus size={24} />
       </button>

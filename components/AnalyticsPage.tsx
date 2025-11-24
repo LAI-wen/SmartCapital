@@ -1,11 +1,13 @@
 
-import React, { useState } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
+import React, { useState, useEffect } from 'react';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
 import { COLORS } from '../constants';
 import { TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
+import { getTransactions, getAccounts, getAssets } from '../services/api';
+import { Transaction, Account, Asset } from '../types';
 
 interface AnalyticsPageProps {
   isPrivacyMode: boolean;
@@ -13,51 +15,199 @@ interface AnalyticsPageProps {
 
 const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
   const [activeTab, setActiveTab] = useState<'income_expense' | 'asset'>('income_expense');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock Data
-  const monthlyData = [
-    { month: '5月', income: 45000, expense: 32000 },
-    { month: '6月', income: 48000, expense: 35000 },
-    { month: '7月', income: 47000, expense: 42000 },
-    { month: '8月', income: 52000, expense: 38000 },
-    { month: '9月', income: 50000, expense: 28000 },
-    { month: '10月', income: 55000, expense: 31000 },
-  ];
+  // Load data from API
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [txs, accs, assts] = await Promise.all([
+          getTransactions(365), // 取得最近一年的交易
+          getAccounts(),
+          getAssets()
+        ]);
+        setTransactions(txs);
+        setAccounts(accs);
+        setAssets(assts);
+        console.log('✅ Analytics: 已載入', txs.length, '筆交易');
+      } catch (error) {
+        console.error('❌ Analytics: 載入數據失敗:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
-  const assetTrendData = [
-    { month: '5月', netWorth: 1050000 },
-    { month: '6月', netWorth: 1080000 },
-    { month: '7月', netWorth: 1060000 },
-    { month: '8月', netWorth: 1120000 },
-    { month: '9月', netWorth: 1150000 },
-    { month: '10月', netWorth: 1234567 },
-  ];
+  // 計算近6個月的收支數據
+  const monthlyData = React.useMemo(() => {
+    const now = new Date();
+    const data = [];
 
-  const expenseCategoryData = [
-    { name: '飲食', value: 12000 },
-    { name: '居住', value: 15000 },
-    { name: '交通', value: 3000 },
-    { name: '娛樂', value: 5000 },
-    { name: '其他', value: 2000 },
-  ];
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = monthDate.toLocaleDateString('zh-TW', { month: 'short' });
+      const startOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+      const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+
+      const monthTxs = transactions.filter(tx => {
+        const txDate = new Date(tx.date);
+        return txDate >= startOfMonth && txDate <= endOfMonth;
+      });
+
+      const income = monthTxs
+        .filter(tx => tx.type === 'income')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+
+      const expense = monthTxs
+        .filter(tx => tx.type === 'expense')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+
+      data.push({ month: monthName, income, expense });
+    }
+
+    return data;
+  }, [transactions]);
+
+  // 計算資產趨勢（簡化版：使用帳戶餘額 + 持倉市值）
+  const assetTrendData = React.useMemo(() => {
+    // 這裡簡化為使用當前值，實際應該從歷史快照獲取
+    const now = new Date();
+    const data = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = monthDate.toLocaleDateString('zh-TW', { month: 'short' });
+
+      // 計算該月份的淨資產（簡化：使用累積交易推算）
+      const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+      const txsUntilMonth = transactions.filter(tx => new Date(tx.date) <= monthEnd);
+
+      const netCashFlow = txsUntilMonth.reduce((sum, tx) => {
+        return sum + (tx.type === 'income' ? tx.amount : -tx.amount);
+      }, 0);
+
+      // 帳戶餘額
+      const accountBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+      // 持倉市值
+      const assetValue = assets.reduce((sum, asset) => sum + asset.avgPrice * asset.quantity, 0);
+
+      // 簡化計算：當前總資產
+      const netWorth = accountBalance + assetValue;
+
+      data.push({ month: monthName, netWorth });
+    }
+
+    return data;
+  }, [transactions, accounts, assets]);
+
+  // 計算本月支出分類數據
+  const expenseCategoryData = React.useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const currentMonthTxs = transactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      return tx.type === 'expense' && txDate >= startOfMonth;
+    });
+
+    const categoryMap: Record<string, number> = {};
+    currentMonthTxs.forEach(tx => {
+      categoryMap[tx.category] = (categoryMap[tx.category] || 0) + tx.amount;
+    });
+
+    return Object.entries(categoryMap).map(([name, value]) => ({ name, value }));
+  }, [transactions]);
+
+  // 計算本月收入和支出
+  const currentMonthStats = React.useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const currentMonthTxs = transactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      return txDate >= startOfMonth;
+    });
+
+    const lastMonthTxs = transactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      return txDate >= startOfLastMonth && txDate <= endOfLastMonth;
+    });
+
+    const currentIncome = currentMonthTxs
+      .filter(tx => tx.type === 'income')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const currentExpense = currentMonthTxs
+      .filter(tx => tx.type === 'expense')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const lastIncome = lastMonthTxs
+      .filter(tx => tx.type === 'income')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const lastExpense = lastMonthTxs
+      .filter(tx => tx.type === 'expense')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const incomeChange = lastIncome > 0 ? ((currentIncome - lastIncome) / lastIncome) * 100 : 0;
+    const expenseChange = lastExpense > 0 ? ((currentExpense - lastExpense) / lastExpense) * 100 : 0;
+
+    return {
+      currentIncome,
+      currentExpense,
+      incomeChange,
+      expenseChange
+    };
+  }, [transactions]);
+
+  // 計算總資產
+  const totalNetWorth = React.useMemo(() => {
+    const accountBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const assetValue = assets.reduce((sum, asset) => sum + asset.avgPrice * asset.quantity, 0);
+    return accountBalance + assetValue;
+  }, [accounts, assets]);
+
+  // 計算總支出（用於圓餅圖）
+  const totalExpense = React.useMemo(() => {
+    return expenseCategoryData.reduce((sum, cat) => sum + cat.value, 0);
+  }, [expenseCategoryData]);
 
   const formatCurrency = (val: number) => {
     if (isPrivacyMode) return '••••••';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96 animate-fade-in">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm text-ink-400 font-serif">載入分析數據中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in pb-20 space-y-6">
-      
+
       {/* Tab Switcher */}
       <div className="flex p-1 bg-stone-100 rounded-xl mb-4">
-        <button 
+        <button
           onClick={() => setActiveTab('income_expense')}
           className={`flex-1 py-2.5 rounded-lg text-sm font-bold font-serif transition-all ${activeTab === 'income_expense' ? 'bg-white shadow text-ink-900' : 'text-ink-400'}`}
         >
           收支分析
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('asset')}
           className={`flex-1 py-2.5 rounded-lg text-sm font-bold font-serif transition-all ${activeTab === 'asset' ? 'bg-white shadow text-ink-900' : 'text-ink-400'}`}
         >
@@ -74,16 +224,20 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
                  <div className="p-1.5 bg-morandi-sage text-white rounded-lg"><TrendingUp size={16} /></div>
                  <span className="text-xs font-bold font-serif text-morandi-sage">本月收入</span>
                </div>
-               <div className="text-2xl font-serif-num font-bold text-ink-900">{formatCurrency(55000)}</div>
-               <div className="text-xs text-ink-400 mt-1 font-serif">較上月 +10%</div>
+               <div className="text-2xl font-serif-num font-bold text-ink-900">{formatCurrency(currentMonthStats.currentIncome)}</div>
+               <div className="text-xs text-ink-400 mt-1 font-serif">
+                 較上月 {currentMonthStats.incomeChange >= 0 ? '+' : ''}{currentMonthStats.incomeChange.toFixed(1)}%
+               </div>
             </div>
             <div className="bg-morandi-roseLight/40 p-5 rounded-2xl border border-morandi-rose/20">
                <div className="flex items-center gap-2 mb-2">
                  <div className="p-1.5 bg-morandi-rose text-white rounded-lg"><TrendingDown size={16} /></div>
                  <span className="text-xs font-bold font-serif text-morandi-rose">本月支出</span>
                </div>
-               <div className="text-2xl font-serif-num font-bold text-ink-900">{formatCurrency(31000)}</div>
-               <div className="text-xs text-ink-400 mt-1 font-serif">較上月 -5%</div>
+               <div className="text-2xl font-serif-num font-bold text-ink-900">{formatCurrency(currentMonthStats.currentExpense)}</div>
+               <div className="text-xs text-ink-400 mt-1 font-serif">
+                 較上月 {currentMonthStats.expenseChange >= 0 ? '+' : ''}{currentMonthStats.expenseChange.toFixed(1)}%
+               </div>
             </div>
           </div>
 
@@ -126,22 +280,30 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
                    </ResponsiveContainer>
                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                       <span className="text-xs text-ink-400 font-serif">總支出</span>
-                      <span className="text-lg font-bold font-serif-num text-ink-900">{formatCurrency(31000)}</span>
+                      <span className="text-lg font-bold font-serif-num text-ink-900">{formatCurrency(totalExpense)}</span>
                    </div>
                 </div>
                 <div className="flex-1 w-full space-y-3">
-                   {expenseCategoryData.map((item, idx) => (
-                     <div key={item.name} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.chart[idx % COLORS.chart.length] }}></div>
-                           <span className="text-ink-600 font-serif">{item.name}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                           <span className="font-serif-num font-bold text-ink-900">{formatCurrency(item.value)}</span>
-                           <span className="text-xs text-ink-400 w-8 text-right">{((item.value / 31000) * 100).toFixed(0)}%</span>
-                        </div>
+                   {expenseCategoryData.length === 0 ? (
+                     <div className="text-center text-sm text-ink-400 font-serif py-4">
+                       本月尚無支出記錄
                      </div>
-                   ))}
+                   ) : (
+                     expenseCategoryData.map((item, idx) => (
+                       <div key={item.name} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.chart[idx % COLORS.chart.length] }}></div>
+                             <span className="text-ink-600 font-serif">{item.name}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                             <span className="font-serif-num font-bold text-ink-900">{formatCurrency(item.value)}</span>
+                             <span className="text-xs text-ink-400 w-8 text-right">
+                               {totalExpense > 0 ? ((item.value / totalExpense) * 100).toFixed(0) : 0}%
+                             </span>
+                          </div>
+                       </div>
+                     ))
+                   )}
                 </div>
              </div>
           </div>
@@ -155,14 +317,17 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
                <h3 className="text-sm font-serif opacity-80 mb-1">目前淨資產</h3>
                <div className="text-4xl font-serif-num font-bold tracking-tight mb-4">
-                 {formatCurrency(1234567)}
+                 {formatCurrency(totalNetWorth)}
                </div>
                <div className="flex items-center gap-4 text-sm">
                   <div className="bg-white/20 px-3 py-1 rounded-lg backdrop-blur-md flex items-center gap-1">
-                     <TrendingUp size={14} /> 總報酬 +18.5%
+                     <TrendingUp size={14} />
+                     {assetTrendData.length >= 2 && assetTrendData[0].netWorth > 0
+                       ? `${(((assetTrendData[assetTrendData.length - 1].netWorth - assetTrendData[0].netWorth) / assetTrendData[0].netWorth) * 100).toFixed(1)}%`
+                       : '0%'}
                   </div>
                   <div className="bg-white/20 px-3 py-1 rounded-lg backdrop-blur-md flex items-center gap-1">
-                     <Calendar size={14} /> 2023年
+                     <Calendar size={14} /> {new Date().getFullYear()}年
                   </div>
                </div>
            </div>

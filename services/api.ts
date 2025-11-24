@@ -210,7 +210,10 @@ export async function createTransaction(
   accountId?: string
 ): Promise<Transaction | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/transactions/${currentUserId}`, {
+    const userId = getUserId();
+    console.log('📝 Creating transaction for user:', userId, 'with accountId:', accountId);
+
+    const response = await fetch(`${API_BASE_URL}/api/transactions/${userId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -218,6 +221,11 @@ export async function createTransaction(
       body: JSON.stringify({ type, amount, category, date, note, accountId }),
     });
     const result: ApiResponse<Transaction> = await response.json();
+
+    if (result.success && result.data) {
+      console.log('✅ Transaction created:', result.data);
+    }
+
     return result.success ? result.data || null : null;
   } catch (error) {
     console.error('Failed to create transaction:', error);

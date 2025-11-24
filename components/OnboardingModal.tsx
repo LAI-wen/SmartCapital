@@ -116,9 +116,12 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onComplete, onSkip })
 
           {step === 2 && (
             <div className="space-y-5">
-              <div>
-                <h3 className="text-lg font-bold text-ink-900 font-serif mb-1">建立你的第一個帳戶</h3>
-                <p className="text-sm text-ink-500 font-serif">這將成為你的預設帳戶</p>
+              <div className="bg-morandi-blueLight/30 p-4 rounded-xl">
+                <h3 className="text-lg font-bold text-ink-900 font-serif mb-2">📝 建立你的第一個帳戶</h3>
+                <p className="text-xs text-ink-600 font-serif leading-relaxed">
+                  帳戶是用來追蹤你的資金流向。例如：銀行帳戶、錢包、證券戶等。<br/>
+                  <span className="text-morandi-blue font-bold mt-1 inline-block">💡 每筆交易都會關聯到一個帳戶</span>，幫助你清楚掌握資金分布。
+                </p>
               </div>
 
               {/* 帳戶名稱 */}
