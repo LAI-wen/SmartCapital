@@ -157,7 +157,11 @@ export async function searchStocks(query: string): Promise<StockQuote[]> {
     // 台股中文名稱
     'TSMC': ['2330.TW'],
     '台積電': ['2330.TW'],
-    '元大': ['0050.TW'],
+    '元大': ['0050.TW', '0056.TW', '00878.TW', '00919.TW'],
+    '元大台灣50': ['0050.TW'],
+    '元大高股息': ['0056.TW'],
+    '國泰永續高股息': ['00878.TW'],
+    '群益台灣精選高息': ['00919.TW'],
     '鴻海': ['2317.TW'],
     '聯發科': ['2454.TW'],
     '富邦金': ['2881.TW'],
@@ -172,6 +176,18 @@ export async function searchStocks(query: string): Promise<StockQuote[]> {
     '長榮': ['2603.TW'],
     '陽明': ['2609.TW'],
     '玉山金': ['2884.TW'],
+    '高股息': ['0056.TW', '00878.TW', '00919.TW', '00929.TW'],
+    '配息': ['0056.TW', '00878.TW', '00919.TW', '00929.TW'],
+
+    // 熱門台灣 ETF
+    '0050': ['0050.TW'],
+    '0056': ['0056.TW'],
+    '00878': ['00878.TW'],
+    '00919': ['00919.TW'],
+    '00929': ['00929.TW'],
+    '006208': ['006208.TW'],
+    '00692': ['00692.TW'],
+    '00850': ['00850.TW'],
 
     // 美股公司名稱
     'APPLE': ['AAPL'],
@@ -195,14 +211,14 @@ export async function searchStocks(query: string): Promise<StockQuote[]> {
   const matchedSymbols = new Set<string>();
 
   // 1. 直接股票代碼匹配
-  if (/^\d{4}$/.test(searchTerm)) {
-    // 台股四位數代碼（如 2330）
+  if (/^\d{4,6}$/.test(searchTerm)) {
+    // 台股代碼（4 位數如 2330，或 5-6 位數 ETF 如 00919, 006208）
     matchedSymbols.add(`${searchTerm}.TW`);
   } else if (/^[A-Z]{1,5}$/.test(searchTerm)) {
     // 美股代碼（如 AAPL, TSLA）
     matchedSymbols.add(searchTerm);
-  } else if (/^\d{4}\.TW$/.test(searchTerm)) {
-    // 已經是完整台股格式（2330.TW）
+  } else if (/^\d{4,6}\.TW$/.test(searchTerm)) {
+    // 已經是完整台股格式（2330.TW 或 00919.TW）
     matchedSymbols.add(searchTerm);
   }
 
@@ -213,10 +229,15 @@ export async function searchStocks(query: string): Promise<StockQuote[]> {
     }
   });
 
-  // 3. 如果是數字開頭但不是 4 位數，可能是台股代碼的部分匹配
-  if (/^\d+$/.test(searchTerm) && searchTerm.length < 4) {
+  // 3. 如果是數字開頭但長度不足，可能是台股代碼的部分匹配
+  if (/^\d+$/.test(searchTerm) && searchTerm.length < 6) {
     // 從常見台股中找開頭匹配的
-    const taiwanStocks = ['2330', '2317', '2454', '2881', '2882', '2412', '2308', '2311', '2408', '2303', '1301', '2002', '2603', '2609', '2884', '0050', '0056', '006208'];
+    const taiwanStocks = [
+      // 個股
+      '2330', '2317', '2454', '2881', '2882', '2412', '2308', '2311', '2408', '2303', '1301', '2002', '2603', '2609', '2884',
+      // ETF
+      '0050', '0056', '00878', '00919', '00929', '006208', '00692', '00850', '00713', '00757'
+    ];
     taiwanStocks
       .filter(code => code.startsWith(searchTerm))
       .forEach(code => matchedSymbols.add(`${code}.TW`));
