@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Asset, Account, InvestmentScope } from '../types';
 import { MOCK_EXCHANGE_RATE } from '../constants';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Wallet, TrendingUp, TrendingDown, Search, Activity, ReceiptText, Briefcase, ChevronRight, Landmark, Info } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Search, Activity, ReceiptText, Briefcase, ChevronRight, Landmark, Info, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StockDetailModal from './StockDetailModal';
 import BuyStockModal, { StockTransaction } from './BuyStockModal';
@@ -24,10 +24,10 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   
   // Modal State
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  
-  // Buy/Sell Modal State
+
+  // Buy/Sell/Import Modal State
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
-  const [buyModalMode, setBuyModalMode] = useState<'buy' | 'sell'>('buy');
+  const [buyModalMode, setBuyModalMode] = useState<'buy' | 'sell' | 'import'>('buy');
   const [transactionAsset, setTransactionAsset] = useState<Asset | null>(null);
 
   // Filter Assets based on Scope FIRST
@@ -177,6 +177,12 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     setIsBuyModalOpen(true);
   };
 
+  const handleOpenImport = () => {
+    setTransactionAsset(null);
+    setBuyModalMode('import');
+    setIsBuyModalOpen(true);
+  };
+
   const handleTransaction = (asset: Asset, mode: 'buy' | 'sell') => {
     setSelectedAsset(null); // Close detail modal
     setTransactionAsset(asset);
@@ -188,16 +194,16 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     let updatedAssets = [...assets];
     let updatedAccounts = [...accounts];
     const existingIndex = updatedAssets.findIndex(a => a.symbol === txn.symbol);
-    
+
     // Calculate Total Cost in Asset Currency
     const totalTxnAmountAssetCurrency = txn.price * txn.quantity;
 
-    // 1. Handle Money Movement
-    if (accountId) {
+    // 1. Handle Money Movement (導入模式不處理現金流動)
+    if (txn.type !== 'import' && accountId) {
       const accIndex = updatedAccounts.findIndex(a => a.id === accountId);
       if (accIndex >= 0) {
         const acc = updatedAccounts[accIndex];
-        
+
         // Exchange Logic
         let deductionAmount = totalTxnAmountAssetCurrency;
         if (txn.currency === 'USD' && acc.currency === 'TWD') {
@@ -214,7 +220,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     }
 
     // 2. Handle Asset Movement
-    if (txn.type === 'buy') {
+    if (txn.type === 'buy' || txn.type === 'import') {
       if (existingIndex >= 0) {
         // Update existing
         const asset = updatedAssets[existingIndex];
@@ -240,7 +246,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
           history: [txn.price * 0.95, txn.price]
         });
       }
-    } else {
+    } else if (txn.type === 'sell') {
       // Sell
       if (existingIndex >= 0) {
         const asset = updatedAssets[existingIndex];
@@ -257,7 +263,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
         }
       }
     }
-    
+
     onAssetUpdate(updatedAssets);
     onAccountUpdate(updatedAccounts);
   };
@@ -330,9 +336,9 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
       </div>
 
       {/* 2. Quick Actions */}
-      <div className="grid grid-cols-3 gap-3">
-         <button 
-           onClick={() => navigate('/ledger')} 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+         <button
+           onClick={() => navigate('/ledger')}
            className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-xl shadow-sm border border-stone-100 active:scale-95 transition-all hover:border-morandi-blue/30"
          >
             <div className="w-10 h-10 rounded-full bg-morandi-blueLight flex items-center justify-center text-morandi-blue">
@@ -340,7 +346,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
             </div>
             <span className="text-xs font-bold text-ink-900 font-serif">記一筆</span>
          </button>
-         <button 
+         <button
            onClick={handleOpenBuyNew}
            className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-xl shadow-sm border border-stone-100 active:scale-95 transition-all hover:border-morandi-blue/30"
          >
@@ -349,8 +355,17 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
             </div>
             <span className="text-xs font-bold text-ink-900 font-serif">買股票</span>
          </button>
-         <button 
-           onClick={() => navigate('/strategy')} 
+         <button
+           onClick={handleOpenImport}
+           className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-xl shadow-sm border border-stone-100 active:scale-95 transition-all hover:border-amber-600/30"
+         >
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+               <Package size={20} />
+            </div>
+            <span className="text-xs font-bold text-ink-900 font-serif">導入持股</span>
+         </button>
+         <button
+           onClick={() => navigate('/strategy')}
            className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-xl shadow-sm border border-stone-100 active:scale-95 transition-all hover:border-morandi-blue/30"
          >
             <div className="w-10 h-10 rounded-full bg-morandi-sand flex items-center justify-center text-ink-700">

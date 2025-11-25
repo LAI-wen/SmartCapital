@@ -2,14 +2,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Asset, Account, Currency } from '../types';
 import { MOCK_EXCHANGE_RATE } from '../constants';
-import { X, Search, PlusCircle, MinusCircle, Wallet, AlertCircle, Info, Loader2 } from 'lucide-react';
-import { createTransaction, upsertAsset, reduceAsset, searchStocks, StockSearchResult } from '../services/api';
+import { X, Search, PlusCircle, MinusCircle, Wallet, AlertCircle, Info, Loader2, Package } from 'lucide-react';
+import { createTransaction, upsertAsset, reduceAsset, importAsset, searchStocks, StockSearchResult } from '../services/api';
 
 interface BuyStockModalProps {
   isOpen: boolean;
   onClose: () => void;
-  mode: 'buy' | 'sell';
-  existingAsset?: Asset | null; 
+  mode: 'buy' | 'sell' | 'import'; // 新增 import 模式
+  existingAsset?: Asset | null;
   onConfirm: (transaction: StockTransaction, accountId?: string) => void;
   accounts: Account[];
 }
@@ -20,7 +20,7 @@ export interface StockTransaction {
   price: number;
   quantity: number;
   date: string;
-  type: 'buy' | 'sell';
+  type: 'buy' | 'sell' | 'import'; // 新增 import 類型
   currency: Currency; // Added currency to transaction
 }
 
@@ -131,26 +131,18 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
   };
 
   const handleSubmit = async () => {
-    if (!selectedStock || !quantity || !price || !selectedAccountId) return;
+    if (!selectedStock || !quantity || !price) return;
+
+    // Import 模式不需要選擇帳戶
+    if (mode !== 'import' && !selectedAccountId) return;
 
     try {
       const qty = parseFloat(quantity);
       const priceNum = parseFloat(price);
 
-      // 1. Create transaction record
-      await createTransaction(
-        mode === 'buy' ? 'expense' : 'income',
-        finalCost,
-        'investment',
-        date,
-        `${mode === 'buy' ? '買入' : '賣出'} ${selectedStock.symbol} ${quantity}股 @ ${selectedStock.currency === 'TWD' ? 'NT$' : '$'}${price}`,
-        selectedAccountId
-      );
-
-      // 2. Update asset holdings in database
-      if (mode === 'buy') {
-        // Buy: upsert asset
-        await upsertAsset(
+      if (mode === 'import') {
+        // 🎯 導入模式：不建立交易記錄，不扣款，直接建立資產持倉
+        await importAsset(
           selectedStock.symbol,
           selectedStock.name,
           'Stock', // Default type
@@ -158,24 +150,59 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
           priceNum,
           selectedStock.currency
         );
-      } else {
-        // Sell: reduce asset
-        await reduceAsset(
-          selectedStock.symbol,
-          qty
-        );
-      }
 
-      // 3. Call parent callback for optimistic UI update
-      onConfirm({
-        symbol: selectedStock.symbol,
-        name: selectedStock.name,
-        price: priceNum,
-        quantity: qty,
-        date,
-        type: mode,
-        currency: selectedStock.currency
-      }, selectedAccountId);
+        // 3. Call parent callback for optimistic UI update (不需要 accountId)
+        onConfirm({
+          symbol: selectedStock.symbol,
+          name: selectedStock.name,
+          price: priceNum,
+          quantity: qty,
+          date,
+          type: 'import',
+          currency: selectedStock.currency
+        });
+      } else {
+        // 💰 買入/賣出模式：建立交易記錄並扣款
+        // 1. Create transaction record
+        await createTransaction(
+          mode === 'buy' ? 'expense' : 'income',
+          finalCost,
+          'investment',
+          date,
+          `${mode === 'buy' ? '買入' : '賣出'} ${selectedStock.symbol} ${quantity}股 @ ${selectedStock.currency === 'TWD' ? 'NT$' : '$'}${price}`,
+          selectedAccountId
+        );
+
+        // 2. Update asset holdings in database
+        if (mode === 'buy') {
+          // Buy: upsert asset
+          await upsertAsset(
+            selectedStock.symbol,
+            selectedStock.name,
+            'Stock', // Default type
+            qty,
+            priceNum,
+            selectedStock.currency
+          );
+        } else {
+          // Sell: reduce asset
+          await reduceAsset(
+            selectedStock.symbol,
+            qty
+          );
+        }
+
+        // 3. Call parent callback for optimistic UI update
+        onConfirm({
+          symbol: selectedStock.symbol,
+          name: selectedStock.name,
+          price: priceNum,
+          quantity: qty,
+          date,
+          type: mode,
+          currency: selectedStock.currency
+        }, selectedAccountId);
+      }
 
       onClose();
     } catch (error) {
@@ -185,7 +212,8 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
   };
 
   const isBuy = mode === 'buy';
-  
+  const isImport = mode === 'import';
+
   // Calculations
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
   const rawCost = (parseFloat(quantity) || 0) * (parseFloat(price) || 0); // Cost in Asset Currency
@@ -194,9 +222,9 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
   const isExchangeNeeded = isBuy && selectedStock?.currency === 'USD' && selectedAccount?.currency === 'TWD';
   const finalCost = isExchangeNeeded ? rawCost * MOCK_EXCHANGE_RATE : rawCost;
 
-  // Buying Power Check
+  // Buying Power Check (導入模式不檢查餘額)
   const buyingPower = selectedAccount ? selectedAccount.balance : 0;
-  const isInsufficientFunds = isBuy && selectedAccount && finalCost > buyingPower;
+  const isInsufficientFunds = !isImport && isBuy && selectedAccount && finalCost > buyingPower;
 
   // Debug logging
   console.log('🔍 BuyStockModal Debug:', {
@@ -213,19 +241,23 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
       <div className="bg-paper w-full max-w-md md:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
         
         {/* === Header === */}
-        <div className={`p-6 text-white shrink-0 relative transition-colors duration-300 ${isBuy ? 'bg-gradient-to-br from-morandi-blue to-ink-800' : 'bg-gradient-to-br from-morandi-rose to-red-900'}`}>
-          <button 
+        <div className={`p-6 text-white shrink-0 relative transition-colors duration-300 ${
+          isImport ? 'bg-gradient-to-br from-morandi-clay to-amber-900' :
+          isBuy ? 'bg-gradient-to-br from-morandi-blue to-ink-800' :
+          'bg-gradient-to-br from-morandi-rose to-red-900'
+        }`}>
+          <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors backdrop-blur-md"
           >
             <X size={20} className="text-white" />
           </button>
-          
+
           <h2 className="text-2xl font-serif font-bold tracking-tight mb-1">
-            {isBuy ? (existingAsset ? '加碼買入' : '新增持股') : '賣出持股'}
+            {isImport ? '導入持股成本' : isBuy ? (existingAsset ? '加碼買入' : '新增持股') : '賣出持股'}
           </h2>
           <p className="text-sm opacity-80 font-serif">
-            {isBuy ? '紀錄你的投資，讓資產成長看得見。' : '獲利了結或停損，紀錄交易歷程。'}
+            {isImport ? '記錄你已經持有的股票，不會扣除現金餘額。' : isBuy ? '紀錄你的投資，讓資產成長看得見。' : '獲利了結或停損，紀錄交易歷程。'}
           </p>
         </div>
 
@@ -388,43 +420,58 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
                    </div>
                 </div>
 
-                {/* Account Selection (Source of Funds) */}
-                <div>
-                   <label className="block text-xs font-bold text-ink-400 uppercase tracking-widest mb-2">
-                     {isBuy ? '扣款帳戶' : '入帳帳戶'}
-                   </label>
-                   <div className="relative">
-                      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-ink-400 pointer-events-none">
-                         <Wallet size={18} />
-                      </div>
-                      <select 
-                        value={selectedAccountId}
-                        onChange={(e) => setSelectedAccountId(e.target.value)}
-                        className="w-full bg-white border border-stone-200 pl-10 pr-4 py-3 rounded-xl text-sm font-bold text-ink-900 focus:outline-none focus:border-morandi-blue appearance-none"
-                      >
-                        {availableAccounts.map(acc => (
-                           <option key={acc.id} value={acc.id}>
-                              {acc.type === 'BROKERAGE' ? '📈' : '🏦'} {acc.name} ({acc.currency}){acc.isSub ? ' 複委託' : ''}
-                           </option>
-                        ))}
-                      </select>
-                   </div>
-                </div>
+                {/* Account Selection (Source of Funds) - 導入模式不顯示 */}
+                {!isImport && (
+                  <div>
+                    <label className="block text-xs font-bold text-ink-400 uppercase tracking-widest mb-2">
+                      {isBuy ? '扣款帳戶' : '入帳帳戶'}
+                    </label>
+                    <div className="relative">
+                       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-ink-400 pointer-events-none">
+                          <Wallet size={18} />
+                       </div>
+                       <select
+                         value={selectedAccountId}
+                         onChange={(e) => setSelectedAccountId(e.target.value)}
+                         className="w-full bg-white border border-stone-200 pl-10 pr-4 py-3 rounded-xl text-sm font-bold text-ink-900 focus:outline-none focus:border-morandi-blue appearance-none"
+                       >
+                         {availableAccounts.map(acc => (
+                            <option key={acc.id} value={acc.id}>
+                               {acc.type === 'BROKERAGE' ? '📈' : '🏦'} {acc.name} ({acc.currency}){acc.isSub ? ' 複委託' : ''}
+                            </option>
+                         ))}
+                       </select>
+                    </div>
+                  </div>
+                )}
 
                 {/* Summary / Calculation Box */}
                 <div className="bg-stone-50 border border-stone-100 p-5 rounded-2xl shadow-sm space-y-3">
+                   {/* 導入模式提示 */}
+                   {isImport && (
+                     <div className="bg-amber-50/50 rounded-lg p-3 space-y-2">
+                       <div className="flex items-center gap-2 text-amber-700 font-medium text-xs mb-1">
+                          <Package size={14} />
+                          <span>導入持股模式</span>
+                       </div>
+                       <p className="text-[10px] text-ink-400 leading-relaxed">
+                          此操作僅記錄您的持倉成本，<strong>不會扣除現金餘額</strong>。適合用於記錄您已經持有的股票。
+                       </p>
+                     </div>
+                   )}
+
                    {/* Raw Cost */}
                    <div className="flex justify-between items-center text-sm">
                       <span className="text-ink-400 font-serif">
-                        預估成本 ({selectedStock.currency})
+                        {isImport ? '持倉成本' : '預估成本'} ({selectedStock.currency})
                       </span>
                       <span className="font-serif-num font-bold text-ink-900">
                         {selectedStock.currency === 'USD' ? '$' : 'NT$'}{rawCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </span>
                    </div>
-                   
-                   {/* Exchange Rate Info (Sub-brokerage) */}
-                   {isExchangeNeeded && (
+
+                   {/* Exchange Rate Info (Sub-brokerage) - 買入模式才顯示 */}
+                   {!isImport && isExchangeNeeded && (
                      <div className="py-3 border-t border-dashed border-stone-200">
                         <div className="bg-blue-50/50 rounded-lg p-3 space-y-2">
                           <div className="flex items-center gap-2 text-blue-700 font-medium text-xs mb-1">
@@ -445,39 +492,46 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
                         </div>
                      </div>
                    )}
-                   
-                   {/* Final Deduction */}
-                   <div className="flex justify-between items-center pt-2 border-t border-stone-200">
-                      <span className="text-sm font-bold text-ink-900 font-serif">預計扣款</span>
-                      <div className="text-right">
-                         <div className="font-serif-num font-bold text-xl text-ink-900">
-                           {selectedAccount?.currency === 'USD' ? '$' : 'NT$'} {finalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                         </div>
-                         {isBuy && selectedAccount && (
-                           <div className={`text-xs mt-1 font-serif-num ${isInsufficientFunds ? 'text-morandi-rose font-bold' : 'text-ink-400'}`}>
-                              餘額: {selectedAccount?.currency === 'USD' ? '$' : 'NT$'}{buyingPower.toLocaleString()}
-                           </div>
-                         )}
-                      </div>
-                   </div>
 
-                   {isInsufficientFunds && (
-                      <div className="bg-morandi-roseLight/30 text-morandi-rose px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-                         <AlertCircle size={14} /> 餘額不足，無法交易
-                      </div>
+                   {/* Final Deduction - 買入/賣出模式才顯示 */}
+                   {!isImport && (
+                     <>
+                       <div className="flex justify-between items-center pt-2 border-t border-stone-200">
+                          <span className="text-sm font-bold text-ink-900 font-serif">預計扣款</span>
+                          <div className="text-right">
+                             <div className="font-serif-num font-bold text-xl text-ink-900">
+                               {selectedAccount?.currency === 'USD' ? '$' : 'NT$'} {finalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                             </div>
+                             {isBuy && selectedAccount && (
+                               <div className={`text-xs mt-1 font-serif-num ${isInsufficientFunds ? 'text-morandi-rose font-bold' : 'text-ink-400'}`}>
+                                  餘額: {selectedAccount?.currency === 'USD' ? '$' : 'NT$'}{buyingPower.toLocaleString()}
+                               </div>
+                             )}
+                          </div>
+                       </div>
+
+                       {isInsufficientFunds && (
+                          <div className="bg-morandi-roseLight/30 text-morandi-rose px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
+                             <AlertCircle size={14} /> 餘額不足，無法交易
+                          </div>
+                       )}
+                     </>
                    )}
                 </div>
 
                 {/* Confirm Button */}
-                <button 
+                <button
                   onClick={handleSubmit}
                   disabled={!quantity || !price || isInsufficientFunds}
                   className={`w-full py-4 rounded-xl font-bold shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-white
-                    ${(!quantity || !price || isInsufficientFunds) ? 'bg-stone-300 cursor-not-allowed' : isBuy ? 'bg-morandi-blue shadow-morandi-blue/20' : 'bg-morandi-rose shadow-morandi-rose/20'}
+                    ${(!quantity || !price || isInsufficientFunds) ? 'bg-stone-300 cursor-not-allowed' :
+                      isImport ? 'bg-morandi-clay shadow-morandi-clay/20' :
+                      isBuy ? 'bg-morandi-blue shadow-morandi-blue/20' :
+                      'bg-morandi-rose shadow-morandi-rose/20'}
                   `}
                 >
-                  {isBuy ? <PlusCircle size={20} /> : <MinusCircle size={20} />}
-                  {isBuy ? '確認買入' : '確認賣出'}
+                  {isImport ? <Package size={20} /> : isBuy ? <PlusCircle size={20} /> : <MinusCircle size={20} />}
+                  {isImport ? '確認導入' : isBuy ? '確認買入' : '確認賣出'}
                 </button>
              </div>
           )}

@@ -51,15 +51,24 @@ const AppContent: React.FC = () => {
 
   // 🔥 檢查認證狀態並決定是否顯示歡迎頁
   useEffect(() => {
-    if (!isLiffReady) return;
-
-    // 檢查是否已經透過 LINE 登入或是訪客模式
+    // 🎯 優先檢查 localStorage，避免閃爍
     const hasAuthenticated = localStorage.getItem('authMode');
+    const hasLineUserId = localStorage.getItem('lineUserId');
+
+    // 如果有認證記錄或 LINE User ID，立即隱藏歡迎頁
+    if (hasAuthenticated || hasLineUserId) {
+      setShowWelcome(false);
+      setAuthMode((hasAuthenticated as any) || 'authenticated');
+    }
+
+    // 等待 LIFF 初始化完成後，再次確認狀態
+    if (!isLiffReady) return;
 
     if (isLoggedIn || hasAuthenticated === 'guest') {
       setShowWelcome(false);
       setAuthMode((hasAuthenticated as any) || 'authenticated');
-    } else {
+    } else if (!hasLineUserId) {
+      // 只有在沒有任何認證記錄時才顯示歡迎頁
       setShowWelcome(true);
     }
   }, [isLiffReady, isLoggedIn]);

@@ -67,6 +67,7 @@ app.get('/api/user/:lineUserId', apiController.getUser);
 app.get('/api/assets/:lineUserId', apiController.getAssets);
 app.post('/api/assets/:lineUserId/upsert', apiController.upsertAssetAPI);
 app.post('/api/assets/:lineUserId/reduce', apiController.reduceAssetAPI);
+app.post('/api/assets/:lineUserId/import', apiController.importAssetAPI); // 新增：導入既有持股
 app.get('/api/transactions/:lineUserId', apiController.getTransactions);
 app.post('/api/transactions/:lineUserId', apiController.createTransaction);
 app.delete('/api/transactions/:transactionId', apiController.deleteTransaction);

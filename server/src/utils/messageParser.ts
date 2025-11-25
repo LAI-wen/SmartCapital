@@ -21,6 +21,7 @@ export type MessageIntent =
   | { type: 'ACCOUNT_LIST' }
   | { type: 'CREATE_ACCOUNT' }
   | { type: 'TOTAL_ASSETS' }
+  | { type: 'LEDGER' }
   | { type: 'UNKNOWN' };
 
 /**
@@ -158,6 +159,11 @@ export function parseMessage(text: string): MessageIntent {
   // 資產查詢指令 - 擴充支援更多關鍵字
   if (/(總資產|資產總覽|資產|我的資產|total\s*assets)/i.test(trimmed)) {
     return { type: 'TOTAL_ASSETS' };
+  }
+
+  // 記帳頁面指令
+  if (/(記帳|帳本|記錄|ledger|bookkeeping|book)/i.test(trimmed)) {
+    return { type: 'LEDGER' };
   }
 
   // 未知訊息

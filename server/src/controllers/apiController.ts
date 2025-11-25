@@ -21,6 +21,7 @@ import {
   deleteAccount,
   createTransfer,
   getUserTransfers,
+  importAsset,
   prisma
 } from '../services/databaseService.js';
 import { getStockQuote, searchStocks } from '../services/stockService.js';
@@ -155,6 +156,53 @@ export async function reduceAssetAPI(req: Request, res: Response) {
   } catch (error) {
     console.error('Error reducing asset:', error);
     res.status(500).json({ success: false, error: 'Failed to reduce asset' });
+  }
+}
+
+/**
+ * POST /api/assets/:lineUserId/import
+ * 導入既有資產持倉（不扣款）
+ * 用於使用者記錄他們已經持有的股票成本
+ */
+export async function importAssetAPI(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const { symbol, name, type, quantity, avgPrice, currency } = req.body;
+
+    if (!symbol || !name || !type || quantity === undefined || avgPrice === undefined || !currency) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: symbol, name, type, quantity, avgPrice, currency'
+      });
+    }
+
+    if (quantity <= 0 || avgPrice <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Quantity and avgPrice must be positive numbers'
+      });
+    }
+
+    const user = await getOrCreateUser(lineUserId);
+    const asset = await importAsset(
+      user.id,
+      symbol,
+      name,
+      type,
+      quantity,
+      avgPrice,
+      currency
+    );
+
+    console.log(`✅ 導入資產成功: ${symbol} ${quantity}股 @ ${currency} ${avgPrice}`);
+
+    res.json({
+      success: true,
+      data: asset
+    });
+  } catch (error) {
+    console.error('Error importing asset:', error);
+    res.status(500).json({ success: false, error: 'Failed to import asset' });
   }
 }
 

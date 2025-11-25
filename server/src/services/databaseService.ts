@@ -144,7 +144,7 @@ export async function getUserTransactions(userId: string, limit: number = 10) {
 }
 
 /**
- * 新增或更新資產持倉
+ * 新增或更新資產持倉（買入股票時使用，會計算平均成本）
  */
 export async function upsertAsset(
   userId: string,
@@ -152,7 +152,8 @@ export async function upsertAsset(
   name: string,
   type: 'Stock' | 'Crypto' | 'ETF',
   quantity: number,
-  price: number
+  price: number,
+  currency?: string
 ) {
   const existing = await prisma.asset.findUnique({
     where: {
@@ -190,7 +191,64 @@ export async function upsertAsset(
         name,
         type,
         quantity,
-        avgPrice: price
+        avgPrice: price,
+        currency: currency || 'TWD'
+      }
+    });
+  }
+}
+
+/**
+ * 導入既有資產持倉（不影響帳戶餘額）
+ * 用於使用者記錄他們已經持有的股票成本
+ */
+export async function importAsset(
+  userId: string,
+  symbol: string,
+  name: string,
+  type: 'Stock' | 'Crypto' | 'ETF',
+  quantity: number,
+  avgPrice: number,
+  currency: string
+) {
+  const existing = await prisma.asset.findUnique({
+    where: {
+      userId_symbol: {
+        userId,
+        symbol
+      }
+    }
+  });
+
+  if (existing) {
+    // 如果已經有持倉，合併數量並重新計算平均成本
+    const totalQuantity = existing.quantity + quantity;
+    const totalCost = (existing.quantity * existing.avgPrice) + (quantity * avgPrice);
+    const newAvgPrice = totalCost / totalQuantity;
+
+    return prisma.asset.update({
+      where: {
+        userId_symbol: {
+          userId,
+          symbol
+        }
+      },
+      data: {
+        quantity: totalQuantity,
+        avgPrice: newAvgPrice
+      }
+    });
+  } else {
+    // 建立新持倉
+    return prisma.asset.create({
+      data: {
+        userId,
+        symbol,
+        name,
+        type,
+        quantity,
+        avgPrice,
+        currency
       }
     });
   }

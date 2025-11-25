@@ -241,6 +241,45 @@ export async function upsertAsset(
 }
 
 /**
+ * 導入既有資產持倉（不影響帳戶餘額）
+ * 用於使用者記錄他們已經持有的股票成本
+ */
+export async function importAsset(
+  symbol: string,
+  name: string,
+  type: string,
+  quantity: number,
+  avgPrice: number,
+  currency: string
+): Promise<Asset | null> {
+  try {
+    const userId = getUserId();
+    console.log('📦 Importing existing asset for user:', userId, symbol, quantity, '@', avgPrice);
+
+    const response = await fetch(`${API_BASE_URL}/api/assets/${userId}/import`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ symbol, name, type, quantity, avgPrice, currency }),
+    });
+
+    const result: ApiResponse<Asset> = await response.json();
+
+    if (!result.success) {
+      console.error('❌ Import asset failed:', result.error);
+      return null;
+    }
+
+    console.log('✅ Asset imported (no account deduction):', result.data);
+    return result.data;
+  } catch (error) {
+    console.error('❌ Import asset error:', error);
+    return null;
+  }
+}
+
+/**
  * 減少資產持倉（賣出股票）
  */
 export async function reduceAsset(

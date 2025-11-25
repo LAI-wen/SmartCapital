@@ -160,11 +160,16 @@ export class WebhookController {
         await this.handleTotalAssets(lineUserId, userId);
         break;
 
+      case 'LEDGER':
+      case 'BOOKKEEPING':
+        await this.handleLedgerLink(lineUserId);
+        break;
+
       default:
         await this.client.pushMessage(lineUserId, {
           type: 'text',
           text: '💡 試試這些指令：\n\n' +
-            '📝 記帳：「午餐 120」「薪水 50000」\n' +
+            '📝 記帳：「記帳」「午餐 120」「薪水 50000」\n' +
             '📊 投資：「TSLA」「買 2330」\n' +
             '📈 查詢：「帳戶」「資產」「持倉」\n\n' +
             '輸入「說明」查看完整指南'
@@ -976,6 +981,32 @@ export class WebhookController {
     await this.client.pushMessage(lineUserId, {
       type: 'text',
       text: message
+    });
+  }
+
+  /**
+   * 處理記帳頁面連結
+   */
+  private async handleLedgerLink(lineUserId: string): Promise<void> {
+    const liffId = process.env.LIFF_ID;
+    const webUrl = liffId
+      ? `https://liff.line.me/${liffId}/#/ledger`
+      : `${process.env.FRONTEND_URL || 'http://localhost:3001'}/#/ledger?userId=${encodeURIComponent(lineUserId)}`;
+
+    await this.client.pushMessage(lineUserId, {
+      type: 'template',
+      altText: '📝 前往記帳頁面',
+      template: {
+        type: 'buttons',
+        text: '📝 SmartCapital 記帳\n\n快速記錄你的每一筆收支',
+        actions: [
+          {
+            type: 'uri',
+            label: '💰 開始記帳',
+            uri: webUrl
+          }
+        ]
+      }
     });
   }
 
