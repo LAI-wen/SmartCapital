@@ -72,7 +72,9 @@ export async function createTransaction(
   amount: number,
   category: string,
   note?: string,
-  accountId?: string
+  accountId?: string,
+  originalCurrency?: string,
+  exchangeRate?: number
 ) {
   // 如果有指定帳戶，更新帳戶餘額
   if (accountId) {
@@ -91,8 +93,8 @@ export async function createTransaction(
     // 使用 transaction 確保原子性
     return prisma.$transaction(async (tx) => {
       // 1. 更新帳戶餘額
-      const newBalance = type === 'income' 
-        ? account.balance + amount 
+      const newBalance = type === 'income'
+        ? account.balance + amount
         : account.balance - amount;
 
       await tx.account.update({
@@ -100,7 +102,7 @@ export async function createTransaction(
         data: { balance: newBalance }
       });
 
-      // 2. 創建交易記錄
+      // 2. 創建交易記錄（包含原始幣別和匯率）
       return tx.transaction.create({
         data: {
           userId,
@@ -108,7 +110,9 @@ export async function createTransaction(
           type,
           amount,
           category,
-          note: note || ''
+          note: note || '',
+          originalCurrency, // 儲存原始幣別
+          exchangeRate      // 儲存匯率快取
         }
       });
     });
@@ -120,7 +124,9 @@ export async function createTransaction(
         type,
         amount,
         category,
-        note: note || ''
+        note: note || '',
+        originalCurrency,
+        exchangeRate
       }
     });
   }

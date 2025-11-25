@@ -23,6 +23,7 @@ import {
 } from '../services/databaseService.js';
 import { getStockQuote } from '../services/stockService.js';
 import { calculateKelly, calculateMartingale, calculateReturn } from '../services/strategyService.js';
+import { predictExpenseCategory, predictIncomeCategory } from '../services/categoryPredictionService.js';
 import {
   createStockQuoteCard,
   createExpenseCategoryQuickReply,
@@ -85,15 +86,29 @@ export class WebhookController {
 
     switch (intent.type) {
       case 'EXPENSE':
-        // 支出 → 顯示分類選單
-        await this.client.pushMessage(lineUserId, createExpenseCategoryQuickReply(intent.amount));
-        await updateConversationState(lineUserId, 'WAITING_EXPENSE_CATEGORY', { amount: intent.amount });
+        // 支出 → 使用智能預測 + 顯示分類選單
+        try {
+          const predictedCategory = await predictExpenseCategory(userId, intent.amount);
+          await this.client.pushMessage(lineUserId, createExpenseCategoryQuickReply(intent.amount, predictedCategory));
+          await updateConversationState(lineUserId, 'WAITING_EXPENSE_CATEGORY', { amount: intent.amount });
+        } catch (error) {
+          console.error('預測分類失敗:', error);
+          await this.client.pushMessage(lineUserId, createExpenseCategoryQuickReply(intent.amount));
+          await updateConversationState(lineUserId, 'WAITING_EXPENSE_CATEGORY', { amount: intent.amount });
+        }
         break;
 
       case 'INCOME':
-        // 收入 → 顯示分類選單
-        await this.client.pushMessage(lineUserId, createIncomeCategoryQuickReply(intent.amount));
-        await updateConversationState(lineUserId, 'WAITING_INCOME_CATEGORY', { amount: intent.amount });
+        // 收入 → 使用智能預測 + 顯示分類選單
+        try {
+          const predictedCategory = await predictIncomeCategory(userId, intent.amount);
+          await this.client.pushMessage(lineUserId, createIncomeCategoryQuickReply(intent.amount, predictedCategory));
+          await updateConversationState(lineUserId, 'WAITING_INCOME_CATEGORY', { amount: intent.amount });
+        } catch (error) {
+          console.error('預測分類失敗:', error);
+          await this.client.pushMessage(lineUserId, createIncomeCategoryQuickReply(intent.amount));
+          await updateConversationState(lineUserId, 'WAITING_INCOME_CATEGORY', { amount: intent.amount });
+        }
         break;
 
       case 'STOCK_QUERY':
@@ -584,19 +599,71 @@ export class WebhookController {
       return;
     }
 
-    // 減少持倉
-    await reduceAsset(userId, symbol, quantity);
+    try {
+      // 判斷股票幣別
+      const stockCurrency = symbol.endsWith('.TW') || symbol.endsWith('.TWO') ? 'TWD' : 'USD';
 
-    // 計算獲利
-    const profit = (price - avgPrice) * quantity;
-    const profitPercent = ((price - avgPrice) / avgPrice) * 100;
+      // 取得用戶帳戶，找到對應幣別的證券帳戶
+      const accounts = await getUserAccounts(userId);
+      const targetAccount = accounts.find((acc: any) =>
+        acc.type === 'BROKERAGE' &&
+        acc.currency === stockCurrency &&
+        acc.isDefault
+      ) || accounts.find((acc: any) =>
+        acc.type === 'BROKERAGE' &&
+        acc.currency === stockCurrency
+      );
 
-    await clearConversationState(lineUserId);
+      if (!targetAccount) {
+        // 如果沒有對應帳戶，仍然允許賣出，但不更新餘額
+        console.warn(`⚠️ 用戶 ${userId} 賣出 ${symbol}，但沒有對應的 ${stockCurrency} 證券帳戶`);
+      }
 
-    await this.client.pushMessage(lineUserId, {
-      type: 'text',
-      text: `✅ 賣出成功！\n\n${symbol} x ${quantity} 股\n賣出價: $${price}\n平均成本: $${avgPrice}\n\n${profit >= 0 ? '獲利' : '虧損'}: $${Math.abs(profit).toFixed(2)} (${profitPercent >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%)`
-    });
+      // 計算賣出收入
+      const saleRevenue = price * quantity;
+
+      // 1. 減少持倉
+      await reduceAsset(userId, symbol, quantity);
+
+      // 2. 如果有目標帳戶，將賣出收入放回帳戶
+      if (targetAccount) {
+        await updateAccountBalance(targetAccount.id, saleRevenue, 'add');
+      }
+
+      // 3. 記錄交易
+      await createTransaction(
+        userId,
+        'income',
+        saleRevenue,
+        'investment',
+        `賣出 ${symbol} ${quantity}股 @ ${stockCurrency === 'TWD' ? 'NT$' : '$'}${price}`,
+        targetAccount?.id
+      );
+
+      // 計算獲利
+      const profit = (price - avgPrice) * quantity;
+      const profitPercent = ((price - avgPrice) / avgPrice) * 100;
+
+      await clearConversationState(lineUserId);
+
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: `✅ 賣出成功！\n\n` +
+          `${symbol} x ${quantity} 股\n` +
+          `賣出價: ${stockCurrency === 'TWD' ? 'NT$' : '$'}${price}\n` +
+          `平均成本: ${stockCurrency === 'TWD' ? 'NT$' : '$'}${avgPrice}\n` +
+          `賣出收入: ${stockCurrency === 'TWD' ? 'NT$' : '$'}${saleRevenue.toLocaleString()}\n\n` +
+          `${profit >= 0 ? '📈 獲利' : '📉 虧損'}: ${stockCurrency === 'TWD' ? 'NT$' : '$'}${Math.abs(profit).toFixed(2)} (${profitPercent >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%)` +
+          (targetAccount ? `\n\n💰 已入帳至：${targetAccount.name}` : '')
+      });
+    } catch (error) {
+      console.error('Sell stock error:', error);
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '賣出失敗，請稍後再試。'
+      });
+      await clearConversationState(lineUserId);
+    }
   }
 
   /**

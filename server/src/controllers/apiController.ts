@@ -214,27 +214,27 @@ export async function getSettings(req: Request, res: Response) {
 export async function createTransaction(req: Request, res: Response) {
   try {
     const { lineUserId } = req.params;
-    const { type, amount, category, note, accountId } = req.body;
+    const { type, amount, category, note, accountId, originalCurrency, exchangeRate } = req.body;
 
     // 驗證必填欄位
     if (!type || !amount || !category) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields: type, amount, category' 
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: type, amount, category'
       });
     }
 
     if (!['income', 'expense'].includes(type)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid transaction type' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid transaction type'
       });
     }
 
     if (amount <= 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Amount must be positive' 
+      return res.status(400).json({
+        success: false,
+        error: 'Amount must be positive'
       });
     }
 
@@ -245,7 +245,9 @@ export async function createTransaction(req: Request, res: Response) {
       amount,
       category,
       note,
-      accountId
+      accountId,
+      originalCurrency,  // 支援原始幣別
+      exchangeRate       // 支援匯率快取
     );
 
     res.json({
@@ -689,5 +691,72 @@ export async function searchStocksAPI(req: Request, res: Response) {
   } catch (error) {
     console.error('Error searching stocks:', error);
     res.status(500).json({ success: false, error: 'Failed to search stocks' });
+  }
+}
+
+/**
+ * ============================================================
+ * Exchange Rate API
+ * ============================================================
+ */
+
+/**
+ * GET /api/exchange-rates?base=USD
+ * 取得即時匯率（帶 1 小時快取）
+ */
+export async function getExchangeRatesAPI(req: Request, res: Response) {
+  try {
+    const { getExchangeRates } = await import('../services/exchangeRateService');
+    const baseCurrency = (req.query.base as string) || 'USD';
+
+    const rates = await getExchangeRates(baseCurrency);
+
+    res.json({
+      success: true,
+      data: {
+        base: baseCurrency,
+        rates,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching exchange rates:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch exchange rates' });
+  }
+}
+
+/**
+ * GET /api/exchange-rates/convert?from=USD&to=TWD&amount=100
+ * 轉換幣別
+ */
+export async function convertCurrencyAPI(req: Request, res: Response) {
+  try {
+    const { convertCurrency } = await import('../services/exchangeRateService');
+    const from = req.query.from as string;
+    const to = req.query.to as string;
+    const amount = parseFloat(req.query.amount as string);
+
+    if (!from || !to || isNaN(amount)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: from, to, amount'
+      });
+    }
+
+    const convertedAmount = await convertCurrency(amount, from, to);
+
+    res.json({
+      success: true,
+      data: {
+        from,
+        to,
+        originalAmount: amount,
+        convertedAmount,
+        rate: convertedAmount / amount
+      }
+    });
+  } catch (error) {
+    console.error('Error converting currency:', error);
+    res.status(500).json({ success: false, error: 'Failed to convert currency' });
   }
 }

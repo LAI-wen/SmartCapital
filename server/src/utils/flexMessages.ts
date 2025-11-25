@@ -191,18 +191,29 @@ export function createStockQuoteCard(
 /**
  * 生成記帳分類選單 (Quick Reply)
  */
-export function createExpenseCategoryQuickReply(amount: number) {
+export function createExpenseCategoryQuickReply(amount: number, predictedCategory?: string) {
   const categories = ['飲食', '交通', '居住', '娛樂', '購物', '醫療', '其他'];
+
+  // 如果有預測分類，將其移到第一位
+  let orderedCategories = [...categories];
+  if (predictedCategory && categories.includes(predictedCategory)) {
+    orderedCategories = [
+      predictedCategory,
+      ...categories.filter(c => c !== predictedCategory)
+    ];
+  }
 
   return {
     type: 'text' as const,
-    text: `請選擇支出類別 (金額: ${amount} 元)`,
+    text: predictedCategory
+      ? `💡 智能預測：${predictedCategory} (金額: ${amount} 元)\n請選擇類別或確認預測`
+      : `請選擇支出類別 (金額: ${amount} 元)`,
     quickReply: {
-      items: categories.map(category => ({
+      items: orderedCategories.map((category, index) => ({
         type: 'action' as const,
         action: {
           type: 'message' as const,
-          label: category,
+          label: index === 0 && predictedCategory === category ? `🎯 ${category}` : category,
           text: `${category} ${amount}`
         }
       }))
@@ -213,18 +224,29 @@ export function createExpenseCategoryQuickReply(amount: number) {
 /**
  * 生成收入分類選單 (Quick Reply)
  */
-export function createIncomeCategoryQuickReply(amount: number) {
+export function createIncomeCategoryQuickReply(amount: number, predictedCategory?: string) {
   const categories = ['薪資', '獎金', '股息', '投資獲利', '兼職', '其他'];
+
+  // 如果有預測分類，將其移到第一位
+  let orderedCategories = [...categories];
+  if (predictedCategory && categories.includes(predictedCategory)) {
+    orderedCategories = [
+      predictedCategory,
+      ...categories.filter(c => c !== predictedCategory)
+    ];
+  }
 
   return {
     type: 'text' as const,
-    text: `請選擇收入類別 (金額: ${amount} 元)`,
+    text: predictedCategory
+      ? `💡 智能預測：${predictedCategory} (金額: ${amount} 元)\n請選擇類別或確認預測`
+      : `請選擇收入類別 (金額: ${amount} 元)`,
     quickReply: {
-      items: categories.map(category => ({
+      items: orderedCategories.map((category, index) => ({
         type: 'action' as const,
         action: {
           type: 'message' as const,
-          label: category,
+          label: index === 0 && predictedCategory === category ? `🎯 ${category}` : category,
           text: `${category} ${amount}`
         }
       }))

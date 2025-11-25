@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Account } from '../types';
-import { getAccounts, createAccount, updateAccountBalance, deleteAccount, updateAccount } from '../services/api';
+import { getAccounts, createAccount, updateAccountBalance, deleteAccount, updateAccount, createTransfer } from '../services/api';
 import {
   Wallet, Building2, Landmark, Coins, Plus, Edit3,
-  Trash2, DollarSign, Check, X, AlertCircle
+  Trash2, DollarSign, Check, X, AlertCircle, ArrowRightLeft
 } from 'lucide-react';
 
 interface AccountManagementPageProps {
@@ -24,6 +24,14 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
   const [newAccountType, setNewAccountType] = useState<'CASH' | 'BANK' | 'BROKERAGE' | 'EXCHANGE'>('BANK');
   const [newAccountCurrency, setNewAccountCurrency] = useState<'TWD' | 'USD'>('TWD');
   const [newAccountBalance, setNewAccountBalance] = useState('');
+
+  // Transfer state
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferFromId, setTransferFromId] = useState('');
+  const [transferToId, setTransferToId] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferFee, setTransferFee] = useState('');
+  const [transferNote, setTransferNote] = useState('');
 
   useEffect(() => {
     loadAccounts();
@@ -149,6 +157,66 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
     }
   };
 
+  const handleTransfer = async () => {
+    const amount = parseFloat(transferAmount);
+    const fee = transferFee ? parseFloat(transferFee) : undefined;
+
+    // Validation
+    if (!transferFromId || !transferToId) {
+      alert('請選擇來源和目標帳戶');
+      return;
+    }
+
+    if (transferFromId === transferToId) {
+      alert('來源和目標帳戶不能相同');
+      return;
+    }
+
+    if (isNaN(amount) || amount <= 0) {
+      alert('請輸入有效的轉帳金額');
+      return;
+    }
+
+    const fromAccount = accounts.find(a => a.id === transferFromId);
+    if (!fromAccount) return;
+
+    // Check balance
+    const totalDeduction = fee ? amount + fee : amount;
+    if (fromAccount.balance < totalDeduction) {
+      alert(`餘額不足！可用餘額：${fromAccount.currency === 'TWD' ? 'NT$' : '$'}${fromAccount.balance.toLocaleString()}`);
+      return;
+    }
+
+    try {
+      const toAccount = accounts.find(a => a.id === transferToId);
+      const exchangeRate = fromAccount.currency !== toAccount?.currency ? 31.0 : undefined; // 簡單預設匯率
+
+      const transfer = await createTransfer({
+        fromAccountId: transferFromId,
+        toAccountId: transferToId,
+        amount,
+        exchangeRate,
+        fee,
+        note: transferNote || undefined
+      });
+
+      if (transfer) {
+        console.log('✅ 轉帳成功:', transfer);
+        await loadAccounts();
+        setIsTransferring(false);
+        setTransferFromId('');
+        setTransferToId('');
+        setTransferAmount('');
+        setTransferFee('');
+        setTransferNote('');
+        onAccountsUpdate?.();
+      }
+    } catch (error) {
+      console.error('❌ 轉帳失敗:', error);
+      alert('轉帳失敗，請重試');
+    }
+  };
+
   const getAccountIcon = (type: string) => {
     switch (type) {
       case 'CASH': return <Wallet size={24} />;
@@ -207,15 +275,132 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
         </div>
       </div>
 
-      {/* Add New Account Button */}
-      {!isCreating && (
-        <button
-          onClick={() => setIsCreating(true)}
-          className="w-full bg-white border-2 border-dashed border-stone-300 hover:border-morandi-blue rounded-2xl p-4 mb-6 flex items-center justify-center gap-2 text-morandi-blue font-bold transition-all hover:bg-morandi-blueLight/10"
-        >
-          <Plus size={20} />
-          新增帳戶
-        </button>
+      {/* Action Buttons */}
+      {!isCreating && !isTransferring && (
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <button
+            onClick={() => setIsCreating(true)}
+            className="bg-white border-2 border-dashed border-stone-300 hover:border-morandi-blue rounded-2xl p-4 flex items-center justify-center gap-2 text-morandi-blue font-bold transition-all hover:bg-morandi-blueLight/10"
+          >
+            <Plus size={20} />
+            新增帳戶
+          </button>
+          <button
+            onClick={() => setIsTransferring(true)}
+            disabled={accounts.length < 2}
+            className="bg-white border-2 border-dashed border-stone-300 hover:border-morandi-sage rounded-2xl p-4 flex items-center justify-center gap-2 text-morandi-sage font-bold transition-all hover:bg-green-50/50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ArrowRightLeft size={20} />
+            轉帳
+          </button>
+        </div>
+      )}
+
+      {/* Transfer Form */}
+      {isTransferring && (
+        <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-6 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-ink-900 font-serif flex items-center gap-2">
+              <ArrowRightLeft size={20} className="text-morandi-sage" />
+              帳戶轉帳
+            </h3>
+            <button onClick={() => setIsTransferring(false)} className="text-ink-400 hover:text-ink-900">
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {/* From Account */}
+            <div>
+              <label className="block text-xs font-bold text-ink-400 uppercase tracking-widest mb-2">從哪個帳戶</label>
+              <select
+                value={transferFromId}
+                onChange={e => setTransferFromId(e.target.value)}
+                className="w-full bg-paper border border-stone-200 px-4 py-3 rounded-xl text-sm font-bold text-ink-900 focus:outline-none focus:border-morandi-blue focus:ring-4 focus:ring-morandi-blue/10 transition"
+              >
+                <option value="">選擇來源帳戶</option>
+                {accounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name} ({acc.currency === 'TWD' ? 'NT$' : '$'}{acc.balance.toLocaleString()})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* To Account */}
+            <div>
+              <label className="block text-xs font-bold text-ink-400 uppercase tracking-widest mb-2">轉到哪個帳戶</label>
+              <select
+                value={transferToId}
+                onChange={e => setTransferToId(e.target.value)}
+                className="w-full bg-paper border border-stone-200 px-4 py-3 rounded-xl text-sm font-bold text-ink-900 focus:outline-none focus:border-morandi-blue focus:ring-4 focus:ring-morandi-blue/10 transition"
+              >
+                <option value="">選擇目標帳戶</option>
+                {accounts
+                  .filter(acc => acc.id !== transferFromId)
+                  .map(acc => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name} ({acc.currency})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Amount */}
+            <div>
+              <label className="block text-xs font-bold text-ink-400 uppercase tracking-widest mb-2">轉帳金額</label>
+              <input
+                type="number"
+                value={transferAmount}
+                onChange={e => setTransferAmount(e.target.value)}
+                placeholder="0"
+                className="w-full bg-paper border border-stone-200 px-4 py-3 rounded-xl text-sm font-bold text-ink-900 focus:outline-none focus:border-morandi-blue focus:ring-4 focus:ring-morandi-blue/10 transition"
+              />
+            </div>
+
+            {/* Fee (Optional) */}
+            <div>
+              <label className="block text-xs font-bold text-ink-400 uppercase tracking-widest mb-2">手續費 (選填)</label>
+              <input
+                type="number"
+                value={transferFee}
+                onChange={e => setTransferFee(e.target.value)}
+                placeholder="0"
+                className="w-full bg-paper border border-stone-200 px-4 py-3 rounded-xl text-sm font-bold text-ink-900 focus:outline-none focus:border-morandi-blue focus:ring-4 focus:ring-morandi-blue/10 transition"
+              />
+            </div>
+
+            {/* Note (Optional) */}
+            <div>
+              <label className="block text-xs font-bold text-ink-400 uppercase tracking-widest mb-2">備註 (選填)</label>
+              <input
+                type="text"
+                value={transferNote}
+                onChange={e => setTransferNote(e.target.value)}
+                placeholder="例如：換匯、資金調度"
+                className="w-full bg-paper border border-stone-200 px-4 py-3 rounded-xl text-sm font-bold text-ink-900 focus:outline-none focus:border-morandi-blue focus:ring-4 focus:ring-morandi-blue/10 transition"
+              />
+            </div>
+
+            {/* Cross-currency warning */}
+            {transferFromId && transferToId && accounts.find(a => a.id === transferFromId)?.currency !== accounts.find(a => a.id === transferToId)?.currency && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                <p className="text-xs text-amber-700">
+                  跨幣別轉帳會使用預設匯率 1 USD = 31 TWD。實際匯率可能不同。
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={handleTransfer}
+              className="w-full bg-morandi-sage text-white py-3 rounded-xl font-bold hover:bg-opacity-90 transition flex items-center justify-center gap-2"
+            >
+              <Check size={18} />
+              確認轉帳
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Create Account Form */}

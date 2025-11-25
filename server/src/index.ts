@@ -90,6 +90,10 @@ app.get('/api/transfers/:lineUserId', apiController.getTransfers);
 // 股票搜尋 API 端點
 app.get('/api/stocks/search', apiController.searchStocksAPI);
 
+// 匯率 API 端點
+app.get('/api/exchange-rates', apiController.getExchangeRatesAPI);
+app.get('/api/exchange-rates/convert', apiController.convertCurrencyAPI);
+
 // LINE Webhook 端點
 app.post('/webhook', middleware(middlewareConfig), async (req: Request, res: Response) => {
   const events: WebhookEvent[] = req.body.events;
