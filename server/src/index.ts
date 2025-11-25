@@ -65,6 +65,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // REST API 端點（供前端使用）
 app.get('/api/user/:lineUserId', apiController.getUser);
 app.get('/api/assets/:lineUserId', apiController.getAssets);
+app.post('/api/assets/:lineUserId/upsert', apiController.upsertAssetAPI);
+app.post('/api/assets/:lineUserId/reduce', apiController.reduceAssetAPI);
 app.get('/api/transactions/:lineUserId', apiController.getTransactions);
 app.post('/api/transactions/:lineUserId', apiController.createTransaction);
 app.delete('/api/transactions/:transactionId', apiController.deleteTransaction);

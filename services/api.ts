@@ -202,6 +202,78 @@ export async function markAllNotificationsAsRead(userId: string): Promise<boolea
 /**
  * 新增交易記錄（更新版：支援 accountId）
  */
+/**
+ * 新增或更新資產持倉（買入股票）
+ */
+export async function upsertAsset(
+  symbol: string,
+  name: string,
+  type: string,
+  quantity: number,
+  avgPrice: number,
+  currency?: string
+): Promise<Asset | null> {
+  try {
+    const userId = getUserId();
+    console.log('📊 Upserting asset for user:', userId, symbol, quantity, '@', avgPrice);
+
+    const response = await fetch(`${API_BASE_URL}/api/assets/${userId}/upsert`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ symbol, name, type, quantity, avgPrice, currency }),
+    });
+
+    const result: ApiResponse<Asset> = await response.json();
+
+    if (!result.success) {
+      console.error('❌ Upsert asset failed:', result.error);
+      return null;
+    }
+
+    console.log('✅ Asset upserted:', result.data);
+    return result.data;
+  } catch (error) {
+    console.error('❌ Upsert asset error:', error);
+    return null;
+  }
+}
+
+/**
+ * 減少資產持倉（賣出股票）
+ */
+export async function reduceAsset(
+  symbol: string,
+  quantity: number
+): Promise<Asset | null> {
+  try {
+    const userId = getUserId();
+    console.log('📉 Reducing asset for user:', userId, symbol, quantity);
+
+    const response = await fetch(`${API_BASE_URL}/api/assets/${userId}/reduce`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ symbol, quantity }),
+    });
+
+    const result: ApiResponse<Asset> = await response.json();
+
+    if (!result.success) {
+      console.error('❌ Reduce asset failed:', result.error);
+      return null;
+    }
+
+    console.log('✅ Asset reduced:', result.data);
+    return result.data;
+  } catch (error) {
+    console.error('❌ Reduce asset error:', error);
+    return null;
+  }
+}
+
 export async function createTransaction(
   type: 'income' | 'expense',
   amount: number,

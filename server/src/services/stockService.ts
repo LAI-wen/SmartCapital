@@ -113,22 +113,22 @@ export function isValidStockSymbol(text: string): boolean {
  */
 export function formatTaiwanStockSymbol(input: string): string {
   const clean = input.trim().toUpperCase();
-  
+
   // 如果已經有後綴，直接返回
   if (clean.includes('.')) {
     return clean;
   }
-  
+
   // 台股上市股票：4 位數字（2330, 2454）
   if (/^\d{4}$/.test(clean)) {
     return `${clean}.TW`;
   }
-  
-  // 台股 ETF：0 開頭的 4 位數字（0050, 0056）
-  if (/^0\d{3}$/.test(clean)) {
+
+  // 台股 ETF：0 開頭的 4 或 5 位數字（0050, 0056, 00878, 00919）
+  if (/^0\d{3,4}$/.test(clean)) {
     return `${clean}.TW`;
   }
-  
+
   // 美股或其他：保持原樣（AAPL, TSLA, BTC-USD）
   return clean;
 }

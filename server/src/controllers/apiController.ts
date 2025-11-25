@@ -97,6 +97,68 @@ export async function getAssets(req: Request, res: Response) {
 }
 
 /**
+ * POST /api/assets/:lineUserId/upsert
+ * 新增或更新資產持倉
+ */
+export async function upsertAssetAPI(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const { symbol, name, type, quantity, avgPrice, currency } = req.body;
+
+    if (!symbol || !name || !type || quantity === undefined || avgPrice === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: symbol, name, type, quantity, avgPrice'
+      });
+    }
+
+    const user = await getOrCreateUser(lineUserId);
+    const asset = await import('../services/databaseService.js').then(m =>
+      m.upsertAsset(user.id, symbol, name, type, quantity, avgPrice, currency)
+    );
+
+    res.json({
+      success: true,
+      data: asset
+    });
+  } catch (error) {
+    console.error('Error upserting asset:', error);
+    res.status(500).json({ success: false, error: 'Failed to upsert asset' });
+  }
+}
+
+/**
+ * POST /api/assets/:lineUserId/reduce
+ * 減少資產持倉（賣出）
+ */
+export async function reduceAssetAPI(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const { symbol, quantity } = req.body;
+
+    if (!symbol || quantity === undefined || quantity <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: symbol, quantity (must be > 0)'
+      });
+    }
+
+    const user = await getOrCreateUser(lineUserId);
+    const asset = await import('../services/databaseService.js').then(m =>
+      m.reduceAsset(user.id, symbol, quantity)
+    );
+
+    res.json({
+      success: true,
+      data: asset
+    });
+  } catch (error) {
+    console.error('Error reducing asset:', error);
+    res.status(500).json({ success: false, error: 'Failed to reduce asset' });
+  }
+}
+
+/**
  * GET /api/transactions/:lineUserId
  * 取得用戶交易記錄
  */

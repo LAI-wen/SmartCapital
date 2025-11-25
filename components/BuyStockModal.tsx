@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Asset, Account, Currency } from '../types';
 import { MOCK_EXCHANGE_RATE } from '../constants';
 import { X, Search, PlusCircle, MinusCircle, Wallet, AlertCircle, Info, Loader2 } from 'lucide-react';
-import { createTransaction, searchStocks, StockSearchResult } from '../services/api';
+import { createTransaction, upsertAsset, reduceAsset, searchStocks, StockSearchResult } from '../services/api';
 
 interface BuyStockModalProps {
   isOpen: boolean;
@@ -132,9 +132,12 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
 
   const handleSubmit = async () => {
     if (!selectedStock || !quantity || !price || !selectedAccountId) return;
-    
+
     try {
-      // Call real API to create transaction
+      const qty = parseFloat(quantity);
+      const priceNum = parseFloat(price);
+
+      // 1. Create transaction record
       await createTransaction(
         mode === 'buy' ? 'expense' : 'income',
         finalCost,
@@ -144,17 +147,36 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
         selectedAccountId
       );
 
-      // Also call the parent callback for optimistic UI update
+      // 2. Update asset holdings in database
+      if (mode === 'buy') {
+        // Buy: upsert asset
+        await upsertAsset(
+          selectedStock.symbol,
+          selectedStock.name,
+          'Stock', // Default type
+          qty,
+          priceNum,
+          selectedStock.currency
+        );
+      } else {
+        // Sell: reduce asset
+        await reduceAsset(
+          selectedStock.symbol,
+          qty
+        );
+      }
+
+      // 3. Call parent callback for optimistic UI update
       onConfirm({
         symbol: selectedStock.symbol,
         name: selectedStock.name,
-        price: parseFloat(price),
-        quantity: parseFloat(quantity),
+        price: priceNum,
+        quantity: qty,
         date,
         type: mode,
         currency: selectedStock.currency
       }, selectedAccountId);
-      
+
       onClose();
     } catch (error) {
       console.error('Failed to create transaction:', error);
