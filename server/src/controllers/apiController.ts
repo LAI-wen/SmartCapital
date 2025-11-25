@@ -22,6 +22,7 @@ import {
   createTransfer,
   getUserTransfers,
   importAsset,
+  upsertAsset,
   prisma
 } from '../services/databaseService.js';
 import { getStockQuote, searchStocks } from '../services/stockService.js';

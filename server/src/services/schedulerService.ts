@@ -55,7 +55,7 @@ export function startScheduler(lineClient: Client) {
 /**
  * 停止所有排程任務
  */
-export function stopScheduler(tasks: { priceCheckTask: cron.ScheduledTask, dailySummaryTask: cron.ScheduledTask }) {
+export function stopScheduler(tasks: { priceCheckTask: any, dailySummaryTask: any }) {
   console.log('🛑 停止排程服務...');
   tasks.priceCheckTask.stop();
   tasks.dailySummaryTask.stop();
