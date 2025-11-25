@@ -31,6 +31,7 @@ model User {
   transfers    Transfer[]     // 新增：轉帳記錄
   settings     UserSettings?
   notifications Notification[]
+  priceAlerts  PriceAlert[]   // 新增：價格警示
 
   @@map("users")
 }
@@ -192,4 +193,43 @@ model Notification {
 
   @@index([userId, read, createdAt])
   @@map("notifications")
+}
+
+// 價格警示表 - 儲存用戶設定的股票價格警示
+model PriceAlert {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  symbol        String   // 股票代號 (2330.TW, TSLA, etc.)
+  name          String?  // 股票名稱
+
+  // 警示類型
+  // DAILY_CHANGE: 單日漲跌超過 X%
+  // PROFIT_LOSS: 累計獲利/虧損超過 X%
+  // STOP_PROFIT: 停利點
+  // STOP_LOSS: 停損點
+  // TARGET_PRICE: 目標價
+  alertType     String
+
+  // 條件設定
+  threshold     Float?   // 百分比閾值 (例如 5.0 代表 5%)
+  targetPrice   Float?   // 目標價格
+  direction     String?  // "UP" | "DOWN" | "BOTH" (for DAILY_CHANGE)
+
+  // 參考價格（用於計算累計獲利/虧損）
+  referencePrice Float?  // 買入均價
+
+  // 狀態
+  isActive      Boolean  @default(true)
+  lastTriggered DateTime?
+  triggerCount  Int      @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([symbol])
+  @@index([userId, symbol, isActive])
+  @@map("price_alerts")
 }

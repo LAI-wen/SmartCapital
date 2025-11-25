@@ -9,6 +9,7 @@ import dotenv from 'dotenv';
 import { WebhookController } from './controllers/webhookController.js';
 import { disconnectDatabase } from './services/databaseService.js';
 import * as apiController from './controllers/apiController.js';
+import { startScheduler } from './services/schedulerService.js';
 
 // 載入環境變數
 dotenv.config();
@@ -96,6 +97,13 @@ app.get('/api/stocks/search', apiController.searchStocksAPI);
 // 匯率 API 端點
 app.get('/api/exchange-rates', apiController.getExchangeRatesAPI);
 app.get('/api/exchange-rates/convert', apiController.convertCurrencyAPI);
+
+// 價格警示 API 端點
+app.get('/api/price-alerts/:lineUserId', apiController.getPriceAlerts);
+app.post('/api/price-alerts/:lineUserId', apiController.createPriceAlertAPI);
+app.post('/api/price-alerts/:lineUserId/create-defaults', apiController.createDefaultAlertsAPI);
+app.patch('/api/price-alerts/:alertId', apiController.updatePriceAlertAPI);
+app.delete('/api/price-alerts/:alertId', apiController.deletePriceAlertAPI);
 
 // LINE Webhook 端點
 app.post('/webhook', middleware(middlewareConfig), async (req: Request, res: Response) => {
@@ -199,6 +207,14 @@ const server = app.listen(PORT, () => {
 
 ✨ Ready to receive LINE messages!
   `);
+
+  // 啟動排程服務
+  try {
+    const schedulerTasks = startScheduler(client); // 傳遞 LINE Client
+    console.log('⏰ 排程服務已啟動');
+  } catch (error) {
+    console.error('❌ 排程服務啟動失敗:', error);
+  }
 });
 
 // 優雅關閉

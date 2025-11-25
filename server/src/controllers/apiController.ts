@@ -114,9 +114,7 @@ export async function upsertAssetAPI(req: Request, res: Response) {
     }
 
     const user = await getOrCreateUser(lineUserId);
-    const asset = await import('../services/databaseService.js').then(m =>
-      m.upsertAsset(user.id, symbol, name, type, quantity, avgPrice, currency)
-    );
+    const asset = await upsertAsset(user.id, symbol, name, type, quantity, avgPrice, currency);
 
     res.json({
       success: true,
@@ -868,5 +866,149 @@ export async function convertCurrencyAPI(req: Request, res: Response) {
   } catch (error) {
     console.error('Error converting currency:', error);
     res.status(500).json({ success: false, error: 'Failed to convert currency' });
+  }
+}
+
+/**
+ * ============================================================
+ * Price Alert Endpoints
+ * ============================================================
+ */
+
+/**
+ * GET /api/price-alerts/:lineUserId
+ * 取得用戶所有價格警示
+ */
+export async function getPriceAlerts(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const user = await getOrCreateUser(lineUserId);
+
+    const { getUserAlerts } = await import('../services/priceAlertService');
+    const alerts = await getUserAlerts(user.id);
+
+    res.json({
+      success: true,
+      data: alerts
+    });
+  } catch (error) {
+    console.error('Error fetching price alerts:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch price alerts' });
+  }
+}
+
+/**
+ * POST /api/price-alerts/:lineUserId
+ * 建立新的價格警示
+ */
+export async function createPriceAlertAPI(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const { symbol, name, alertType, threshold, targetPrice, direction, referencePrice } = req.body;
+
+    if (!symbol || !alertType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: symbol, alertType'
+      });
+    }
+
+    const user = await getOrCreateUser(lineUserId);
+
+    const { createPriceAlert } = await import('../services/priceAlertService');
+    const alert = await createPriceAlert(user.id, {
+      symbol,
+      name,
+      alertType,
+      threshold,
+      targetPrice,
+      direction,
+      referencePrice
+    });
+
+    res.json({
+      success: true,
+      data: alert
+    });
+  } catch (error) {
+    console.error('Error creating price alert:', error);
+    const message = error instanceof Error ? error.message : 'Failed to create price alert';
+    res.status(400).json({ success: false, error: message });
+  }
+}
+
+/**
+ * PATCH /api/price-alerts/:alertId
+ * 更新警示狀態（啟用/停用）
+ */
+export async function updatePriceAlertAPI(req: Request, res: Response) {
+  try {
+    const { alertId } = req.params;
+    const { isActive } = req.body;
+
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'isActive must be a boolean'
+      });
+    }
+
+    const { updateAlertStatus } = await import('../services/priceAlertService');
+    const alert = await updateAlertStatus(alertId, isActive);
+
+    res.json({
+      success: true,
+      data: alert
+    });
+  } catch (error) {
+    console.error('Error updating price alert:', error);
+    res.status(500).json({ success: false, error: 'Failed to update price alert' });
+  }
+}
+
+/**
+ * DELETE /api/price-alerts/:alertId
+ * 刪除警示
+ */
+export async function deletePriceAlertAPI(req: Request, res: Response) {
+  try {
+    const { alertId } = req.params;
+
+    const { deleteAlert } = await import('../services/priceAlertService');
+    await deleteAlert(alertId);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting price alert:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete price alert' });
+  }
+}
+
+/**
+ * POST /api/price-alerts/:lineUserId/create-defaults
+ * 為所有持倉建立預設警示
+ */
+export async function createDefaultAlertsAPI(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const { dailyChangeThreshold, profitThreshold, lossThreshold } = req.body;
+
+    const user = await getOrCreateUser(lineUserId);
+
+    const { createDefaultAlertsForAllAssets } = await import('../services/priceAlertService');
+    const alerts = await createDefaultAlertsForAllAssets(
+      user.id,
+      dailyChangeThreshold || 5,
+      profitThreshold || 10,
+      lossThreshold || 10
+    );
+
+    res.json({
+      success: true,
+      data: alerts
+    });
+  } catch (error) {
+    console.error('Error creating default alerts:', error);
+    res.status(500).json({ success: false, error: 'Failed to create default alerts' });
   }
 }

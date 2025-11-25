@@ -28,9 +28,11 @@
     "axios": "^1.7.9",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
+    "@types/node-cron": "^3.0.11",
     "prisma": "^5.22.0",
     "tsx": "^4.19.2",
     "typescript": "^5.8.2"

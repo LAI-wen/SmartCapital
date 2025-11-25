@@ -161,7 +161,6 @@ export class WebhookController {
         break;
 
       case 'LEDGER':
-      case 'BOOKKEEPING':
         await this.handleLedgerLink(lineUserId);
         break;
 
