@@ -593,3 +593,136 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
     return [];
   }
 }
+
+/**
+ * ============================================================
+ * Price Alert API
+ * ============================================================
+ */
+
+export type AlertType = 'DAILY_CHANGE' | 'PROFIT_LOSS' | 'STOP_PROFIT' | 'STOP_LOSS' | 'TARGET_PRICE';
+export type AlertDirection = 'UP' | 'DOWN' | 'BOTH';
+
+export interface PriceAlert {
+  id: string;
+  userId: string;
+  symbol: string;
+  name?: string;
+  alertType: AlertType;
+  threshold?: number;
+  targetPrice?: number;
+  direction?: AlertDirection;
+  referencePrice?: number;
+  isActive: boolean;
+  lastTriggered?: string;
+  triggerCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePriceAlertInput {
+  symbol: string;
+  name?: string;
+  alertType: AlertType;
+  threshold?: number;
+  targetPrice?: number;
+  direction?: AlertDirection;
+  referencePrice?: number;
+}
+
+/**
+ * 取得用戶所有價格警示
+ */
+export async function getPriceAlerts(): Promise<PriceAlert[]> {
+  try {
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/price-alerts/${userId}`);
+    const result: ApiResponse<PriceAlert[]> = await response.json();
+    return result.success ? result.data || [] : [];
+  } catch (error) {
+    console.error('Failed to fetch price alerts:', error);
+    return [];
+  }
+}
+
+/**
+ * 建立價格警示
+ */
+export async function createPriceAlert(input: CreatePriceAlertInput): Promise<PriceAlert | null> {
+  try {
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/price-alerts/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    });
+    const result: ApiResponse<PriceAlert> = await response.json();
+    return result.success ? result.data || null : null;
+  } catch (error) {
+    console.error('Failed to create price alert:', error);
+    return null;
+  }
+}
+
+/**
+ * 更新價格警示狀態
+ */
+export async function updatePriceAlert(alertId: string, isActive: boolean): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/price-alerts/${alertId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ isActive }),
+    });
+    const result: ApiResponse<PriceAlert> = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Failed to update price alert:', error);
+    return false;
+  }
+}
+
+/**
+ * 刪除價格警示
+ */
+export async function deletePriceAlert(alertId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/price-alerts/${alertId}`, {
+      method: 'DELETE',
+    });
+    const result: ApiResponse<void> = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Failed to delete price alert:', error);
+    return false;
+  }
+}
+
+/**
+ * 為所有持倉建立預設警示
+ */
+export async function createDefaultAlerts(
+  dailyChangeThreshold = 5,
+  profitThreshold = 10,
+  lossThreshold = 10
+): Promise<boolean> {
+  try {
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/price-alerts/${userId}/create-defaults`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ dailyChangeThreshold, profitThreshold, lossThreshold }),
+    });
+    const result: ApiResponse<PriceAlert[]> = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Failed to create default alerts:', error);
+    return false;
+  }
+}

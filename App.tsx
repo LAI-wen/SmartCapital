@@ -13,6 +13,7 @@ import HelpPage from './components/HelpPage';
 import WelcomePage from './components/WelcomePage';
 import OnboardingModal from './components/OnboardingModal';
 import AccountManagementPage from './components/AccountManagementPage';
+import PriceAlertsPage from './components/PriceAlertsPage';
 import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification, Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets } from './services/api';
@@ -227,6 +228,7 @@ const AppContent: React.FC = () => {
       case '/settings': return '系統設定';
       case '/help': return '使用指南';
       case '/account-management': return '帳戶管理';
+      case '/price-alerts': return '價格警示';
       default: return '智投手帳';
     }
   };
@@ -392,6 +394,10 @@ const AppContent: React.FC = () => {
                     }}
                   />
                 }
+              />
+              <Route
+                path="/price-alerts"
+                element={<PriceAlertsPage assets={assets} />}
               />
             </Routes>
           </div>

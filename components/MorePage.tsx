@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Calculator, Settings, Shield, ChevronRight,
   MessageCircle, FileText, PieChart, HelpCircle,
-  LogOut, Wallet
+  LogOut, Wallet, Bell
 } from 'lucide-react';
 
 interface MorePageProps {
@@ -19,19 +19,26 @@ const MorePage: React.FC<MorePageProps> = ({ onLogout, authMode }) => {
     {
       title: "策略工具",
       items: [
-        { 
-          label: "策略實驗室", 
-          icon: <Calculator size={20} />, 
-          desc: "凱利公式、馬丁格爾、網格交易", 
+        {
+          label: "策略實驗室",
+          icon: <Calculator size={20} />,
+          desc: "凱利公式、馬丁格爾、網格交易",
           action: () => navigate('/strategy'),
           color: "bg-morandi-blueLight text-morandi-blue"
         },
-        { 
-          label: "數據分析", 
-          icon: <PieChart size={20} />, 
-          desc: "資產報告、收支趨勢", 
+        {
+          label: "數據分析",
+          icon: <PieChart size={20} />,
+          desc: "資產報告、收支趨勢",
           action: () => navigate('/analytics'),
           color: "bg-morandi-sageLight text-morandi-sage"
+        },
+        {
+          label: "價格警示",
+          icon: <Bell size={20} />,
+          desc: "設定股票漲跌提醒、停利停損",
+          action: () => navigate('/price-alerts'),
+          color: "bg-yellow-100 text-yellow-700"
         }
       ]
     },
