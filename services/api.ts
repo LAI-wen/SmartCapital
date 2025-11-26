@@ -394,7 +394,8 @@ interface Transfer {
  */
 export async function getAccounts(): Promise<Account[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/accounts/${currentUserId}`);
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/accounts/${userId}`);
     const result: ApiResponse<Account[]> = await response.json();
     return result.success ? result.data || [] : [];
   } catch (error) {
@@ -415,7 +416,8 @@ export async function createAccount(accountData: {
   isSub?: boolean;
 }): Promise<Account | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/accounts/${currentUserId}`, {
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/accounts/${userId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -505,7 +507,8 @@ export async function createTransfer(transferData: {
   note?: string;
 }): Promise<Transfer | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/transfers/${currentUserId}`, {
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/transfers/${userId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -525,7 +528,8 @@ export async function createTransfer(transferData: {
  */
 export async function getTransfers(limit = 20): Promise<Transfer[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/transfers/${currentUserId}?limit=${limit}`);
+    const userId = getUserId();
+    const response = await fetch(`${API_BASE_URL}/api/transfers/${userId}?limit=${limit}`);
     const result: ApiResponse<Transfer[]> = await response.json();
     return result.success ? result.data || [] : [];
   } catch (error) {
