@@ -82,9 +82,10 @@ const AppContent: React.FC = () => {
       // 載入帳戶
       setIsLoadingAccounts(true);
       try {
+        console.log('🔍 [App] 開始載入帳戶，當前 lineUserId:', lineUserId);
         const fetchedAccounts = await getAccounts();
         setAccounts(fetchedAccounts);
-        console.log('✅ 已載入帳戶:', fetchedAccounts.length, '個帳戶');
+        console.log('✅ 已載入帳戶:', fetchedAccounts.length, '個帳戶', fetchedAccounts);
 
         // 🎯 檢查是否需要顯示首次登入引導
         if (fetchedAccounts.length === 0 && !localStorage.getItem('onboardingCompleted')) {

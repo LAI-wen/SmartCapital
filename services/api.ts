@@ -547,6 +547,7 @@ export function getUserId(): string {
   // 優先從 localStorage 讀取（LIFF 登入後會儲存）
   const storedUserId = localStorage.getItem('lineUserId');
   if (storedUserId) {
+    console.log('🔍 [getUserId] 從 localStorage 取得:', storedUserId);
     return storedUserId;
   }
 
@@ -554,10 +555,12 @@ export function getUserId(): string {
   const params = new URLSearchParams(window.location.search);
   const userIdFromUrl = params.get('userId');
   if (userIdFromUrl) {
+    console.log('🔍 [getUserId] 從 URL 參數取得:', userIdFromUrl);
     return userIdFromUrl;
   }
 
   // 最後才用 mock ID（本地測試）
+  console.log('🔍 [getUserId] 使用 Mock ID:', currentUserId);
   return currentUserId;
 }
 
