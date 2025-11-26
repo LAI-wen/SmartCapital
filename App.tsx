@@ -16,7 +16,7 @@ import AccountManagementPage from './components/AccountManagementPage';
 import PriceAlertsPage from './components/PriceAlertsPage';
 import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification, Asset, Account, InvestmentScope } from './types';
-import { getAccounts, getAssets as fetchAssets } from './services/api';
+import { getAccounts, getAssets as fetchAssets, createAccount } from './services/api';
 import { useLiff } from './contexts/LiffContext';
 
 const AppContent: React.FC = () => {
@@ -92,10 +92,27 @@ const AppContent: React.FC = () => {
         setAccounts(fetchedAccounts);
         console.log('✅ 已載入帳戶:', fetchedAccounts.length, '個帳戶', fetchedAccounts);
 
-        // 🎯 檢查是否需要顯示首次登入引導
-        if (fetchedAccounts.length === 0 && !localStorage.getItem('onboardingCompleted')) {
-          console.log('🎉 首次登入，顯示引導');
-          setShowOnboarding(true);
+        // 🎯 首次登入自動創建預設現金帳戶
+        if (fetchedAccounts.length === 0 && !localStorage.getItem('defaultAccountCreated')) {
+          console.log('🎉 首次登入，自動創建預設現金帳戶');
+          try {
+            const defaultAccount = await createAccount({
+              name: '現金',
+              type: 'CASH',
+              currency: 'TWD',
+              balance: 0,
+              isDefault: true,
+              isSub: false
+            });
+
+            if (defaultAccount) {
+              console.log('✅ 預設現金帳戶創建成功:', defaultAccount);
+              setAccounts([defaultAccount]);
+              localStorage.setItem('defaultAccountCreated', 'true');
+            }
+          } catch (error) {
+            console.error('❌ 創建預設帳戶失敗:', error);
+          }
         }
       } catch (error) {
         console.error('❌ 載入帳戶失敗:', error);
@@ -143,6 +160,7 @@ const AppContent: React.FC = () => {
     localStorage.removeItem('lineUserId');
     localStorage.removeItem('displayName');
     localStorage.removeItem('onboardingCompleted');
+    localStorage.removeItem('defaultAccountCreated');
     setAuthMode('guest');
     setShowWelcome(true);
     setShowOnboarding(false);

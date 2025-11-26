@@ -49,7 +49,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onComplete, onSkip })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/70 backdrop-blur-sm animate-fade-in p-4">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-slide-up max-h-[90vh] flex flex-col">
 
         {/* Header */}
         <div className="bg-gradient-to-r from-morandi-blue to-morandi-sage p-6 text-white relative">
@@ -68,7 +68,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onComplete, onSkip })
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {step === 1 && (
             <div className="space-y-6">
               <div>
