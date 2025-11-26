@@ -44,14 +44,19 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
   // 1. Filter Available Accounts logic
   const availableAccounts = useMemo(() => {
     if (!selectedStock) return [];
+
+    // 賣出時：可以選擇任何帳戶作為入帳帳戶
+    if (mode === 'sell') return accounts;
+
+    // 買入/導入時：需要根據股票貨幣篩選
     return accounts.filter(acc => {
       // 1. If stock is TWD, can only use TWD accounts
       if (selectedStock.currency === 'TWD') return acc.currency === 'TWD';
       // 2. If stock is USD, can use USD OR TWD accounts (Sub-brokerage)
-      if (selectedStock.currency === 'USD') return true; 
+      if (selectedStock.currency === 'USD') return true;
       return false;
     });
-  }, [accounts, selectedStock]);
+  }, [accounts, selectedStock, mode]);
 
   // Reset state when opening
   useEffect(() => {

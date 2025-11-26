@@ -77,7 +77,12 @@ const AppContent: React.FC = () => {
   // 🔥 Load accounts and assets from API on mount (等認證完成後才載入)
   useEffect(() => {
     const loadData = async () => {
-      if (!isLiffReady || showWelcome) return;
+      if (!isLiffReady || showWelcome) {
+        // 如果還沒準備好，先設為不載入，避免卡在載入畫面
+        setIsLoadingAccounts(false);
+        setIsLoadingAssets(false);
+        return;
+      }
 
       // 載入帳戶
       setIsLoadingAccounts(true);
