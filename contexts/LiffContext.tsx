@@ -81,8 +81,35 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
           return;
         }
 
-        // 已登入，獲取用戶資料
+        // ✅ 已登入，從 LIFF 獲取最新的用戶資料（不信任 localStorage）
         const profile = await liff.getProfile();
+
+        console.log('🔍 LIFF 登入資訊:', {
+          userId: profile.userId,
+          displayName: profile.displayName,
+          pictureUrl: profile.pictureUrl,
+          statusMessage: profile.statusMessage
+        });
+
+        // 🔍 檢查是否與 localStorage 中的用戶不同
+        const storedUserId = localStorage.getItem('lineUserId');
+        const storedDisplayName = localStorage.getItem('displayName');
+
+        console.log('📦 localStorage 資訊:', {
+          storedUserId,
+          storedDisplayName,
+          isSameUser: storedUserId === profile.userId
+        });
+
+        if (storedUserId && storedUserId !== profile.userId) {
+          console.warn('⚠️ 檢測到不同用戶登入！');
+          console.warn('   舊用戶:', storedUserId, storedDisplayName);
+          console.warn('   新用戶:', profile.userId, profile.displayName);
+          console.warn('   🧹 清除舊用戶的所有資料...');
+          // 清除舊用戶的所有資料
+          localStorage.clear();
+        }
+
         setLineUserId(profile.userId);
         setDisplayName(profile.displayName);
         setPictureUrl(profile.pictureUrl || null);
@@ -92,12 +119,12 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
         localStorage.setItem('lineUserId', profile.userId);
         localStorage.setItem('displayName', profile.displayName);
 
-        console.log('LIFF initialized successfully', {
+        console.log('✅ LIFF 初始化成功 - 當前用戶:', {
           userId: profile.userId,
           displayName: profile.displayName,
         });
       } catch (err) {
-        console.error('LIFF initialization failed', err);
+        console.error('❌ LIFF 初始化失敗', err);
         setError(err instanceof Error ? err.message : 'LIFF 初始化失敗');
         setIsLiffReady(true);
       }
