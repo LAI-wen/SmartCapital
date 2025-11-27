@@ -3,7 +3,8 @@
     "allow": [
       "Bash(find:*)",
       "Bash(mkdir:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

@@ -21,11 +21,11 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ asset, isOpen, onCl
   // --- Helpers ---
   const formatCurrency = (val: number, isTotal = false) => {
     if (isPrivacyMode) return '••••••';
-    return new Intl.NumberFormat('en-US', { 
-      style: 'currency', 
-      currency: 'USD', 
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: asset?.currency || 'USD',
       minimumFractionDigits: isTotal ? 0 : 2,
-      maximumFractionDigits: 2 
+      maximumFractionDigits: 2
     }).format(val);
   };
 
@@ -43,13 +43,16 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ asset, isOpen, onCl
 
   // Create smooth chart data with mocked dates
   const chartData = useMemo(() => {
+    if (!asset || !asset.history || asset.history.length === 0) {
+      return [];
+    }
     const today = new Date();
     return asset.history.map((val, idx) => {
       // Assuming history is chronological (oldest to newest)
       // We simulate dates backwards from today
       const date = new Date(today);
       date.setDate(today.getDate() - (asset.history.length - 1 - idx));
-      
+
       return {
         dateStr: format(date, 'MM/dd'),
         fullDate: format(date, 'yyyy-MM-dd'),
@@ -156,6 +159,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ asset, isOpen, onCl
                 <Calendar size={16} className="text-ink-400"/> 價格走勢
               </h3>
               <div className="h-64 w-full bg-white rounded-2xl border border-stone-100 p-4 shadow-sm relative">
+                {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                     <defs>
@@ -214,17 +218,22 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ asset, isOpen, onCl
                       }} 
                     />
                     
-                    <Area 
-                      type="monotone" 
-                      dataKey="price" 
-                      stroke={asset.change24h >= 0 ? COLORS.profit : COLORS.loss} 
+                    <Area
+                      type="monotone"
+                      dataKey="price"
+                      stroke={asset.change24h >= 0 ? COLORS.profit : COLORS.loss}
                       strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorPrice)" 
+                      fillOpacity={1}
+                      fill="url(#colorPrice)"
                       animationDuration={1000}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <p className="text-sm text-ink-400 font-serif">暫無歷史數據</p>
+                  </div>
+                )}
               </div>
               <p className="text-[10px] text-center text-stone-300 mt-2 font-serif">
                 虛線表示您的平均持有成本 ({formatCurrency(asset.avgPrice)})
