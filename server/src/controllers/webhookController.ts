@@ -804,7 +804,7 @@ export class WebhookController {
 
     // 獲取 LIFF URL
     const liffId = process.env.LIFF_ID;
-    const liffUrl = liffId ? `https://liff.line.me/${liffId}` : undefined;
+    const liffUrl = liffId ? `https://liff.line.me/${liffId}#/ledger` : undefined;
 
     // 發送卡片
     const card = createTransactionSuccessCard({
@@ -867,7 +867,7 @@ export class WebhookController {
 
     // 獲取 LIFF URL
     const liffId = process.env.LIFF_ID;
-    const liffUrl = liffId ? `https://liff.line.me/${liffId}` : undefined;
+    const liffUrl = liffId ? `https://liff.line.me/${liffId}#/ledger` : undefined;
 
     // 發送卡片
     const card = createTransactionSuccessCard({
@@ -1104,9 +1104,10 @@ export class WebhookController {
    */
   private async handleWebsiteLink(lineUserId: string): Promise<void> {
     // 優先使用 LIFF URL（生產環境），回退到 FRONTEND_URL（開發環境）
+    // 導向資產主頁 (Dashboard)
     const liffId = process.env.LIFF_ID;
     const webUrl = liffId
-      ? `https://liff.line.me/${liffId}`
+      ? `https://liff.line.me/${liffId}#/`
       : `${process.env.FRONTEND_URL || 'http://localhost:3001'}/#/?userId=${encodeURIComponent(lineUserId)}`;
 
     await this.client.pushMessage(lineUserId, {
