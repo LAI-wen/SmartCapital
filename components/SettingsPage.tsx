@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
-import { 
-  ChevronRight, Globe, Lock, Bell, Moon, Smartphone, 
-  MessageCircle, LogOut, ShieldCheck, CreditCard, Layout 
+import React, { useState, useEffect } from 'react';
+import {
+  ChevronRight, Globe, Lock, Bell, Moon, Smartphone,
+  MessageCircle, LogOut, ShieldCheck, CreditCard, Layout
 } from 'lucide-react';
 import { InvestmentScope } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface SettingsPageProps {
   isPrivacyMode: boolean;
@@ -25,9 +26,22 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   authMode,
   displayName
 }) => {
+  const { t, i18n } = useTranslation();
   const [currency, setCurrency] = useState('TWD');
-  const [language, setLanguage] = useState('zh-TW');
+  const [language, setLanguage] = useState(i18n.language || 'zh-TW');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  // 語言切換處理
+  const handleLanguageChange = (newLang: string) => {
+    setLanguage(newLang);
+    i18n.changeLanguage(newLang);
+    localStorage.setItem('language', newLang);
+  };
+
+  // 同步 i18n 語言到 state
+  useEffect(() => {
+    setLanguage(i18n.language);
+  }, [i18n.language]);
 
   const toggleScope = (key: keyof InvestmentScope) => {
     setInvestmentScope({
@@ -113,24 +127,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       </div>
 
-      <SettingSection title="一般設定">
-         <SettingItem 
-           icon={CreditCard} 
-           label="主要顯示貨幣" 
-           value={currency} 
+      <SettingSection title={t('settings.languageAndCurrency')}>
+         <SettingItem
+           icon={CreditCard}
+           label={t('settings.displayCurrency')}
+           value={currency}
            onClick={() => setCurrency(currency === 'USD' ? 'TWD' : 'USD')}
          />
-         <SettingItem 
-           icon={Globe} 
-           label="介面語言" 
-           value={language === 'zh-TW' ? '繁體中文' : 'English'} 
-           onClick={() => setLanguage(language === 'zh-TW' ? 'en-US' : 'zh-TW')}
-         />
-         <SettingItem 
-           icon={Moon} 
-           label="深色模式" 
-           value="自動" 
-           onClick={() => {}}
+         <SettingItem
+           icon={Globe}
+           label={t('settings.language')}
+           value={language === 'zh-TW' ? '繁體中文' : 'English'}
+           onClick={() => handleLanguageChange(language === 'zh-TW' ? 'en-US' : 'zh-TW')}
          />
       </SettingSection>
 

@@ -18,8 +18,11 @@ import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification, Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets, createAccount } from './services/api';
 import { useLiff } from './contexts/LiffContext';
+import './i18n/config'; // Initialize i18n
+import { useTranslation } from 'react-i18next';
 
 const AppContent: React.FC = () => {
+  const { t } = useTranslation();
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -433,7 +436,7 @@ const AppContent: React.FC = () => {
             {({ isActive }) => (
               <>
                 <LayoutDashboard size={24} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[10px] font-medium font-serif">主頁</span>
+                <span className="text-[10px] font-medium font-serif">{t('nav.dashboard')}</span>
               </>
             )}
           </NavLink>
@@ -441,7 +444,7 @@ const AppContent: React.FC = () => {
             {({ isActive }) => (
               <>
                 <ReceiptText size={24} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[10px] font-medium font-serif">記帳</span>
+                <span className="text-[10px] font-medium font-serif">{t('nav.ledger')}</span>
               </>
             )}
           </NavLink>
@@ -452,7 +455,7 @@ const AppContent: React.FC = () => {
                   <Bell size={24} strokeWidth={isActive ? 2.5 : 2} />
                   {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-morandi-rose rounded-full border-2 border-white"></span>}
                 </div>
-                <span className="text-[10px] font-medium font-serif">通知</span>
+                <span className="text-[10px] font-medium font-serif">{t('nav.notifications')}</span>
               </>
             )}
           </NavLink>
@@ -460,7 +463,7 @@ const AppContent: React.FC = () => {
             {({ isActive }) => (
               <>
                 <Menu size={24} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[10px] font-medium font-serif">更多</span>
+                <span className="text-[10px] font-medium font-serif">{t('nav.more')}</span>
               </>
             )}
           </NavLink>
