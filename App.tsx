@@ -260,19 +260,6 @@ const AppContent: React.FC = () => {
   return (
     <div className="flex h-screen bg-paper text-ink-900 overflow-hidden font-sans selection:bg-morandi-clay selection:text-white">
 
-      {/* 🔍 臨時 Debug 資訊 - 請截圖給開發者看 */}
-      <div className="fixed top-0 left-0 right-0 bg-yellow-100 border-b-2 border-yellow-400 p-2 z-50 text-xs font-mono overflow-x-auto">
-        <div className="max-w-4xl mx-auto">
-          <div className="font-bold text-yellow-800 mb-1">🔍 DEBUG INFO (請截圖)</div>
-          <div className="space-y-1">
-            <div><span className="text-yellow-700">LINE User ID:</span> <span className="font-bold break-all">{lineUserId || 'null'}</span></div>
-            <div><span className="text-yellow-700">Display Name:</span> <span className="font-bold">{displayName || 'null'}</span></div>
-            <div><span className="text-yellow-700">localStorage userId:</span> <span className="font-bold break-all">{typeof window !== 'undefined' ? localStorage.getItem('lineUserId') || 'null' : 'N/A'}</span></div>
-            <div><span className="text-yellow-700">Auth Mode:</span> <span className="font-bold">{authMode}</span> | <span className="text-yellow-700">LIFF Ready:</span> <span className="font-bold">{isLiffReady ? 'Yes' : 'No'}</span></div>
-          </div>
-        </div>
-      </div>
-
       {/* 🎉 Onboarding Modal */}
       {showOnboarding && (
         <OnboardingModal

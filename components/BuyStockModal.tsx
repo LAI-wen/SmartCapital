@@ -4,6 +4,7 @@ import { Asset, Account, Currency } from '../types';
 import { MOCK_EXCHANGE_RATE } from '../constants';
 import { X, Search, PlusCircle, MinusCircle, Wallet, AlertCircle, Info, Loader2, Package } from 'lucide-react';
 import { createTransaction, upsertAsset, reduceAsset, importAsset, searchStocks, StockSearchResult } from '../services/api';
+import { useExchangeRates } from '../services/exchangeRateService';
 
 interface BuyStockModalProps {
   isOpen: boolean;
@@ -26,6 +27,10 @@ export interface StockTransaction {
 
 const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, existingAsset, onConfirm, accounts }) => {
   const [step, setStep] = useState<'search' | 'form'>('search');
+
+  // Get real-time exchange rates
+  const { rates, loading: ratesLoading } = useExchangeRates('USD');
+  const exchangeRate = rates.TWD || MOCK_EXCHANGE_RATE; // Fallback to mock if API fails
 
   // Form State
   const [selectedStock, setSelectedStock] = useState<{ symbol: string; name: string; price: number; currency: Currency } | null>(null);
@@ -225,7 +230,7 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
 
   // Exchange Rate Logic
   const isExchangeNeeded = isBuy && selectedStock?.currency === 'USD' && selectedAccount?.currency === 'TWD';
-  const finalCost = isExchangeNeeded ? rawCost * MOCK_EXCHANGE_RATE : rawCost;
+  const finalCost = isExchangeNeeded ? rawCost * exchangeRate : rawCost;
 
   // Buying Power Check (導入模式不檢查餘額)
   const buyingPower = selectedAccount ? selectedAccount.balance : 0;
@@ -485,7 +490,7 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
                           </div>
                           <div className="flex justify-between items-center text-xs">
                              <span className="text-ink-400">參考匯率</span>
-                             <span className="text-ink-900 font-semibold">1 USD ≈ {MOCK_EXCHANGE_RATE} TWD</span>
+                             <span className="text-ink-900 font-semibold">1 USD ≈ {exchangeRate.toFixed(2)} TWD{ratesLoading && ' (載入中...)'}</span>
                           </div>
                           <div className="flex justify-between items-center text-xs">
                              <span className="text-ink-400">預估台幣扣款</span>

@@ -24,6 +24,7 @@ import {
 import { getStockQuote } from '../services/stockService.js';
 import { calculateKelly, calculateMartingale, calculateReturn } from '../services/strategyService.js';
 import { predictExpenseCategory, predictIncomeCategory } from '../services/categoryPredictionService.js';
+import { getExchangeRate } from '../services/exchangeRateService.js';
 import {
   createStockQuoteCard,
   createExpenseCategoryQuickReply,
@@ -127,13 +128,13 @@ export class WebhookController {
         break;
 
       case 'EXPENSE_CATEGORY':
-        // 直接輸入分類
-        await this.handleExpenseCategory(lineUserId, userId, intent.category, intent.amount);
+        // 直接輸入分類（支持備註）
+        await this.handleExpenseCategory(lineUserId, userId, intent.category, intent.amount, intent.note);
         break;
 
       case 'INCOME_CATEGORY':
-        // 直接輸入分類
-        await this.handleIncomeCategory(lineUserId, userId, intent.category, intent.amount);
+        // 直接輸入分類（支持備註）
+        await this.handleIncomeCategory(lineUserId, userId, intent.category, intent.amount, intent.note);
         break;
 
       case 'HELP':
@@ -198,6 +199,14 @@ export class WebhookController {
     const context = convState.context ? JSON.parse(convState.context) : {};
 
     switch (convState.state) {
+      case 'WAITING_EXPENSE_CATEGORY':
+        await this.handleExpenseCategorySelection(lineUserId, userId, text, context);
+        break;
+
+      case 'WAITING_INCOME_CATEGORY':
+        await this.handleIncomeCategorySelection(lineUserId, userId, text, context);
+        break;
+
       case 'WAITING_ACCOUNT_SELECT':
         await this.handleAccountSelection(lineUserId, userId, text, context);
         break;
@@ -263,6 +272,85 @@ export class WebhookController {
   }
 
   /**
+   * 處理支出分類選擇（Quick Reply 回應）
+   */
+  private async handleExpenseCategorySelection(
+    lineUserId: string,
+    userId: string,
+    text: string,
+    context: any
+  ): Promise<void> {
+    const { amount } = context;
+
+    // 解析分類（支援中文分類名稱或直接輸入分類）
+    let category = '其他';
+    const categoryMap: Record<string, string> = {
+      '飲食': '飲食',
+      '交通': '交通',
+      '居住': '居住',
+      '娛樂': '娛樂',
+      '購物': '購物',
+      '醫療': '醫療',
+      '其他': '其他',
+      '其他支出': '其他'
+    };
+
+    // 檢查是否為有效分類
+    if (categoryMap[text.trim()]) {
+      category = categoryMap[text.trim()];
+    } else {
+      // 如果不是有效分類，提示用戶
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '請從分類按鈕中選擇，或輸入「取消」'
+      });
+      return;
+    }
+
+    // 呼叫已有的處理函數
+    await this.handleExpenseCategory(lineUserId, userId, category, amount);
+  }
+
+  /**
+   * 處理收入分類選擇（Quick Reply 回應）
+   */
+  private async handleIncomeCategorySelection(
+    lineUserId: string,
+    userId: string,
+    text: string,
+    context: any
+  ): Promise<void> {
+    const { amount } = context;
+
+    // 解析分類
+    let category = '其他';
+    const categoryMap: Record<string, string> = {
+      '薪資': '薪資',
+      '獎金': '獎金',
+      '股息': '股息',
+      '投資獲利': '投資獲利',
+      '兼職': '兼職',
+      '其他': '其他',
+      '其他收入': '其他'
+    };
+
+    // 檢查是否為有效分類
+    if (categoryMap[text.trim()]) {
+      category = categoryMap[text.trim()];
+    } else {
+      // 如果不是有效分類，提示用戶
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '請從分類按鈕中選擇，或輸入「取消」'
+      });
+      return;
+    }
+
+    // 呼叫已有的處理函數
+    await this.handleIncomeCategory(lineUserId, userId, category, amount);
+  }
+
+  /**
    * 處理帳戶選擇
    */
   private async handleAccountSelection(
@@ -294,7 +382,7 @@ export class WebhookController {
 
     const selectedAccount = availableAccounts[accountIndex];
     const needsExchange = selectedAccount.currency !== stockCurrency;
-    const exchangeRate = needsExchange ? 32.5 : 1;
+    const exchangeRate = needsExchange ? await getExchangeRate('USD', 'TWD') : 1;
 
     // 更新狀態為等待輸入數量
     await updateConversationState(lineUserId, 'WAITING_BUY_QUANTITY', {
@@ -383,7 +471,7 @@ export class WebhookController {
       });
 
       const needsExchange = account.currency !== stockCurrency;
-      const exchangeRate = needsExchange ? 32.5 : 1; // Mock 匯率
+      const exchangeRate = needsExchange ? await getExchangeRate('USD', 'TWD') : 1;
 
       await this.client.pushMessage(lineUserId, {
         type: 'text',
@@ -475,7 +563,7 @@ export class WebhookController {
 
     // 計算成本（考慮匯率）
     const needsExchange = accountCurrency !== stockCurrency;
-    const exchangeRate = needsExchange ? 32.5 : 1; // TODO: 使用真實匯率 API
+    const exchangeRate = needsExchange ? await getExchangeRate('USD', 'TWD') : 1;
     const baseCost = price * quantity;
     const totalCost = needsExchange ? baseCost * exchangeRate : baseCost;
 
@@ -677,10 +765,11 @@ export class WebhookController {
     lineUserId: string,
     userId: string,
     category: string,
-    amount: number
+    amount: number,
+    note?: string
   ): Promise<void> {
-    // 創建交易
-    await createTransaction(userId, 'expense', amount, category);
+    // 創建交易（帶備註）
+    await createTransaction(userId, 'expense', amount, category, new Date().toISOString().split('T')[0], note);
     await clearConversationState(lineUserId);
 
     // 獲取本月統計
@@ -739,10 +828,11 @@ export class WebhookController {
     lineUserId: string,
     userId: string,
     category: string,
-    amount: number
+    amount: number,
+    note?: string
   ): Promise<void> {
-    // 創建交易
-    await createTransaction(userId, 'income', amount, category);
+    // 創建交易（帶備註）
+    await createTransaction(userId, 'income', amount, category, new Date().toISOString().split('T')[0], note);
     await clearConversationState(lineUserId);
 
     // 獲取本月統計

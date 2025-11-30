@@ -7,6 +7,7 @@ import { Wallet, TrendingUp, TrendingDown, Search, Activity, ReceiptText, Briefc
 import { useNavigate } from 'react-router-dom';
 import StockDetailModal from './StockDetailModal';
 import BuyStockModal, { StockTransaction } from './BuyStockModal';
+import { useExchangeRates } from '../services/exchangeRateService';
 
 interface DashboardProps {
   assets: Asset[];
@@ -21,7 +22,11 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'All' | 'Stock' | 'Crypto' | 'Cash'>('All');
   const [searchTerm, setSearchTerm] = useState('');
-  
+
+  // Get real-time exchange rates
+  const { rates, loading: ratesLoading } = useExchangeRates('USD');
+  const exchangeRate = rates.TWD || MOCK_EXCHANGE_RATE; // Fallback to mock if API fails
+
   // Modal State
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
@@ -65,8 +70,8 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
       const assetChange = assetValue - prevValue;
 
       if (asset.currency === 'USD') {
-        valueTWD = assetValue * MOCK_EXCHANGE_RATE;
-        changeTWD = assetChange * MOCK_EXCHANGE_RATE;
+        valueTWD = assetValue * exchangeRate;
+        changeTWD = assetChange * exchangeRate;
       } else {
         valueTWD = assetValue;
         changeTWD = assetChange;
@@ -81,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     accounts.forEach(acc => {
       // Filter accounts by scope too? Ideally yes, but cash is usually global.
       // We will just sum all cash.
-      if (acc.currency === 'USD') cashValueTWD += acc.balance * MOCK_EXCHANGE_RATE;
+      if (acc.currency === 'USD') cashValueTWD += acc.balance * exchangeRate;
       else cashValueTWD += acc.balance;
     });
 
@@ -94,7 +99,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
       investDayChange, // In TWD
       dayChangePercent: investValue > 0 ? (investDayChange / investValue) * 100 : 0
     };
-  }, [scopeFilteredAssets, accounts, investmentScope]);
+  }, [scopeFilteredAssets, accounts, investmentScope, exchangeRate]);
 
   // Filtered List Logic (Search + Type Filter)
   const displayAssets = useMemo(() => {
@@ -118,7 +123,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     // Add Investments
     scopeFilteredAssets.forEach(asset => {
       let valueTWD = asset.quantity * asset.currentPrice;
-      if (asset.currency === 'USD') valueTWD *= MOCK_EXCHANGE_RATE;
+      if (asset.currency === 'USD') valueTWD *= exchangeRate;
 
       if (asset.type === 'Crypto') {
         groups['Crypto'].value += valueTWD;
@@ -131,12 +136,12 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
 
     // Add Accounts to "Cash"
     accounts.forEach(acc => {
-      if (acc.currency === 'USD') groups['Cash'].value += acc.balance * MOCK_EXCHANGE_RATE;
+      if (acc.currency === 'USD') groups['Cash'].value += acc.balance * exchangeRate;
       else groups['Cash'].value += acc.balance;
     });
 
     return Object.values(groups).filter(g => g.value > 0);
-  }, [scopeFilteredAssets, accounts]);
+  }, [scopeFilteredAssets, accounts, exchangeRate]);
 
   // Data for Top Movers
   const topMovers = useMemo(() => {
@@ -207,7 +212,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
         // Exchange Logic
         let deductionAmount = totalTxnAmountAssetCurrency;
         if (txn.currency === 'USD' && acc.currency === 'TWD') {
-          deductionAmount = totalTxnAmountAssetCurrency * MOCK_EXCHANGE_RATE;
+          deductionAmount = totalTxnAmountAssetCurrency * exchangeRate;
         }
         // (Assuming no reverse case TWD stock with USD account for now to keep simple)
 
@@ -305,7 +310,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
               {/* Scope/Rate Warning */}
               {(investmentScope.us || investmentScope.crypto) && (
                 <div className="mt-2 flex items-center gap-1 text-[10px] text-ink-400 font-serif">
-                   <Info size={10} /> 以 1 USD ≈ {MOCK_EXCHANGE_RATE} TWD 計算
+                   <Info size={10} /> 以 1 USD ≈ {exchangeRate.toFixed(2)} TWD 計算 {ratesLoading && '(載入中...)'}
                 </div>
               )}
             </div>

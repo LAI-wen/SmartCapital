@@ -12,8 +12,8 @@ export type MessageIntent =
   | { type: 'STOCK_QUERY'; symbol: string }
   | { type: 'BUY_ACTION'; symbol: string }
   | { type: 'SELL_ACTION'; symbol: string }
-  | { type: 'EXPENSE_CATEGORY'; category: string; amount: number }
-  | { type: 'INCOME_CATEGORY'; category: string; amount: number }
+  | { type: 'EXPENSE_CATEGORY'; category: string; amount: number; note?: string }
+  | { type: 'INCOME_CATEGORY'; category: string; amount: number; note?: string }
   | { type: 'QUANTITY_INPUT'; quantity: number }
   | { type: 'HELP' }
   | { type: 'PORTFOLIO' }
@@ -30,12 +30,13 @@ export type MessageIntent =
 export function parseMessage(text: string): MessageIntent {
   const trimmed = text.trim();
 
-  // 1. 一步式記帳 - 支出描述 + 金額 (例如: "午餐 120", "咖啡 80", "計程車 200")
+  // 1. 一步式記帳 - 支出描述 + 金額 + 備註 (例如: "午餐 120", "咖啡 80 星巴克", "計程車 200 去公司")
   // 支援常見消費場景的關鍵字
-  const oneStepExpenseMatch = trimmed.match(/^(午餐|早餐|晚餐|飲料|咖啡|零食|飲食|計程車|公車|捷運|Uber|交通|房租|水電|瓦斯|居住|電影|KTV|遊戲|娛樂|衣服|鞋子|包包|購物|看病|藥品|醫療|其他支出)\s*(\d+(\.\d{1,2})?)$/);
+  const oneStepExpenseMatch = trimmed.match(/^(午餐|早餐|晚餐|飲料|咖啡|零食|飲食|計程車|公車|捷運|Uber|交通|房租|水電|瓦斯|居住|電影|KTV|遊戲|娛樂|衣服|鞋子|包包|購物|看病|藥品|醫療|其他支出)\s*(\d+(\.\d{1,2})?)\s*(.*)$/);
   if (oneStepExpenseMatch) {
     const description = oneStepExpenseMatch[1];
     const amount = parseFloat(oneStepExpenseMatch[2]);
+    const note = oneStepExpenseMatch[4]?.trim() || undefined; // 備註（可選）
 
     // 映射到標準分類
     let category = '其他';
@@ -49,15 +50,17 @@ export function parseMessage(text: string): MessageIntent {
     return {
       type: 'EXPENSE_CATEGORY',
       category,
-      amount
+      amount,
+      note
     };
   }
 
-  // 2. 一步式記帳 - 收入描述 + 金額 (例如: "薪水 50000", "獎金 10000")
-  const oneStepIncomeMatch = trimmed.match(/^(薪水|薪資|獎金|紅利|股息|配息|投資獲利|兼職|副業|其他收入)\s*(\d+(\.\d{1,2})?)$/);
+  // 2. 一步式記帳 - 收入描述 + 金額 + 備註 (例如: "薪水 50000", "獎金 10000 年終")
+  const oneStepIncomeMatch = trimmed.match(/^(薪水|薪資|獎金|紅利|股息|配息|投資獲利|兼職|副業|其他收入)\s*(\d+(\.\d{1,2})?)\s*(.*)$/);
   if (oneStepIncomeMatch) {
     const description = oneStepIncomeMatch[1];
     const amount = parseFloat(oneStepIncomeMatch[2]);
+    const note = oneStepIncomeMatch[4]?.trim() || undefined; // 備註（可選）
 
     // 映射到標準分類
     let category = '其他';
@@ -70,7 +73,8 @@ export function parseMessage(text: string): MessageIntent {
     return {
       type: 'INCOME_CATEGORY',
       category,
-      amount
+      amount,
+      note
     };
   }
 
