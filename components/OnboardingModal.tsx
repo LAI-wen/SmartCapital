@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Wallet, ArrowRight, Building2, Coins, Landmark } from 'lucide-react';
-import { createAccount as apiCreateAccount } from '../services/api';
+import { createAccount as apiCreateAccount } from '../services';
 import { Account } from '../types';
 
 interface OnboardingModalProps {

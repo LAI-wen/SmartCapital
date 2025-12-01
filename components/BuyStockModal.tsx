@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Asset, Account, Currency } from '../types';
 import { MOCK_EXCHANGE_RATE } from '../constants';
 import { X, Search, PlusCircle, MinusCircle, Wallet, AlertCircle, Info, Loader2, Package } from 'lucide-react';
-import { createTransaction, upsertAsset, reduceAsset, importAsset, searchStocks, StockSearchResult } from '../services/api';
+import { createTransaction, upsertAsset, reduceAsset, importAsset, searchStocks, type StockSearchResult } from '../services';
 import { useExchangeRates } from '../services/exchangeRateService';
 
 interface BuyStockModalProps {

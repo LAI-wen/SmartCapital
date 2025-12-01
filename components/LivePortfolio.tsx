@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getPortfolio, getAssets } from '../services/api';
+import { getPortfolio, getAssets } from '../services';
 
 interface Asset {
   symbol: string;

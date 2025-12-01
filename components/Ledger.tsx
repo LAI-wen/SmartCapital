@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType, Account } from '../types';
 import { MOCK_TRANSACTIONS, TRANSACTION_CATEGORIES } from '../constants';
-import { getTransactions as fetchTransactions, createTransaction as apiCreateTransaction, deleteTransaction as apiDeleteTransaction } from '../services/api';
+import { getTransactions as fetchTransactions, createTransaction as apiCreateTransaction, deleteTransaction as apiDeleteTransaction } from '../services';
 import { 
   Plus, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, 
   TrendingUp, Gift, ChevronLeft, ChevronRight, 

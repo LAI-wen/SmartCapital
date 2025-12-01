@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { COLORS } from '../constants';
 import { TrendingUp, TrendingDown, DollarSign, Calendar, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
-import { getTransactions, getAccounts, getAssets } from '../services/api';
+import { getTransactions, getAccounts, getAssets } from '../services';
 import { Transaction, Account, Asset } from '../types';
 import {
   parseISO,

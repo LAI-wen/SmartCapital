@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Account } from '../types';
-import { getAccounts, createAccount, updateAccountBalance, deleteAccount, updateAccount, createTransfer } from '../services/api';
+import { getAccounts, createAccount, updateAccountBalance, deleteAccount, updateAccount, createTransfer } from '../services';
 import {
   Wallet, Building2, Landmark, Coins, Plus, Edit3,
   Trash2, DollarSign, Check, X, AlertCircle, ArrowRightLeft

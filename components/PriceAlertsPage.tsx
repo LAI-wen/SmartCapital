@@ -7,11 +7,11 @@ import {
   updatePriceAlert,
   deletePriceAlert,
   createDefaultAlerts,
-  PriceAlert,
-  AlertType,
-  AlertDirection,
-  CreatePriceAlertInput
-} from '../services/api';
+  type PriceAlert,
+  type AlertType,
+  type AlertDirection,
+  type CreatePriceAlertInput
+} from '../services';
 import { Asset } from '../types';
 
 interface PriceAlertsPageProps {
