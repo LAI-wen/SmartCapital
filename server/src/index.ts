@@ -72,6 +72,7 @@ app.post('/api/assets/:lineUserId/import', apiController.importAssetAPI); // 新
 app.get('/api/transactions/:lineUserId', apiController.getTransactions);
 app.post('/api/transactions/:lineUserId', apiController.createTransaction);
 app.delete('/api/transactions/:transactionId', apiController.deleteTransaction);
+app.post('/api/transactions/batch-delete', apiController.batchDeleteTransactions);
 app.get('/api/portfolio/:lineUserId', apiController.getPortfolio);
 app.get('/api/settings/:lineUserId', apiController.getSettings);
 

@@ -30,9 +30,11 @@ export {
 // Transaction Service
 export {
   type Transaction,
+  type BatchDeleteResult,
   getTransactions,
   createTransaction,
   deleteTransaction,
+  batchDeleteTransactions,
 } from './transaction.service';
 
 // Account Service

@@ -3,12 +3,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType, Account } from '../types';
 import { MOCK_TRANSACTIONS, TRANSACTION_CATEGORIES } from '../constants';
-import { getTransactions as fetchTransactions, createTransaction as apiCreateTransaction, deleteTransaction as apiDeleteTransaction } from '../services';
-import { 
-  Plus, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase, 
-  TrendingUp, Gift, ChevronLeft, ChevronRight, 
+import { getTransactions as fetchTransactions, createTransaction as apiCreateTransaction, deleteTransaction as apiDeleteTransaction, batchDeleteTransactions as apiBatchDeleteTransactions } from '../services';
+import {
+  Plus, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase,
+  TrendingUp, Gift, ChevronLeft, ChevronRight,
   Tag, Trash2, X, Zap, Calendar as CalendarIcon, Check,
-  ArrowUpRight, ArrowDownRight, Wallet
+  ArrowUpRight, ArrowDownRight, Wallet, CheckSquare, Square
 } from 'lucide-react';
 import { 
   format, isSameMonth, isSameYear, addMonths, subMonths, 
@@ -43,13 +43,17 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
   const [formType, setFormType] = useState<TransactionType>('expense');
   const [formAmount, setFormAmount] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formDate, setFormDate] = useState('');
   const [formNote, setFormNote] = useState('');
   const [formAccountId, setFormAccountId] = useState('');
+
+  // 批次刪除狀態
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // 🔥 載入交易記錄從資料庫
   useEffect(() => {
@@ -320,6 +324,64 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
     }
   };
 
+  // 批次刪除處理函數
+  const toggleSelectMode = () => {
+    setIsSelectMode(!isSelectMode);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelectTransaction = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const selectAllInView = () => {
+    const allIds = new Set(filteredTransactions.map(t => t.id));
+    setSelectedIds(allIds);
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) {
+      alert('請選擇要刪除的交易記錄');
+      return;
+    }
+
+    if (!confirm(`確定要刪除 ${selectedIds.size} 筆交易記錄？`)) {
+      return;
+    }
+
+    try {
+      const idsArray: string[] = Array.from(selectedIds);
+      const result = await apiBatchDeleteTransactions(idsArray);
+
+      if (result) {
+        console.log(`✅ 批次刪除成功: ${result.deletedCount}/${result.totalRequested} 筆`);
+
+        if (result.errors && result.errors.length > 0) {
+          alert(`部分刪除失敗：${result.deletedCount}/${result.totalRequested} 筆成功`);
+        } else {
+          alert(`成功刪除 ${result.deletedCount} 筆交易記錄`);
+        }
+
+        // 刷新列表
+        await reloadTransactions();
+        // 通知父組件刷新帳戶餘額
+        onAccountsUpdate?.();
+        // 退出選擇模式
+        setIsSelectMode(false);
+        setSelectedIds(new Set());
+      }
+    } catch (error) {
+      console.error('❌ 批次刪除失敗:', error);
+      alert('批次刪除失敗，請重試');
+    }
+  };
+
   const formatCurrency = (val: number) => {
     if (isPrivacyMode) return '••••';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
@@ -389,7 +451,7 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
            <button onClick={handlePrev} className="p-2 rounded-full hover:bg-stone-100 text-ink-400 hover:text-ink-900 transition-colors">
               <ChevronLeft size={20} />
            </button>
-           <button 
+           <button
              onClick={toggleMode}
              className="px-4 py-1.5 rounded-lg hover:bg-stone-100 transition-colors flex flex-col items-center"
            >
@@ -403,6 +465,50 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
            <button onClick={handleNext} className="p-2 rounded-full hover:bg-stone-100 text-ink-400 hover:text-ink-900 transition-colors">
               <ChevronRight size={20} />
            </button>
+        </div>
+
+        {/* 批次刪除工具欄 */}
+        <div className="flex items-center justify-between px-4 py-2 bg-stone-50 border-b border-stone-100">
+          {!isSelectMode ? (
+            <button
+              onClick={toggleSelectMode}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-ink-600 hover:bg-white hover:text-morandi-rose transition-colors"
+            >
+              <CheckSquare size={16} />
+              <span>批次刪除</span>
+            </button>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={selectAllInView}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs text-ink-600 hover:bg-white transition-colors"
+                >
+                  全選 ({filteredTransactions.length})
+                </button>
+                <span className="text-xs text-ink-400">
+                  已選 {selectedIds.size} 筆
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBatchDelete}
+                  disabled={selectedIds.size === 0}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm bg-morandi-rose text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-morandi-rose/90 transition-colors"
+                >
+                  <Trash2 size={14} />
+                  <span>刪除</span>
+                </button>
+                <button
+                  onClick={toggleSelectMode}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-ink-600 hover:bg-white transition-colors"
+                >
+                  <X size={14} />
+                  <span>取消</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -486,12 +592,25 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
                     
                     <div className="space-y-2">
                        {groupedTransactions[dateKey].map(t => (
-                         <div 
+                         <div
                            key={t.id}
-                           onClick={() => openModal(t)}
-                           className="group bg-white p-4 rounded-xl border border-stone-100 shadow-sm flex items-center justify-between active:scale-[0.99] transition-all cursor-pointer hover:border-morandi-blue/30"
+                           onClick={() => isSelectMode ? toggleSelectTransaction(t.id) : openModal(t)}
+                           className={`group bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between active:scale-[0.99] transition-all cursor-pointer ${
+                             isSelectMode && selectedIds.has(t.id)
+                               ? 'border-morandi-blue bg-morandi-blueLight/10'
+                               : 'border-stone-100 hover:border-morandi-blue/30'
+                           }`}
                          >
                             <div className="flex items-center gap-4">
+                               {isSelectMode && (
+                                 <div className="shrink-0">
+                                   {selectedIds.has(t.id) ? (
+                                     <CheckSquare size={20} className="text-morandi-blue" />
+                                   ) : (
+                                     <Square size={20} className="text-stone-300" />
+                                   )}
+                                 </div>
+                               )}
                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white shadow-sm transition-transform group-hover:scale-105 ${t.type === 'income' ? 'bg-ink-800' : 'bg-morandi-rose'}`}>
                                   {getCategoryIcon(t.category)}
                                </div>

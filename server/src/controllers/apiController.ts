@@ -379,20 +379,152 @@ export async function createTransaction(req: Request, res: Response) {
 }
 
 /**
+ * POST /api/transactions/batch-delete
+ * 批次刪除交易記錄（並回滾帳戶餘額）
+ *
+ * ⚠️ 安全性：僅允許擁有者刪除自己的交易記錄
+ */
+export async function batchDeleteTransactions(req: Request, res: Response) {
+  try {
+    const { transactionIds, lineUserId } = req.body;
+
+    // 🔒 安全檢查：必須提供 lineUserId
+    if (!lineUserId || typeof lineUserId !== 'string') {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized: lineUserId is required'
+      });
+    }
+
+    // 驗證 transactionIds 格式
+    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'transactionIds must be a non-empty array'
+      });
+    }
+
+    // 查詢所有交易記錄
+    const transactions = await prisma.transaction.findMany({
+      where: { id: { in: transactionIds } },
+      include: { user: true }
+    });
+
+    if (transactions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No transactions found'
+      });
+    }
+
+    // 🔒 安全檢查：驗證所有交易都屬於當前用戶
+    const unauthorizedTransactions = transactions.filter(
+      t => t.user.lineUserId !== lineUserId
+    );
+
+    if (unauthorizedTransactions.length > 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: You can only delete your own transactions'
+      });
+    }
+
+    // 批次刪除交易並回滾帳戶餘額
+    let deletedCount = 0;
+    const errors: string[] = [];
+
+    for (const transaction of transactions) {
+      try {
+        // 如果交易有關聯帳戶，需要回滾餘額
+        if (transaction.accountId) {
+          await prisma.$transaction(async (tx) => {
+            // 1. 回滾帳戶餘額
+            const account = await tx.account.findUnique({
+              where: { id: transaction.accountId! }
+            });
+
+            if (account) {
+              const newBalance = transaction.type === 'income'
+                ? account.balance - transaction.amount
+                : account.balance + transaction.amount;
+
+              await tx.account.update({
+                where: { id: transaction.accountId! },
+                data: { balance: newBalance }
+              });
+            }
+
+            // 2. 刪除交易記錄
+            await tx.transaction.delete({
+              where: { id: transaction.id }
+            });
+          });
+        } else {
+          // 沒有關聯帳戶，直接刪除
+          await prisma.transaction.delete({
+            where: { id: transaction.id }
+          });
+        }
+
+        deletedCount++;
+      } catch (error) {
+        console.error(`Error deleting transaction ${transaction.id}:`, error);
+        errors.push(`Failed to delete transaction ${transaction.id}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        deletedCount,
+        totalRequested: transactionIds.length,
+        errors: errors.length > 0 ? errors : undefined
+      }
+    });
+  } catch (error) {
+    console.error('Error batch deleting transactions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to batch delete transactions'
+    });
+  }
+}
+
+/**
  * DELETE /api/transactions/:transactionId
  * 刪除交易記錄（並回滾帳戶餘額）
+ *
+ * ⚠️ 安全性：僅允許擁有者刪除自己的交易記錄
  */
 export async function deleteTransaction(req: Request, res: Response) {
   try {
     const { transactionId } = req.params;
+    const { lineUserId } = req.query;
+
+    // 🔒 安全檢查：必須提供 lineUserId
+    if (!lineUserId || typeof lineUserId !== 'string') {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized: lineUserId is required'
+      });
+    }
 
     // 先查詢交易記錄以取得 accountId 和 amount
     const transaction = await prisma.transaction.findUnique({
-      where: { id: transactionId }
+      where: { id: transactionId },
+      include: { user: true }
     });
 
     if (!transaction) {
       return res.status(404).json({ success: false, error: 'Transaction not found' });
+    }
+
+    // 🔒 安全檢查：驗證交易擁有者
+    if (transaction.user.lineUserId !== lineUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: You can only delete your own transactions'
+      });
     }
 
     // 如果交易有關聯帳戶，需要回滾餘額
@@ -597,11 +729,38 @@ export async function createNewAccount(req: Request, res: Response) {
 /**
  * PATCH /api/accounts/:accountId
  * 更新帳戶資訊
+ *
+ * ⚠️ 安全性：僅允許擁有者更新自己的帳戶
  */
 export async function updateAccountInfo(req: Request, res: Response) {
   try {
     const { accountId } = req.params;
-    const { name, isDefault } = req.body;
+    const { name, isDefault, lineUserId } = req.body;
+
+    // 🔒 安全檢查：必須提供 lineUserId
+    if (!lineUserId || typeof lineUserId !== 'string') {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized: lineUserId is required'
+      });
+    }
+
+    // 🔒 安全檢查：驗證帳戶擁有者
+    const existingAccount = await prisma.account.findUnique({
+      where: { id: accountId },
+      include: { user: true }
+    });
+
+    if (!existingAccount) {
+      return res.status(404).json({ success: false, error: 'Account not found' });
+    }
+
+    if (existingAccount.user.lineUserId !== lineUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: You can only update your own accounts'
+      });
+    }
 
     const account = await updateAccount(accountId, { name, isDefault });
 
@@ -623,10 +782,39 @@ export async function updateAccountInfo(req: Request, res: Response) {
 /**
  * DELETE /api/accounts/:accountId
  * 刪除帳戶
+ *
+ * ⚠️ 安全性：僅允許擁有者刪除自己的帳戶
  */
 export async function removeAccount(req: Request, res: Response) {
   try {
     const { accountId } = req.params;
+    const { lineUserId } = req.query;
+
+    // 🔒 安全檢查：必須提供 lineUserId
+    if (!lineUserId || typeof lineUserId !== 'string') {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized: lineUserId is required'
+      });
+    }
+
+    // 🔒 安全檢查：驗證帳戶擁有者
+    const existingAccount = await prisma.account.findUnique({
+      where: { id: accountId },
+      include: { user: true }
+    });
+
+    if (!existingAccount) {
+      return res.status(404).json({ success: false, error: 'Account not found' });
+    }
+
+    if (existingAccount.user.lineUserId !== lineUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: You can only delete your own accounts'
+      });
+    }
+
     await deleteAccount(accountId);
 
     res.json({ success: true });
@@ -640,11 +828,13 @@ export async function removeAccount(req: Request, res: Response) {
 /**
  * POST /api/accounts/:accountId/balance
  * 更新帳戶餘額
+ *
+ * ⚠️ 安全性：僅允許擁有者更新自己的帳戶餘額
  */
 export async function updateBalance(req: Request, res: Response) {
   try {
     const { accountId } = req.params;
-    const { amount, operation } = req.body;
+    const { amount, operation, lineUserId } = req.body;
 
     // 驗證必填欄位
     if (typeof amount !== 'number' || !operation) {
@@ -658,6 +848,31 @@ export async function updateBalance(req: Request, res: Response) {
       return res.status(400).json({
         success: false,
         error: 'Invalid operation. Must be "add" or "subtract"'
+      });
+    }
+
+    // 🔒 安全檢查：必須提供 lineUserId
+    if (!lineUserId || typeof lineUserId !== 'string') {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized: lineUserId is required'
+      });
+    }
+
+    // 🔒 安全檢查：驗證帳戶擁有者
+    const existingAccount = await prisma.account.findUnique({
+      where: { id: accountId },
+      include: { user: true }
+    });
+
+    if (!existingAccount) {
+      return res.status(404).json({ success: false, error: 'Account not found' });
+    }
+
+    if (existingAccount.user.lineUserId !== lineUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: You can only update your own account balance'
       });
     }
 
@@ -941,16 +1156,43 @@ export async function createPriceAlertAPI(req: Request, res: Response) {
 /**
  * PATCH /api/price-alerts/:alertId
  * 更新警示狀態（啟用/停用）
+ *
+ * ⚠️ 安全性：僅允許擁有者更新自己的警示
  */
 export async function updatePriceAlertAPI(req: Request, res: Response) {
   try {
     const { alertId } = req.params;
-    const { isActive } = req.body;
+    const { isActive, lineUserId } = req.body;
 
     if (typeof isActive !== 'boolean') {
       return res.status(400).json({
         success: false,
         error: 'isActive must be a boolean'
+      });
+    }
+
+    // 🔒 安全檢查：必須提供 lineUserId
+    if (!lineUserId || typeof lineUserId !== 'string') {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized: lineUserId is required'
+      });
+    }
+
+    // 🔒 安全檢查：驗證警示擁有者
+    const existingAlert = await prisma.priceAlert.findUnique({
+      where: { id: alertId },
+      include: { user: true }
+    });
+
+    if (!existingAlert) {
+      return res.status(404).json({ success: false, error: 'Price alert not found' });
+    }
+
+    if (existingAlert.user.lineUserId !== lineUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: You can only update your own price alerts'
       });
     }
 
@@ -970,10 +1212,38 @@ export async function updatePriceAlertAPI(req: Request, res: Response) {
 /**
  * DELETE /api/price-alerts/:alertId
  * 刪除警示
+ *
+ * ⚠️ 安全性：僅允許擁有者刪除自己的警示
  */
 export async function deletePriceAlertAPI(req: Request, res: Response) {
   try {
     const { alertId } = req.params;
+    const { lineUserId } = req.query;
+
+    // 🔒 安全檢查：必須提供 lineUserId
+    if (!lineUserId || typeof lineUserId !== 'string') {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized: lineUserId is required'
+      });
+    }
+
+    // 🔒 安全檢查：驗證警示擁有者
+    const existingAlert = await prisma.priceAlert.findUnique({
+      where: { id: alertId },
+      include: { user: true }
+    });
+
+    if (!existingAlert) {
+      return res.status(404).json({ success: false, error: 'Price alert not found' });
+    }
+
+    if (existingAlert.user.lineUserId !== lineUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: You can only delete your own price alerts'
+      });
+    }
 
     const { deleteAlert } = await import('../services/priceAlertService');
     await deleteAlert(alertId);

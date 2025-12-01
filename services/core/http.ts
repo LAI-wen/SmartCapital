@@ -84,6 +84,26 @@ export async function del(endpoint: string): Promise<boolean> {
 }
 
 /**
+ * DELETE 請求封裝（帶 query parameter）
+ * 用於需要在 URL 中傳遞參數的 DELETE 請求
+ */
+export async function delWithQuery(endpoint: string, params: Record<string, string>): Promise<boolean> {
+  try {
+    const queryString = new URLSearchParams(params).toString();
+    const url = `${API_BASE_URL}${endpoint}?${queryString}`;
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+    });
+    const result: ApiResponse<void> = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error(`DELETE ${endpoint} failed:`, error);
+    return false;
+  }
+}
+
+/**
  * 帶有特定返回值的 POST 請求（用於返回布林值的操作）
  */
 export async function postBoolean(endpoint: string, body?: unknown): Promise<boolean> {

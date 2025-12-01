@@ -2,7 +2,7 @@
  * Transaction Service - 交易記錄相關 API
  */
 
-import { get, post, del } from './core/http';
+import { get, post, delWithQuery } from './core/http';
 import { getUserId } from './user.service';
 
 export interface Transaction {
@@ -13,6 +13,12 @@ export interface Transaction {
   category: string;
   note: string;
   accountId: string;
+}
+
+export interface BatchDeleteResult {
+  deletedCount: number;
+  totalRequested: number;
+  errors?: string[];
 }
 
 /**
@@ -56,7 +62,31 @@ export async function createTransaction(
 
 /**
  * 刪除交易記錄
+ * 🔒 現在需要傳遞 lineUserId 進行授權驗證
  */
 export async function deleteTransaction(transactionId: string): Promise<boolean> {
-  return del(`/api/transactions/${transactionId}`);
+  const lineUserId = getUserId();
+  return delWithQuery(`/api/transactions/${transactionId}`, { lineUserId });
+}
+
+/**
+ * 批次刪除交易記錄
+ * 🔒 需要傳遞 lineUserId 進行授權驗證
+ */
+export async function batchDeleteTransactions(transactionIds: string[]): Promise<BatchDeleteResult | null> {
+  const lineUserId = getUserId();
+
+  const result = await post<BatchDeleteResult>('/api/transactions/batch-delete', {
+    lineUserId,
+    transactionIds,
+  });
+
+  if (result) {
+    console.log(`✅ 批次刪除成功: ${result.deletedCount}/${result.totalRequested} 筆`);
+    if (result.errors && result.errors.length > 0) {
+      console.warn('⚠️ 部分刪除失敗:', result.errors);
+    }
+  }
+
+  return result;
 }
