@@ -80,5 +80,24 @@ export {
   markAllNotificationsAsRead,
 } from './notification.service';
 
+// Authentication Service
+export {
+  type AuthTokens,
+  type User as AuthUser,
+  type LoginResponse,
+  lineLogin,
+  guestLogin,
+  refreshAccessToken,
+  verifyToken,
+  logout,
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  isTokenExpired,
+  isAuthenticated,
+  autoRefreshToken,
+  startAutoRefresh,
+} from './auth.service';
+
 // Exchange Rate Service (existing)
 export * from './exchangeRateService';

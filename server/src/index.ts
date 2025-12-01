@@ -9,6 +9,8 @@ import dotenv from 'dotenv';
 import { WebhookController } from './controllers/webhookController.js';
 import { disconnectDatabase } from './services/databaseService.js';
 import * as apiController from './controllers/apiController.js';
+import * as authController from './controllers/authController.js';
+import { authenticateToken } from './middleware/authMiddleware.js';
 import { startScheduler } from './services/schedulerService.js';
 
 // 載入環境變數
@@ -55,56 +57,71 @@ app.get('/health', (req: Request, res: Response) => {
 // CORS 設定（允許前端存取）
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
   next();
 });
 
-// REST API 端點（供前端使用）
-app.get('/api/user/:lineUserId', apiController.getUser);
-app.get('/api/assets/:lineUserId', apiController.getAssets);
-app.post('/api/assets/:lineUserId/upsert', apiController.upsertAssetAPI);
-app.post('/api/assets/:lineUserId/reduce', apiController.reduceAssetAPI);
-app.post('/api/assets/:lineUserId/import', apiController.importAssetAPI); // 新增：導入既有持股
-app.get('/api/transactions/:lineUserId', apiController.getTransactions);
-app.post('/api/transactions/:lineUserId', apiController.createTransaction);
-app.delete('/api/transactions/:transactionId', apiController.deleteTransaction);
-app.post('/api/transactions/batch-delete', apiController.batchDeleteTransactions);
-app.get('/api/portfolio/:lineUserId', apiController.getPortfolio);
-app.get('/api/settings/:lineUserId', apiController.getSettings);
+// 🔐 認證端點（無需 Token）
+app.post('/api/auth/line-login', authController.lineLogin);
+app.post('/api/auth/guest-login', authController.guestLogin);
+app.post('/api/auth/refresh', authController.refreshToken);
+app.get('/api/auth/verify', authController.verifyTokenEndpoint);
+app.post('/api/auth/logout', authController.logout);
 
-// 通知 API 端點
-app.get('/api/notifications/:lineUserId', apiController.getNotifications);
-app.post('/api/notifications/:notificationId/read', apiController.markNotificationAsRead);
-app.post('/api/notifications/:lineUserId/read-all', apiController.markAllNotificationsAsRead);
+// 🔒 受保護的 API 端點（需要 JWT Token）
 
-// 帳戶管理 API 端點
-app.get('/api/accounts/:lineUserId', apiController.getAccounts);
-app.post('/api/accounts/:lineUserId', apiController.createNewAccount);
-app.patch('/api/accounts/:accountId', apiController.updateAccountInfo);
-app.post('/api/accounts/:accountId/balance', apiController.updateBalance);
-app.delete('/api/accounts/:accountId', apiController.removeAccount);
+// 用戶資料 API
+app.get('/api/user/:lineUserId', authenticateToken, apiController.getUser);
+app.get('/api/portfolio/:lineUserId', authenticateToken, apiController.getPortfolio);
+app.get('/api/settings/:lineUserId', authenticateToken, apiController.getSettings);
 
-// 轉帳 API 端點
-app.post('/api/transfers/:lineUserId', apiController.createNewTransfer);
-app.get('/api/transfers/:lineUserId', apiController.getTransfers);
+// 資產管理 API
+app.get('/api/assets/:lineUserId', authenticateToken, apiController.getAssets);
+app.post('/api/assets/:lineUserId/upsert', authenticateToken, apiController.upsertAssetAPI);
+app.post('/api/assets/:lineUserId/reduce', authenticateToken, apiController.reduceAssetAPI);
+app.post('/api/assets/:lineUserId/import', authenticateToken, apiController.importAssetAPI);
 
-// 股票搜尋 API 端點
+// 交易記錄 API
+app.get('/api/transactions/:lineUserId', authenticateToken, apiController.getTransactions);
+app.post('/api/transactions/:lineUserId', authenticateToken, apiController.createTransaction);
+app.delete('/api/transactions/:transactionId', authenticateToken, apiController.deleteTransaction);
+app.post('/api/transactions/batch-delete', authenticateToken, apiController.batchDeleteTransactions);
+
+// 通知 API
+app.get('/api/notifications/:lineUserId', authenticateToken, apiController.getNotifications);
+app.post('/api/notifications/:notificationId/read', authenticateToken, apiController.markNotificationAsRead);
+app.post('/api/notifications/:lineUserId/read-all', authenticateToken, apiController.markAllNotificationsAsRead);
+
+// 帳戶管理 API
+app.get('/api/accounts/:lineUserId', authenticateToken, apiController.getAccounts);
+app.post('/api/accounts/:lineUserId', authenticateToken, apiController.createNewAccount);
+app.patch('/api/accounts/:accountId', authenticateToken, apiController.updateAccountInfo);
+app.post('/api/accounts/:accountId/balance', authenticateToken, apiController.updateBalance);
+app.delete('/api/accounts/:accountId', authenticateToken, apiController.removeAccount);
+
+// 轉帳 API
+app.post('/api/transfers/:lineUserId', authenticateToken, apiController.createNewTransfer);
+app.get('/api/transfers/:lineUserId', authenticateToken, apiController.getTransfers);
+
+// 價格警示 API
+app.get('/api/price-alerts/:lineUserId', authenticateToken, apiController.getPriceAlerts);
+app.post('/api/price-alerts/:lineUserId', authenticateToken, apiController.createPriceAlertAPI);
+app.post('/api/price-alerts/:lineUserId/create-defaults', authenticateToken, apiController.createDefaultAlertsAPI);
+app.patch('/api/price-alerts/:alertId', authenticateToken, apiController.updatePriceAlertAPI);
+app.delete('/api/price-alerts/:alertId', authenticateToken, apiController.deletePriceAlertAPI);
+
+// 📖 公開 API 端點（無需認證）
+
+// 股票搜尋
 app.get('/api/stocks/search', apiController.searchStocksAPI);
 
-// 匯率 API 端點
+// 匯率查詢
 app.get('/api/exchange-rates', apiController.getExchangeRatesAPI);
 app.get('/api/exchange-rates/convert', apiController.convertCurrencyAPI);
-
-// 價格警示 API 端點
-app.get('/api/price-alerts/:lineUserId', apiController.getPriceAlerts);
-app.post('/api/price-alerts/:lineUserId', apiController.createPriceAlertAPI);
-app.post('/api/price-alerts/:lineUserId/create-defaults', apiController.createDefaultAlertsAPI);
-app.patch('/api/price-alerts/:alertId', apiController.updatePriceAlertAPI);
-app.delete('/api/price-alerts/:alertId', apiController.deletePriceAlertAPI);
 
 // LINE Webhook 端點
 app.post('/webhook', middleware(middlewareConfig), async (req: Request, res: Response) => {
@@ -211,7 +228,7 @@ const server = app.listen(PORT, () => {
 
   // 啟動排程服務
   try {
-    const schedulerTasks = startScheduler(client); // 傳遞 LINE Client
+    startScheduler(client); // 傳遞 LINE Client
     console.log('⏰ 排程服務已啟動');
   } catch (error) {
     console.error('❌ 排程服務啟動失敗:', error);

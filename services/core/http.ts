@@ -1,6 +1,6 @@
 /**
  * HTTP Client - 統一的 API 請求封裝
- * 提供錯誤處理、日誌記錄等共用功能
+ * 提供錯誤處理、日誌記錄、JWT Token 自動附加等共用功能
  */
 
 // API 基礎 URL
@@ -14,11 +14,31 @@ export interface ApiResponse<T> {
 }
 
 /**
+ * 取得 Authorization Headers
+ * 自動從 localStorage 讀取 Token 並附加到請求
+ */
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem('smartcapital_access_token');
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
+/**
  * 通用的 GET 請求封裝
  */
 export async function get<T>(endpoint: string): Promise<T | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: getAuthHeaders(),
+    });
     const result: ApiResponse<T> = await response.json();
     return result.success ? (result.data ?? null) : null;
   } catch (error) {
@@ -34,9 +54,7 @@ export async function post<T>(endpoint: string, body: unknown): Promise<T | null
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
     const result: ApiResponse<T> = await response.json();
@@ -54,9 +72,7 @@ export async function patch<T>(endpoint: string, body: unknown): Promise<T | nul
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
     const result: ApiResponse<T> = await response.json();
@@ -74,6 +90,7 @@ export async function del(endpoint: string): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
     const result: ApiResponse<void> = await response.json();
     return result.success;
@@ -94,6 +111,7 @@ export async function delWithQuery(endpoint: string, params: Record<string, stri
 
     const response = await fetch(url, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
     const result: ApiResponse<void> = await response.json();
     return result.success;
@@ -110,9 +128,7 @@ export async function postBoolean(endpoint: string, body?: unknown): Promise<boo
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: body ? JSON.stringify(body) : undefined,
     });
     const result: ApiResponse<unknown> = await response.json();

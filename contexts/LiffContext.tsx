@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import liff from '@line/liff';
+import { lineLogin, guestLogin, startAutoRefresh } from '../services/auth.service';
 
 interface LiffContextType {
   isLoggedIn: boolean;
@@ -37,21 +38,28 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
     const initializeLiff = async () => {
       const liffId = import.meta.env.VITE_LIFF_ID;
 
-      // 如果沒有 LIFF ID，則跳過 LIFF 初始化（本地開發模式）
+      // 如果沒有 LIFF ID，則跳過 LIFF 初始化（訪客模式）
       if (!liffId) {
-        console.log('🔧 No LIFF_ID found, running in development mode');
+        console.log('🔧 No LIFF_ID found, running in guest mode');
         setIsLiffReady(true);
-        
+
         // 檢查 localStorage 中的 userId
         const storedUserId = localStorage.getItem('lineUserId');
         if (storedUserId) {
           console.log('✅ 從 localStorage 載入 userId:', storedUserId);
           setLineUserId(storedUserId);
+          setDisplayName(localStorage.getItem('displayName') || '訪客用戶');
           setIsLoggedIn(true);
+
+          // 🔐 使用已存在的訪客 ID 向後端登入並獲取 JWT
+          guestLogin(storedUserId, localStorage.getItem('displayName') || '訪客用戶').then((authResult) => {
+            if (authResult) {
+              console.log('✅ 訪客 Token 已獲取');
+              startAutoRefresh();
+            }
+          });
           return;
         }
-
-        // ⚠️ 已移除 URL 參數功能（安全風險）
 
         // 生成新的訪客 Mock ID
         const generateMockUserId = () => {
@@ -63,11 +71,24 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
 
         const mockUserId = generateMockUserId();
         console.log('🆕 生成新的訪客 ID:', mockUserId);
-        setLineUserId(mockUserId);
-        setDisplayName('訪客用戶');
-        setIsLoggedIn(true);
-        localStorage.setItem('lineUserId', mockUserId);
-        localStorage.setItem('displayName', '訪客用戶');
+
+        // 🔐 向後端註冊並獲取 JWT Token
+        guestLogin(mockUserId, '訪客用戶').then((authResult) => {
+          if (authResult) {
+            setLineUserId(authResult.user.lineUserId);
+            setDisplayName(authResult.user.displayName);
+            setIsLoggedIn(true);
+            localStorage.setItem('lineUserId', authResult.user.lineUserId);
+            localStorage.setItem('displayName', authResult.user.displayName);
+
+            // 啟動自動 Token 刷新
+            startAutoRefresh();
+
+            console.log('✅ 訪客登入成功，JWT Token 已獲取');
+          } else {
+            console.error('❌ 訪客登入失敗');
+          }
+        });
         return;
       }
 
@@ -81,48 +102,57 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
           return;
         }
 
-        // ✅ 已登入，從 LIFF 獲取最新的用戶資料（不信任 localStorage）
+        // ✅ 已登入，從 LIFF 獲取最新的用戶資料
         const profile = await liff.getProfile();
+        const idToken = liff.getIDToken(); // 🔑 取得 ID Token
 
         console.log('🔍 LIFF 登入資訊:', {
           userId: profile.userId,
           displayName: profile.displayName,
           pictureUrl: profile.pictureUrl,
-          statusMessage: profile.statusMessage
+          hasIdToken: !!idToken
         });
 
         // 🔍 檢查是否與 localStorage 中的用戶不同
         const storedUserId = localStorage.getItem('lineUserId');
-        const storedDisplayName = localStorage.getItem('displayName');
-
-        console.log('📦 localStorage 資訊:', {
-          storedUserId,
-          storedDisplayName,
-          isSameUser: storedUserId === profile.userId
-        });
 
         if (storedUserId && storedUserId !== profile.userId) {
-          console.warn('⚠️ 檢測到不同用戶登入！');
-          console.warn('   舊用戶:', storedUserId, storedDisplayName);
-          console.warn('   新用戶:', profile.userId, profile.displayName);
-          console.warn('   🧹 清除舊用戶的所有資料...');
-          // 清除舊用戶的所有資料
+          console.warn('⚠️ 檢測到不同用戶登入，清除舊資料...');
           localStorage.clear();
         }
 
-        setLineUserId(profile.userId);
-        setDisplayName(profile.displayName);
-        setPictureUrl(profile.pictureUrl || null);
-        setIsLoggedIn(true);
+        // 🔐 使用 LINE ID Token 向後端登入並獲取 JWT
+        if (idToken) {
+          const authResult = await lineLogin(
+            idToken,
+            profile.userId,
+            profile.displayName,
+            profile.pictureUrl || undefined
+          );
 
-        // 儲存到 localStorage 供 API 使用
-        localStorage.setItem('lineUserId', profile.userId);
-        localStorage.setItem('displayName', profile.displayName);
+          if (authResult) {
+            // 登入成功，設置用戶資訊
+            setLineUserId(authResult.user.lineUserId);
+            setDisplayName(authResult.user.displayName);
+            setPictureUrl(authResult.user.pictureUrl || null);
+            setIsLoggedIn(true);
 
-        console.log('✅ LIFF 初始化成功 - 當前用戶:', {
-          userId: profile.userId,
-          displayName: profile.displayName,
-        });
+            // 儲存到 localStorage
+            localStorage.setItem('lineUserId', authResult.user.lineUserId);
+            localStorage.setItem('displayName', authResult.user.displayName);
+
+            // 啟動自動 Token 刷新
+            startAutoRefresh();
+
+            console.log('✅ LINE 登入成功，JWT Token 已獲取');
+          } else {
+            console.error('❌ 後端登入失敗');
+            setError('後端認證失敗，請重試');
+          }
+        } else {
+          console.error('❌ 無法取得 LINE ID Token');
+          setError('無法取得 LINE ID Token');
+        }
       } catch (err) {
         console.error('❌ LIFF 初始化失敗', err);
         setError(err instanceof Error ? err.message : 'LIFF 初始化失敗');
