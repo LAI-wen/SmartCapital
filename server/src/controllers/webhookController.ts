@@ -797,6 +797,28 @@ export class WebhookController {
   }
 
   /**
+   * 取得或創建預設現金帳戶
+   */
+  private async getOrCreateDefaultCashAccount(userId: string): Promise<string> {
+    const accounts = await getUserAccounts(userId);
+
+    // 優先找預設現金帳戶
+    let defaultCash = accounts.find(acc => acc.type === 'CASH' && acc.isDefault);
+
+    if (!defaultCash) {
+      // 找任何現金帳戶
+      defaultCash = accounts.find(acc => acc.type === 'CASH');
+    }
+
+    if (!defaultCash) {
+      // 創建預設現金帳戶
+      defaultCash = await createAccount(userId, '現金', 'CASH', 'TWD', 0, true, false);
+    }
+
+    return defaultCash.id;
+  }
+
+  /**
    * 處理支出分類
    */
   private async handleExpenseCategory(
@@ -806,8 +828,11 @@ export class WebhookController {
     amount: number,
     note?: string
   ): Promise<void> {
-    // 創建交易（帶備註）
-    await createTransaction(userId, 'expense', amount, category, new Date().toISOString().split('T')[0], note);
+    // 取得預設現金帳戶
+    const accountId = await this.getOrCreateDefaultCashAccount(userId);
+
+    // 創建交易（帶備註和帳戶）
+    await createTransaction(userId, 'expense', amount, category, note, accountId);
     await clearConversationState(lineUserId);
 
     // 獲取本月統計
@@ -869,8 +894,11 @@ export class WebhookController {
     amount: number,
     note?: string
   ): Promise<void> {
-    // 創建交易（帶備註）
-    await createTransaction(userId, 'income', amount, category, new Date().toISOString().split('T')[0], note);
+    // 取得預設現金帳戶
+    const accountId = await this.getOrCreateDefaultCashAccount(userId);
+
+    // 創建交易（帶備註和帳戶）
+    await createTransaction(userId, 'income', amount, category, note, accountId);
     await clearConversationState(lineUserId);
 
     // 獲取本月統計
