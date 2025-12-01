@@ -78,17 +78,8 @@ export function parseMessage(text: string): MessageIntent {
     };
   }
 
-  // 3. 優先檢查是否為股票代碼（避免與記帳金額衝突）
-  // 台股代碼特徵：4位數（2330）或 0 開頭的 4-5 位數（0050, 00878）
-  const upperText = trimmed.toUpperCase();
-  if (isValidStockSymbol(upperText)) {
-    // 自動轉換台股代碼格式 (2330 -> 2330.TW)
-    const formattedSymbol = formatTaiwanStockSymbol(upperText);
-    return { type: 'STOCK_QUERY', symbol: formattedSymbol };
-  }
-
-  // 4. 傳統兩步式 - 只輸入金額 (例如: "-120" 或 "120")
-  // 注意：必須在股票查詢之後，避免 2330 被誤判為金額
+  // 3. 傳統兩步式 - 純數字優先當作記帳 (例如: "100", "-120")
+  // 優先級提高：純數字應該是記帳，而非股票查詢
   if (/^-?\d+(\.\d{1,2})?$/.test(trimmed)) {
     const amount = parseFloat(trimmed);
     if (amount < 0) {
@@ -98,10 +89,18 @@ export function parseMessage(text: string): MessageIntent {
     }
   }
 
-  // 5. 收入快捷方式 (例如: "+5000")
+  // 4. 收入快捷方式 (例如: "+5000")
   if (/^\+\d+(\.\d{1,2})?$/.test(trimmed)) {
     const amount = parseFloat(trimmed.substring(1));
     return { type: 'INCOME', amount };
+  }
+
+  // 5. 明確的股票查詢指令 (例如: "股票查詢 2330", "查詢 TSLA", "股 2330")
+  const stockQueryMatch = trimmed.match(/^(股票查詢|查詢|股票|股)\s+([A-Z0-9]+)$/i);
+  if (stockQueryMatch) {
+    const symbol = stockQueryMatch[2].toUpperCase();
+    const formattedSymbol = formatTaiwanStockSymbol(symbol);
+    return { type: 'STOCK_QUERY', symbol: formattedSymbol };
   }
 
   // 6. 檢查是否為買入操作 (例如: "買入 TSLA", "買 TSLA", "買入 2330")

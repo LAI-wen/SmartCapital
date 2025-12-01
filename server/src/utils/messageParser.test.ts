@@ -104,11 +104,14 @@ describe('parseMessage - 傳統兩步式記帳', () => {
     }
   });
 
-  it('應該正確解析「120」- 注意：會被誤判為股票代碼', () => {
-    // 這是一個已知的邊界情況：純數字會優先被視為股票代碼
-    // 用戶應該使用「+120」來表示收入，或使用一步式記帳
-    const result = parseMessage('120');
-    expect(result.type).toBe('STOCK_QUERY'); // 實際行為
+  it('應該正確解析「100」為收入（純數字優先當作記帳）', () => {
+    // 純數字現在優先被視為記帳金額，而非股票代碼
+    // 要查詢股票請使用「股票查詢 2330」等明確指令
+    const result = parseMessage('100');
+    expect(result.type).toBe('INCOME');
+    if (result.type === 'INCOME') {
+      expect(result.amount).toBe(100);
+    }
   });
 
   it('應該正確解析「+5000」為收入', () => {
@@ -121,28 +124,50 @@ describe('parseMessage - 傳統兩步式記帳', () => {
 });
 
 describe('parseMessage - 股票查詢', () => {
-  it('應該正確解析台股代碼「2330」', () => {
-    const result = parseMessage('2330');
+  it('應該正確解析「股票查詢 2330」', () => {
+    const result = parseMessage('股票查詢 2330');
     expect(result.type).toBe('STOCK_QUERY');
     if (result.type === 'STOCK_QUERY') {
       expect(result.symbol).toBe('2330.TW');
     }
   });
 
-  it('應該正確解析美股代碼「TSLA」', () => {
-    const result = parseMessage('TSLA');
+  it('應該正確解析「查詢 TSLA」', () => {
+    const result = parseMessage('查詢 TSLA');
     expect(result.type).toBe('STOCK_QUERY');
     if (result.type === 'STOCK_QUERY') {
       expect(result.symbol).toBe('TSLA');
     }
   });
 
-  it('應該正確解析台股 ETF「0050」', () => {
-    const result = parseMessage('0050');
+  it('應該正確解析「股 0050」', () => {
+    const result = parseMessage('股 0050');
     expect(result.type).toBe('STOCK_QUERY');
     if (result.type === 'STOCK_QUERY') {
       expect(result.symbol).toBe('0050.TW');
     }
+  });
+
+  it('應該正確解析「股票 2330」', () => {
+    const result = parseMessage('股票 2330');
+    expect(result.type).toBe('STOCK_QUERY');
+    if (result.type === 'STOCK_QUERY') {
+      expect(result.symbol).toBe('2330.TW');
+    }
+  });
+
+  it('純數字「2330」應該被當作收入記帳，而非股票查詢', () => {
+    const result = parseMessage('2330');
+    expect(result.type).toBe('INCOME');
+    if (result.type === 'INCOME') {
+      expect(result.amount).toBe(2330);
+    }
+  });
+
+  it('純字母「TSLA」應該被當作未知指令，而非股票查詢', () => {
+    // 純字母不是數字，所以不會被當作記帳，也不會被當作股票查詢（需要關鍵字）
+    const result = parseMessage('TSLA');
+    expect(result.type).toBe('UNKNOWN');
   });
 });
 
