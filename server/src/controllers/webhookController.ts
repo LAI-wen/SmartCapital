@@ -295,16 +295,27 @@ export class WebhookController {
       '其他支出': '其他'
     };
 
-    // 檢查是否為有效分類
-    if (categoryMap[text.trim()]) {
-      category = categoryMap[text.trim()];
+    // 支援兩種格式：
+    // 1. 純分類名稱：「飲食」
+    // 2. 分類 + 金額：「飲食 100」（忽略金額，因為 amount 已在 context 中）
+    const trimmed = text.trim();
+
+    // 先嘗試直接匹配
+    if (categoryMap[trimmed]) {
+      category = categoryMap[trimmed];
     } else {
-      // 如果不是有效分類，提示用戶
-      await this.client.pushMessage(lineUserId, {
-        type: 'text',
-        text: '請從分類按鈕中選擇，或輸入「取消」'
-      });
-      return;
+      // 嘗試提取分類名稱（移除數字和空格）
+      const categoryMatch = trimmed.match(/^(飲食|交通|居住|娛樂|購物|醫療|其他支出|其他)/);
+      if (categoryMatch && categoryMap[categoryMatch[1]]) {
+        category = categoryMap[categoryMatch[1]];
+      } else {
+        // 如果不是有效分類，提示用戶
+        await this.client.pushMessage(lineUserId, {
+          type: 'text',
+          text: '請從分類按鈕中選擇，或輸入「取消」'
+        });
+        return;
+      }
     }
 
     // 呼叫已有的處理函數
@@ -326,24 +337,39 @@ export class WebhookController {
     let category = '其他';
     const categoryMap: Record<string, string> = {
       '薪資': '薪資',
+      '薪水': '薪資',
       '獎金': '獎金',
+      '紅利': '獎金',
       '股息': '股息',
+      '配息': '股息',
       '投資獲利': '投資獲利',
       '兼職': '兼職',
+      '副業': '兼職',
       '其他': '其他',
       '其他收入': '其他'
     };
 
-    // 檢查是否為有效分類
-    if (categoryMap[text.trim()]) {
-      category = categoryMap[text.trim()];
+    // 支援兩種格式：
+    // 1. 純分類名稱：「股息」
+    // 2. 分類 + 金額：「股息 100」（忽略金額，因為 amount 已在 context 中）
+    const trimmed = text.trim();
+
+    // 先嘗試直接匹配
+    if (categoryMap[trimmed]) {
+      category = categoryMap[trimmed];
     } else {
-      // 如果不是有效分類，提示用戶
-      await this.client.pushMessage(lineUserId, {
-        type: 'text',
-        text: '請從分類按鈕中選擇，或輸入「取消」'
-      });
-      return;
+      // 嘗試提取分類名稱（移除數字和空格）
+      const categoryMatch = trimmed.match(/^(薪資|薪水|獎金|紅利|股息|配息|投資獲利|兼職|副業|其他收入|其他)/);
+      if (categoryMatch && categoryMap[categoryMatch[1]]) {
+        category = categoryMap[categoryMatch[1]];
+      } else {
+        // 如果不是有效分類，提示用戶
+        await this.client.pushMessage(lineUserId, {
+          type: 'text',
+          text: '請從分類按鈕中選擇，或輸入「取消」'
+        });
+        return;
+      }
     }
 
     // 呼叫已有的處理函數
