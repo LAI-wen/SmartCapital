@@ -121,6 +121,33 @@ describe('parseMessage - 傳統兩步式記帳', () => {
       expect(result.amount).toBe(5000);
     }
   });
+
+  it('應該正確解析「+100 牛肉麵」為收入且保留備註', () => {
+    const result = parseMessage('+100 牛肉麵');
+    expect(result.type).toBe('INCOME');
+    if (result.type === 'INCOME') {
+      expect(result.amount).toBe(100);
+      expect(result.note).toBe('牛肉麵');
+    }
+  });
+
+  it('應該正確解析「-120 計程車」為支出且保留備註', () => {
+    const result = parseMessage('-120 計程車');
+    expect(result.type).toBe('EXPENSE');
+    if (result.type === 'EXPENSE') {
+      expect(result.amount).toBe(120);
+      expect(result.note).toBe('計程車');
+    }
+  });
+
+  it('應該正確解析「100 星巴克」為收入且保留備註', () => {
+    const result = parseMessage('100 星巴克');
+    expect(result.type).toBe('INCOME');
+    if (result.type === 'INCOME') {
+      expect(result.amount).toBe(100);
+      expect(result.note).toBe('星巴克');
+    }
+  });
 });
 
 describe('parseMessage - 股票查詢', () => {

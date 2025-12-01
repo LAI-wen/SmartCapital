@@ -91,11 +91,17 @@ export class WebhookController {
         try {
           const predictedCategory = await predictExpenseCategory(userId, intent.amount);
           await this.client.pushMessage(lineUserId, createExpenseCategoryQuickReply(intent.amount, predictedCategory));
-          await updateConversationState(lineUserId, 'WAITING_EXPENSE_CATEGORY', { amount: intent.amount });
+          await updateConversationState(lineUserId, 'WAITING_EXPENSE_CATEGORY', {
+            amount: intent.amount,
+            note: intent.note // 保存備註
+          });
         } catch (error) {
           console.error('預測分類失敗:', error);
           await this.client.pushMessage(lineUserId, createExpenseCategoryQuickReply(intent.amount));
-          await updateConversationState(lineUserId, 'WAITING_EXPENSE_CATEGORY', { amount: intent.amount });
+          await updateConversationState(lineUserId, 'WAITING_EXPENSE_CATEGORY', {
+            amount: intent.amount,
+            note: intent.note // 保存備註
+          });
         }
         break;
 
@@ -104,11 +110,17 @@ export class WebhookController {
         try {
           const predictedCategory = await predictIncomeCategory(userId, intent.amount);
           await this.client.pushMessage(lineUserId, createIncomeCategoryQuickReply(intent.amount, predictedCategory));
-          await updateConversationState(lineUserId, 'WAITING_INCOME_CATEGORY', { amount: intent.amount });
+          await updateConversationState(lineUserId, 'WAITING_INCOME_CATEGORY', {
+            amount: intent.amount,
+            note: intent.note // 保存備註
+          });
         } catch (error) {
           console.error('預測分類失敗:', error);
           await this.client.pushMessage(lineUserId, createIncomeCategoryQuickReply(intent.amount));
-          await updateConversationState(lineUserId, 'WAITING_INCOME_CATEGORY', { amount: intent.amount });
+          await updateConversationState(lineUserId, 'WAITING_INCOME_CATEGORY', {
+            amount: intent.amount,
+            note: intent.note // 保存備註
+          });
         }
         break;
 
@@ -280,7 +292,7 @@ export class WebhookController {
     text: string,
     context: any
   ): Promise<void> {
-    const { amount } = context;
+    const { amount, note } = context; // 從 context 取得備註
 
     // 解析分類（支援中文分類名稱或直接輸入分類）
     let category = '其他';
@@ -318,8 +330,8 @@ export class WebhookController {
       }
     }
 
-    // 呼叫已有的處理函數
-    await this.handleExpenseCategory(lineUserId, userId, category, amount);
+    // 呼叫已有的處理函數，傳入備註
+    await this.handleExpenseCategory(lineUserId, userId, category, amount, note);
   }
 
   /**
@@ -331,7 +343,7 @@ export class WebhookController {
     text: string,
     context: any
   ): Promise<void> {
-    const { amount } = context;
+    const { amount, note } = context; // 從 context 取得備註
 
     // 解析分類
     let category = '其他';
@@ -372,8 +384,8 @@ export class WebhookController {
       }
     }
 
-    // 呼叫已有的處理函數
-    await this.handleIncomeCategory(lineUserId, userId, category, amount);
+    // 呼叫已有的處理函數，傳入備註
+    await this.handleIncomeCategory(lineUserId, userId, category, amount, note);
   }
 
   /**

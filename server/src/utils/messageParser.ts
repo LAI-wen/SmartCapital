@@ -7,8 +7,8 @@ import { isValidStockSymbol, formatTaiwanStockSymbol } from '../services/stockSe
 import { FlexMessage } from '@line/bot-sdk';
 
 export type MessageIntent =
-  | { type: 'EXPENSE'; amount: number }
-  | { type: 'INCOME'; amount: number }
+  | { type: 'EXPENSE'; amount: number; note?: string }
+  | { type: 'INCOME'; amount: number; note?: string }
   | { type: 'STOCK_QUERY'; symbol: string }
   | { type: 'BUY_ACTION'; symbol: string }
   | { type: 'SELL_ACTION'; symbol: string }
@@ -78,21 +78,26 @@ export function parseMessage(text: string): MessageIntent {
     };
   }
 
-  // 3. 傳統兩步式 - 純數字優先當作記帳 (例如: "100", "-120")
+  // 3. 傳統兩步式 - 純數字 + 備註 (例如: "100 牛肉麵", "-120 計程車")
   // 優先級提高：純數字應該是記帳，而非股票查詢
-  if (/^-?\d+(\.\d{1,2})?$/.test(trimmed)) {
-    const amount = parseFloat(trimmed);
+  const numberWithNoteMatch = trimmed.match(/^(-?\d+(\.\d{1,2})?)\s*(.*)$/);
+  if (numberWithNoteMatch) {
+    const amount = parseFloat(numberWithNoteMatch[1]);
+    const note = numberWithNoteMatch[3]?.trim() || undefined;
+
     if (amount < 0) {
-      return { type: 'EXPENSE', amount: Math.abs(amount) };
+      return { type: 'EXPENSE', amount: Math.abs(amount), note };
     } else if (amount > 0) {
-      return { type: 'INCOME', amount };
+      return { type: 'INCOME', amount, note };
     }
   }
 
-  // 4. 收入快捷方式 (例如: "+5000")
-  if (/^\+\d+(\.\d{1,2})?$/.test(trimmed)) {
-    const amount = parseFloat(trimmed.substring(1));
-    return { type: 'INCOME', amount };
+  // 4. 收入快捷方式 + 備註 (例如: "+5000", "+100 牛肉麵")
+  const incomeWithNoteMatch = trimmed.match(/^\+(\d+(\.\d{1,2})?)\s*(.*)$/);
+  if (incomeWithNoteMatch) {
+    const amount = parseFloat(incomeWithNoteMatch[1]);
+    const note = incomeWithNoteMatch[3]?.trim() || undefined;
+    return { type: 'INCOME', amount, note };
   }
 
   // 5. 明確的股票查詢指令 (例如: "股票查詢 2330", "查詢 TSLA", "股 2330")
