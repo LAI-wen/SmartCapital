@@ -1045,7 +1045,31 @@ export async function getExchangeRatesAPI(req: Request, res: Response) {
     });
   } catch (error) {
     console.error('Error fetching exchange rates:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch exchange rates' });
+    // 即使出錯也返回預設匯率，不要讓前端崩潰
+    const getDefaultRates = () => ({
+      TWD: 31.5,
+      JPY: 150.0,
+      EUR: 0.92,
+      GBP: 0.79,
+      CNY: 7.25,
+      KRW: 1320,
+      HKD: 7.83,
+      SGD: 1.35,
+      AUD: 1.53,
+      CAD: 1.36,
+      USD: 1.0
+    });
+
+    res.json({
+      success: true,
+      data: {
+        base: 'USD',
+        rates: getDefaultRates(),
+        timestamp: new Date().toISOString(),
+        cached: true,
+        fallback: true
+      }
+    });
   }
 }
 

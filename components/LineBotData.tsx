@@ -7,26 +7,28 @@ import { useState, useEffect } from 'react';
 
 const API_BASE = 'http://localhost:3000';
 
-// 從 URL 參數或 localStorage 取得 User ID
+// 從 localStorage 取得 User ID
+// ⚠️ 已移除 URL 參數功能（安全風險）
 function getUserId(): string {
-  // 1. 先檢查 URL 參數
-  const params = new URLSearchParams(window.location.search);
-  const userIdFromUrl = params.get('userId');
-
-  if (userIdFromUrl) {
-    // 儲存到 localStorage
-    localStorage.setItem('lineUserId', userIdFromUrl);
-    return userIdFromUrl;
-  }
-
-  // 2. 從 localStorage 讀取
+  // 1. 從 localStorage 讀取
   const savedUserId = localStorage.getItem('lineUserId');
   if (savedUserId) {
     return savedUserId;
   }
 
-  // 3. 預設值（給開發測試用）
-  return 'Ucb528757211bf9eef17f7f0a391dd56e';
+  // 2. 生成新的訪客 Mock ID
+  const generateMockUserId = () => {
+    const randomHex = Array.from({ length: 32 }, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    ).join('');
+    return `U${randomHex}`;
+  };
+
+  const newMockId = generateMockUserId();
+  console.log('🆕 生成新的訪客 ID:', newMockId);
+  localStorage.setItem('lineUserId', newMockId);
+  localStorage.setItem('displayName', '訪客用戶');
+  return newMockId;
 }
 
 const USER_ID = getUserId();

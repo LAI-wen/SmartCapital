@@ -28,11 +28,13 @@
     "@line/bot-sdk": "^9.3.0",
     "@prisma/client": "^5.22.0",
     "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.14.0",
     "axios": "^1.7.9",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
     "node-cron": "^4.2.1"
   },
   "devDependencies": {

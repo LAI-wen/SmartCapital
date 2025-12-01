@@ -4,9 +4,6 @@
 
 import { get } from './core/http';
 
-// Mock LINE User ID（開發用）
-const MOCK_LINE_USER_ID = 'Ucb528757211bf9eef17f7f0a391dd56e';
-
 export interface User {
   id: string;
   displayName: string;
@@ -28,19 +25,28 @@ export interface Portfolio {
   assets: unknown[];
 }
 
-// 當前用戶 ID
-let currentUserId = MOCK_LINE_USER_ID;
+/**
+ * 生成隨機的 Mock User ID
+ * 格式：U + 32位隨機16進制字符
+ */
+function generateMockUserId(): string {
+  const randomHex = Array.from({ length: 32 }, () =>
+    Math.floor(Math.random() * 16).toString(16)
+  ).join('');
+  return `U${randomHex}`;
+}
 
 /**
  * 設定當前用戶 ID（用於 LINE Login 整合）
  */
 export function setUserId(userId: string): void {
-  currentUserId = userId;
+  localStorage.setItem('lineUserId', userId);
 }
 
 /**
  * 取得當前用戶 ID
- * 優先級：localStorage > URL 參數 > Mock ID
+ * 優先級：localStorage > 生成新的 Mock ID
+ * ⚠️ 已移除 URL 參數功能（安全風險）
  */
 export function getUserId(): string {
   // 優先從 localStorage 讀取（LIFF 登入後會儲存）
@@ -50,17 +56,12 @@ export function getUserId(): string {
     return storedUserId;
   }
 
-  // 檢查 URL 參數（開發模式）
-  const params = new URLSearchParams(window.location.search);
-  const userIdFromUrl = params.get('userId');
-  if (userIdFromUrl) {
-    console.log('🔍 [getUserId] 從 URL 參數取得:', userIdFromUrl);
-    return userIdFromUrl;
-  }
-
-  // 最後才用 mock ID（本地測試）
-  console.log('🔍 [getUserId] 使用 Mock ID:', currentUserId);
-  return currentUserId;
+  // 生成新的訪客 Mock ID 並儲存
+  const newMockId = generateMockUserId();
+  console.log('🆕 [getUserId] 生成新的訪客 ID:', newMockId);
+  localStorage.setItem('lineUserId', newMockId);
+  localStorage.setItem('displayName', '訪客用戶');
+  return newMockId;
 }
 
 /**

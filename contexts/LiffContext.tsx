@@ -50,24 +50,24 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
           setIsLoggedIn(true);
           return;
         }
-        
-        // 檢查 URL 參數中的 userId（開發模式）
-        const params = new URLSearchParams(window.location.search);
-        const userIdFromUrl = params.get('userId');
-        if (userIdFromUrl) {
-          console.log('✅ 從 URL 載入 userId:', userIdFromUrl);
-          setLineUserId(userIdFromUrl);
-          setIsLoggedIn(true);
-          localStorage.setItem('lineUserId', userIdFromUrl);
-          return;
-        }
-        
-        // 如果都沒有，使用 Mock ID（本地測試）
-        const mockUserId = 'Ucb528757211bf9eef17f7f0a391dd56e';
-        console.log('⚠️ 使用 Mock User ID:', mockUserId);
+
+        // ⚠️ 已移除 URL 參數功能（安全風險）
+
+        // 生成新的訪客 Mock ID
+        const generateMockUserId = () => {
+          const randomHex = Array.from({ length: 32 }, () =>
+            Math.floor(Math.random() * 16).toString(16)
+          ).join('');
+          return `U${randomHex}`;
+        };
+
+        const mockUserId = generateMockUserId();
+        console.log('🆕 生成新的訪客 ID:', mockUserId);
         setLineUserId(mockUserId);
+        setDisplayName('訪客用戶');
         setIsLoggedIn(true);
         localStorage.setItem('lineUserId', mockUserId);
+        localStorage.setItem('displayName', '訪客用戶');
         return;
       }
 
