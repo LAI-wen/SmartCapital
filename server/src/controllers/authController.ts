@@ -10,7 +10,7 @@ import {
   generateGuestTokens,
   refreshAccessToken,
   verifyToken
-} from '../services/authService';
+} from '../services/authService.js';
 import { prisma } from '../services/databaseService.js';
 
 /**

@@ -4,7 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, JwtPayload } from '../services/authService';
+import { verifyToken, JwtPayload } from '../services/authService.js';
 
 // 擴展 Express Request 類型
 declare global {
