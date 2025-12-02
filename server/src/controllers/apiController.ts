@@ -1030,7 +1030,7 @@ export async function searchStocksAPI(req: Request, res: Response) {
  */
 export async function getExchangeRatesAPI(req: Request, res: Response) {
   try {
-    const { getExchangeRates } = await import('../services/exchangeRateService');
+    const { getExchangeRates } = await import('../services/exchangeRateService.js');
     const baseCurrency = (req.query.base as string) || 'USD';
 
     const rates = await getExchangeRates(baseCurrency);
@@ -1079,7 +1079,7 @@ export async function getExchangeRatesAPI(req: Request, res: Response) {
  */
 export async function convertCurrencyAPI(req: Request, res: Response) {
   try {
-    const { convertCurrency } = await import('../services/exchangeRateService');
+    const { convertCurrency } = await import('../services/exchangeRateService.js');
     const from = req.query.from as string;
     const to = req.query.to as string;
     const amount = parseFloat(req.query.amount as string);
