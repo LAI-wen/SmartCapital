@@ -38,13 +38,27 @@ export async function verifyLineIdToken(idToken: string): Promise<{
   pictureUrl?: string;
 } | null> {
   try {
-    // 方法 1: 使用 LINE 官方驗證 API
+    // 檢查是否有 LINE_CHANNEL_ID 環境變數
+    const channelId = process.env.LINE_CHANNEL_ID;
+
+    if (!channelId) {
+      console.error('❌ LINE_CHANNEL_ID 環境變數未設置');
+      console.error('請在 Render Dashboard 設置 LINE_CHANNEL_ID');
+      return null;
+    }
+
+    console.log('🔍 開始驗證 LINE ID Token...');
+    console.log('Channel ID:', channelId);
+
+    // 使用 LINE 官方驗證 API
     const response = await axios.post(LINE_TOKEN_VERIFY_URL, null, {
       params: {
         id_token: idToken,
-        client_id: process.env.LINE_CHANNEL_ID || ''
+        client_id: channelId
       }
     });
+
+    console.log('✅ LINE API 驗證成功');
 
     if (response.data && response.data.sub) {
       return {
@@ -54,9 +68,17 @@ export async function verifyLineIdToken(idToken: string): Promise<{
       };
     }
 
+    console.error('❌ LINE API 返回格式錯誤:', response.data);
     return null;
   } catch (error) {
-    console.error('❌ LINE ID Token 驗證失敗:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('❌ LINE ID Token 驗證失敗:');
+      console.error('Status:', error.response?.status);
+      console.error('Data:', error.response?.data);
+      console.error('錯誤訊息:', error.message);
+    } else {
+      console.error('❌ LINE ID Token 驗證失敗:', error);
+    }
     return null;
   }
 }
