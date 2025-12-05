@@ -5,6 +5,7 @@
 
 import cron from 'node-cron';
 import { checkAndTriggerAlerts } from './priceAlertService.js';
+import { sendDailySummaryToAllUsers } from './dailySummaryService.js';
 import { Client } from '@line/bot-sdk';
 
 /**
@@ -36,8 +37,8 @@ export function startScheduler(lineClient: Client) {
   const dailySummaryTask = cron.schedule('0 9 * * *', async () => {
     try {
       console.log('⏰ [排程] 開始執行每日總結...');
-      // TODO: 實作每日總結功能
-      console.log('✅ [排程] 每日總結完成');
+      const result = await sendDailySummaryToAllUsers(lineClient);
+      console.log(`✅ [排程] 每日總結完成 - 成功: ${result.successCount}, 失敗: ${result.failCount}`);
     } catch (error) {
       console.error('❌ [排程] 每日總結失敗:', error);
     }

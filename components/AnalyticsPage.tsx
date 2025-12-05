@@ -619,23 +619,27 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
              </div>
            </div>
            
-           {/* ROI Analysis Mockup */}
-           <div className="bg-white p-6 rounded-2xl border border-stone-100 shadow-paper">
+           {/* ROI Analysis - Coming Soon */}
+           <div className="bg-white p-6 rounded-2xl border border-stone-100 shadow-paper relative overflow-hidden">
+              <div className="absolute top-4 right-4 bg-morandi-clay text-white text-xs font-bold px-3 py-1 rounded-full">
+                 開發中
+              </div>
               <h3 className="font-bold text-ink-900 font-serif mb-4">投資回報分析</h3>
-              <div className="space-y-4">
+              <div className="space-y-4 opacity-50">
                  <div className="flex justify-between items-center p-3 bg-stone-50 rounded-xl">
                     <span className="text-sm text-ink-500 font-serif">年化報酬率 (IRR)</span>
-                    <span className="font-serif-num font-bold text-morandi-sage text-lg">12.4%</span>
+                    <span className="font-serif-num font-bold text-morandi-sage text-lg">--</span>
                  </div>
                  <div className="flex justify-between items-center p-3 bg-stone-50 rounded-xl">
                     <span className="text-sm text-ink-500 font-serif">夏普比率 (Sharpe)</span>
-                    <span className="font-serif-num font-bold text-ink-900 text-lg">1.85</span>
+                    <span className="font-serif-num font-bold text-ink-900 text-lg">--</span>
                  </div>
                  <div className="flex justify-between items-center p-3 bg-stone-50 rounded-xl">
                     <span className="text-sm text-ink-500 font-serif">最大回撤 (MDD)</span>
-                    <span className="font-serif-num font-bold text-morandi-rose text-lg">-15.2%</span>
+                    <span className="font-serif-num font-bold text-morandi-rose text-lg">--</span>
                  </div>
               </div>
+              <p className="text-xs text-ink-400 mt-4 text-center">此功能正在開發中，敬請期待</p>
            </div>
         </div>
       )}
