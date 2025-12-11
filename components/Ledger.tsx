@@ -306,21 +306,35 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
   };
 
   const handleDelete = async () => {
-    if (editingId && confirm('確定要刪除此紀錄？')) {
-      try {
-        const success = await apiDeleteTransaction(editingId);
-        if (success) {
-          console.log('✅ 交易刪除成功');
-          setIsModalOpen(false);
-          // 刷新列表以取得最新資料
-          await reloadTransactions();
-          // 🔥 通知父組件刷新帳戶餘額
+    if (!editingId) return;
+
+    // 顯示自定義確認對話框
+    const confirmed = confirm('確定要刪除此紀錄嗎？');
+    if (!confirmed) return;
+
+    // 詢問是否要連動帳戶餘額
+    const updateBalance = confirm(
+      '是否要同步更新帳戶餘額？\n\n' +
+      '• 點選「確定」：刪除記錄並回復帳戶餘額\n' +
+      '• 點選「取消」：只刪除記錄，不影響帳戶餘額'
+    );
+
+    try {
+      const skipBalanceUpdate = !updateBalance;
+      const success = await apiDeleteTransaction(editingId, skipBalanceUpdate);
+      if (success) {
+        console.log(`✅ 交易刪除成功 ${skipBalanceUpdate ? '(不連動資金池)' : '(已連動資金池)'}`);
+        setIsModalOpen(false);
+        // 刷新列表以取得最新資料
+        await reloadTransactions();
+        // 🔥 如果有連動資金池，通知父組件刷新帳戶餘額
+        if (!skipBalanceUpdate) {
           onAccountsUpdate?.();
         }
-      } catch (error) {
-        console.error('❌ 刪除交易失敗:', error);
-        alert('刪除失敗，請重試');
       }
+    } catch (error) {
+      console.error('❌ 刪除交易失敗:', error);
+      alert('刪除失敗，請重試');
     }
   };
 
@@ -351,14 +365,23 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
       return;
     }
 
-    if (!confirm(`確定要刪除 ${selectedIds.size} 筆交易記錄？`)) {
+    if (!confirm(`確定要刪除 ${selectedIds.size} 筆交易記錄嗎？`)) {
       return;
     }
 
+    // 詢問是否要連動帳戶餘額
+    const updateBalance = confirm(
+      '是否要同步更新帳戶餘額？\n\n' +
+      '• 點選「確定」：刪除記錄並回復帳戶餘額\n' +
+      '• 點選「取消」：只刪除記錄，不影響帳戶餘額'
+    );
+
     try {
       const idsArray: string[] = Array.from(selectedIds);
-      console.log('🗑️ 開始批次刪除:', idsArray);
-      const result = await apiBatchDeleteTransactions(idsArray);
+      const skipBalanceUpdate = !updateBalance;
+
+      console.log(`🗑️ 開始批次刪除 ${skipBalanceUpdate ? '(不連動資金池)' : '(連動資金池)'}:`, idsArray);
+      const result = await apiBatchDeleteTransactions(idsArray, skipBalanceUpdate);
 
       console.log('📦 批次刪除結果:', result);
 
@@ -373,8 +396,10 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
 
         // 刷新列表
         await reloadTransactions();
-        // 通知父組件刷新帳戶餘額
-        onAccountsUpdate?.();
+        // 🔥 如果有連動資金池，通知父組件刷新帳戶餘額
+        if (!skipBalanceUpdate) {
+          onAccountsUpdate?.();
+        }
         // 退出選擇模式
         setIsSelectMode(false);
         setSelectedIds(new Set());

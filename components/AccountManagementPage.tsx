@@ -127,6 +127,28 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
     }
   };
 
+  const handleSetDefault = async (accountId: string) => {
+    const account = accounts.find(a => a.id === accountId);
+    if (!account) return;
+
+    if (account.isDefault) {
+      alert('此帳戶已是預設帳戶');
+      return;
+    }
+
+    try {
+      const success = await updateAccount(accountId, { isDefault: true });
+      if (success) {
+        console.log('✅ 預設帳戶更新成功');
+        await loadAccounts();
+        onAccountsUpdate?.();
+      }
+    } catch (error) {
+      console.error('❌ 更新預設帳戶失敗:', error);
+      alert('更新失敗，請重試');
+    }
+  };
+
   const handleDeleteAccount = async (accountId: string) => {
     const account = accounts.find(a => a.id === accountId);
     if (!account) return;
@@ -600,6 +622,15 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
                         >
                           <Edit3 size={16} />
                         </button>
+                        {!account.isDefault && (
+                          <button
+                            onClick={() => handleSetDefault(account.id)}
+                            className="text-morandi-sage hover:bg-green-50 px-2 py-1 rounded-lg transition text-xs font-medium"
+                            title="設為預設帳戶"
+                          >
+                            設為預設
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteAccount(account.id)}
                           className="text-morandi-rose hover:bg-red-50 p-1.5 rounded-lg transition"

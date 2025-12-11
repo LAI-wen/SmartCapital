@@ -424,7 +424,7 @@ export async function createTransaction(req: Request, res: Response) {
  */
 export async function batchDeleteTransactions(req: Request, res: Response) {
   try {
-    const { transactionIds, lineUserId } = req.body;
+    const { transactionIds, lineUserId, skipBalanceUpdate } = req.body;
 
     // 🔒 安全檢查：必須提供 lineUserId
     if (!lineUserId || typeof lineUserId !== 'string') {
@@ -441,6 +441,9 @@ export async function batchDeleteTransactions(req: Request, res: Response) {
         error: 'transactionIds must be a non-empty array'
       });
     }
+
+    // 解析 skipBalanceUpdate 參數（預設為 false，即會連動資金池）
+    const shouldSkipBalanceUpdate = skipBalanceUpdate === true;
 
     // 查詢所有交易記錄
     const transactions = await prisma.transaction.findMany({
@@ -467,14 +470,14 @@ export async function batchDeleteTransactions(req: Request, res: Response) {
       });
     }
 
-    // 批次刪除交易並回滾帳戶餘額
+    // 批次刪除交易（可選擇是否回滾帳戶餘額）
     let deletedCount = 0;
     const errors: string[] = [];
 
     for (const transaction of transactions) {
       try {
-        // 如果交易有關聯帳戶，需要回滾餘額
-        if (transaction.accountId) {
+        // 如果交易有關聯帳戶且用戶選擇要連動資金池，則回滾餘額
+        if (transaction.accountId && !shouldSkipBalanceUpdate) {
           await prisma.$transaction(async (tx) => {
             // 1. 回滾帳戶餘額
             const account = await tx.account.findUnique({
@@ -498,7 +501,7 @@ export async function batchDeleteTransactions(req: Request, res: Response) {
             });
           });
         } else {
-          // 沒有關聯帳戶，直接刪除
+          // 沒有關聯帳戶或用戶選擇不連動資金池，直接刪除
           await prisma.transaction.delete({
             where: { id: transaction.id }
           });
@@ -537,7 +540,7 @@ export async function batchDeleteTransactions(req: Request, res: Response) {
 export async function deleteTransaction(req: Request, res: Response) {
   try {
     const { transactionId } = req.params;
-    const { lineUserId } = req.query;
+    const { lineUserId, skipBalanceUpdate } = req.query;
 
     // 🔒 安全檢查：必須提供 lineUserId
     if (!lineUserId || typeof lineUserId !== 'string') {
@@ -546,6 +549,9 @@ export async function deleteTransaction(req: Request, res: Response) {
         error: 'Unauthorized: lineUserId is required'
       });
     }
+
+    // 解析 skipBalanceUpdate 參數（預設為 false，即會連動資金池）
+    const shouldSkipBalanceUpdate = skipBalanceUpdate === 'true';
 
     // 先查詢交易記錄以取得 accountId 和 amount
     const transaction = await prisma.transaction.findUnique({
@@ -565,8 +571,8 @@ export async function deleteTransaction(req: Request, res: Response) {
       });
     }
 
-    // 如果交易有關聯帳戶，需要回滾餘額
-    if (transaction.accountId) {
+    // 如果交易有關聯帳戶且用戶選擇要連動資金池，則回滾餘額
+    if (transaction.accountId && !shouldSkipBalanceUpdate) {
       await prisma.$transaction(async (tx) => {
         // 1. 回滾帳戶餘額
         const account = await tx.account.findUnique({
@@ -593,7 +599,7 @@ export async function deleteTransaction(req: Request, res: Response) {
         });
       });
     } else {
-      // 沒有關聯帳戶，直接刪除
+      // 沒有關聯帳戶或用戶選擇不連動資金池，直接刪除
       await prisma.transaction.delete({
         where: { id: transactionId }
       });

@@ -109,8 +109,8 @@ const Portfolio: React.FC<PortfolioProps> = ({ assets, isPrivacyMode }) => {
                 </div>
 
                 {/* Right: Data */}
-                <div className="flex items-center justify-end gap-6 w-1/2">
-                  <div className="text-right hidden sm:block">
+                <div className="flex items-center justify-end gap-4 sm:gap-6 w-1/2 pr-2">
+                  <div className="text-right hidden sm:block min-w-[100px]">
                     <div className="font-serif-num text-ink-900 text-sm font-medium">
                       {formatCurrency(asset.currentPrice)}
                     </div>
@@ -118,19 +118,19 @@ const Portfolio: React.FC<PortfolioProps> = ({ assets, isPrivacyMode }) => {
                        Vol: {isPrivacyMode ? '•••' : asset.quantity}
                     </div>
                   </div>
-                  
-                  <div className="text-right min-w-[80px]">
-                    <div className={`font-serif-num text-lg font-bold flex items-center justify-end gap-1 ${isProfit ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
+
+                  <div className="text-right min-w-[80px] sm:min-w-[100px]">
+                    <div className={`font-serif-num text-base sm:text-lg font-bold flex items-center justify-end gap-1 ${isProfit ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
                       {isProfit ? <TrendingUp size={14}/> : <TrendingDown size={14}/>}
-                      {formatCurrency(pl)}
+                      <span className="ml-1">{formatCurrency(pl)}</span>
                     </div>
                     <div className={`text-xs font-medium ${isProfit ? 'text-green-700/60' : 'text-red-700/60'}`}>
                       {plPercent.toFixed(2)}%
                     </div>
                   </div>
 
-                   <button className="text-ink-300 hover:text-morandi-blue p-2 rounded-full hover:bg-paper transition-colors">
-                      <MoreHorizontal size={20} />
+                   <button className="text-ink-300 hover:text-morandi-blue p-2 rounded-full hover:bg-paper transition-colors shrink-0">
+                      <MoreHorizontal size={18} />
                    </button>
                 </div>
               </div>
