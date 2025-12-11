@@ -76,6 +76,7 @@ app.post('/api/auth/logout', authController.logout);
 
 // 用戶資料 API
 app.get('/api/user/:lineUserId', authenticateToken, apiController.getUser);
+app.patch('/api/user/:lineUserId', authenticateToken, apiController.updateUserSettings);
 app.get('/api/portfolio/:lineUserId', authenticateToken, apiController.getPortfolio);
 app.get('/api/settings/:lineUserId', authenticateToken, apiController.getSettings);
 
@@ -86,10 +87,11 @@ app.post('/api/assets/:lineUserId/reduce', authenticateToken, apiController.redu
 app.post('/api/assets/:lineUserId/import', authenticateToken, apiController.importAssetAPI);
 
 // 交易記錄 API
+// ⚠️ 重要：批次刪除路由必須在 :lineUserId 路由之前，否則會被誤匹配
+app.post('/api/transactions/batch-delete', authenticateToken, apiController.batchDeleteTransactions);
 app.get('/api/transactions/:lineUserId', authenticateToken, apiController.getTransactions);
 app.post('/api/transactions/:lineUserId', authenticateToken, apiController.createTransaction);
 app.delete('/api/transactions/:transactionId', authenticateToken, apiController.deleteTransaction);
-app.post('/api/transactions/batch-delete', authenticateToken, apiController.batchDeleteTransactions);
 
 // 通知 API
 app.get('/api/notifications/:lineUserId', authenticateToken, apiController.getNotifications);

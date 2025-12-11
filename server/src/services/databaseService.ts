@@ -41,6 +41,25 @@ export async function getOrCreateUser(lineUserId: string, displayName?: string) 
 }
 
 /**
+ * 更新用戶投資範圍設定
+ */
+export async function updateUserInvestmentScope(
+  userId: string,
+  enableTWStock: boolean,
+  enableUSStock: boolean,
+  enableCrypto: boolean
+) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      enableTWStock,
+      enableUSStock,
+      enableCrypto
+    }
+  });
+}
+
+/**
  * 取得用戶設定
  */
 export async function getUserSettings(userId: string) {
@@ -74,7 +93,8 @@ export async function createTransaction(
   note?: string,
   accountId?: string,
   originalCurrency?: string,
-  exchangeRate?: number
+  exchangeRate?: number,
+  date?: string
 ) {
   // 如果有指定帳戶，更新帳戶餘額
   if (accountId) {
@@ -112,7 +132,8 @@ export async function createTransaction(
           category,
           note: note || '',
           originalCurrency, // 儲存原始幣別
-          exchangeRate      // 儲存匯率快取
+          exchangeRate,     // 儲存匯率快取
+          date: date ? new Date(date) : undefined // 如果有指定日期，使用指定日期
         }
       });
     });
@@ -126,7 +147,8 @@ export async function createTransaction(
         category,
         note: note || '',
         originalCurrency,
-        exchangeRate
+        exchangeRate,
+        date: date ? new Date(date) : undefined // 如果有指定日期，使用指定日期
       }
     });
   }

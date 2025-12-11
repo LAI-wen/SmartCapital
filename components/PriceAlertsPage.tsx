@@ -12,17 +12,33 @@ import {
   type AlertDirection,
   type CreatePriceAlertInput
 } from '../services';
-import { Asset } from '../types';
+import { Asset, InvestmentScope } from '../types';
+import { useMemo } from 'react';
 
 interface PriceAlertsPageProps {
   assets: Asset[];
+  investmentScope: InvestmentScope;
 }
 
-const PriceAlertsPage: React.FC<PriceAlertsPageProps> = ({ assets }) => {
+const PriceAlertsPage: React.FC<PriceAlertsPageProps> = ({ assets, investmentScope }) => {
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreatingDefaults, setIsCreatingDefaults] = useState(false);
+
+  // Filter Assets based on Investment Scope
+  const scopeFilteredAssets = useMemo(() => {
+    return assets.filter(asset => {
+      const isTW = asset.currency === 'TWD';
+      const isCrypto = asset.type === 'Crypto';
+      const isUS = !isTW && !isCrypto;
+
+      if (isTW && !investmentScope.tw) return false;
+      if (isUS && !investmentScope.us) return false;
+      if (isCrypto && !investmentScope.crypto) return false;
+      return true;
+    });
+  }, [assets, investmentScope]);
 
   // Load alerts on mount
   useEffect(() => {
@@ -58,12 +74,12 @@ const PriceAlertsPage: React.FC<PriceAlertsPageProps> = ({ assets }) => {
   };
 
   const handleCreateDefaultAlerts = async () => {
-    if (assets.length === 0) {
+    if (scopeFilteredAssets.length === 0) {
       alert('您目前沒有持倉，無法建立預設警示');
       return;
     }
 
-    if (!confirm(`將為您的 ${assets.length} 個持倉建立預設警示（單日漲跌 ±5%、停利 +10%、停損 -10%），確定要繼續嗎？`)) {
+    if (!confirm(`將為您的 ${scopeFilteredAssets.length} 個持倉建立預設警示（單日漲跌 ±5%、停利 +10%、停損 -10%），確定要繼續嗎？`)) {
       return;
     }
 
@@ -144,7 +160,7 @@ const PriceAlertsPage: React.FC<PriceAlertsPageProps> = ({ assets }) => {
       <div className="mb-6 grid grid-cols-2 gap-3">
         <button
           onClick={handleCreateDefaultAlerts}
-          disabled={isCreatingDefaults || assets.length === 0}
+          disabled={isCreatingDefaults || scopeFilteredAssets.length === 0}
           className="flex items-center justify-center gap-2 p-4 bg-morandi-sage text-white rounded-xl font-bold text-sm font-serif hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Zap size={18} />
@@ -247,7 +263,7 @@ const PriceAlertsPage: React.FC<PriceAlertsPageProps> = ({ assets }) => {
       {/* Create Alert Modal */}
       {showCreateModal && (
         <CreateAlertModal
-          assets={assets}
+          assets={scopeFilteredAssets}
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);

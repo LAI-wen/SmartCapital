@@ -357,7 +357,10 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
 
     try {
       const idsArray: string[] = Array.from(selectedIds);
+      console.log('🗑️ 開始批次刪除:', idsArray);
       const result = await apiBatchDeleteTransactions(idsArray);
+
+      console.log('📦 批次刪除結果:', result);
 
       if (result) {
         console.log(`✅ 批次刪除成功: ${result.deletedCount}/${result.totalRequested} 筆`);
@@ -375,6 +378,9 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
         // 退出選擇模式
         setIsSelectMode(false);
         setSelectedIds(new Set());
+      } else {
+        console.error('❌ 批次刪除返回 null');
+        alert('批次刪除失敗，請檢查網路連線或查看控制台錯誤訊息');
       }
     } catch (error) {
       console.error('❌ 批次刪除失敗:', error);

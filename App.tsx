@@ -16,7 +16,7 @@ import AccountManagementPage from './components/AccountManagementPage';
 import PriceAlertsPage from './components/PriceAlertsPage';
 import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification, Asset, Account, InvestmentScope } from './types';
-import { getAccounts, getAssets as fetchAssets, createAccount } from './services/api';
+import { getAccounts, getAssets as fetchAssets, createAccount, getUser } from './services/api';
 import { useLiff } from './contexts/LiffContext';
 import './i18n/config'; // Initialize i18n
 import { useTranslation } from 'react-i18next';
@@ -85,6 +85,26 @@ const AppContent: React.FC = () => {
         setIsLoadingAccounts(false);
         setIsLoadingAssets(false);
         return;
+      }
+
+      // 🎯 載入用戶設定（投資範圍）
+      try {
+        console.log('🔍 [App] 開始載入用戶設定');
+        const user = await getUser();
+        if (user) {
+          setInvestmentScope({
+            tw: user.enableTWStock,
+            us: user.enableUSStock,
+            crypto: user.enableCrypto
+          });
+          console.log('✅ 已載入投資範圍設定:', {
+            tw: user.enableTWStock,
+            us: user.enableUSStock,
+            crypto: user.enableCrypto
+          });
+        }
+      } catch (error) {
+        console.error('❌ 載入用戶設定失敗:', error);
       }
 
       // 載入帳戶
@@ -395,7 +415,15 @@ const AppContent: React.FC = () => {
               <Route path="/strategy" element={<StrategyLab />} />
               <Route path="/notifications" element={<NotificationsPage notifications={notifications} setNotifications={setNotifications} />} />
               <Route path="/more" element={<MorePage onLogout={handleLogout} authMode={authMode} />} />
-              <Route path="/analytics" element={<AnalyticsPage isPrivacyMode={isPrivacyMode} />} />
+              <Route
+                path="/analytics"
+                element={
+                  <AnalyticsPage
+                    isPrivacyMode={isPrivacyMode}
+                    investmentScope={investmentScope}
+                  />
+                }
+              />
               <Route
                 path="/settings"
                 element={
@@ -424,7 +452,12 @@ const AppContent: React.FC = () => {
               />
               <Route
                 path="/price-alerts"
-                element={<PriceAlertsPage assets={assets} />}
+                element={
+                  <PriceAlertsPage
+                    assets={assets}
+                    investmentScope={investmentScope}
+                  />
+                }
               />
             </Routes>
           </div>

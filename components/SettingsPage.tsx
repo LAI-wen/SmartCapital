@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   ChevronRight, Globe, Lock, Bell, Moon, Smartphone,
-  MessageCircle, LogOut, ShieldCheck, CreditCard, Layout
+  MessageCircle, LogOut, ShieldCheck
 } from 'lucide-react';
 import { InvestmentScope } from '../types';
 import { useTranslation } from 'react-i18next';
+import { updateInvestmentScope } from '../services/api';
 
 interface SettingsPageProps {
   isPrivacyMode: boolean;
@@ -27,7 +28,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   displayName
 }) => {
   const { t, i18n } = useTranslation();
-  const [currency, setCurrency] = useState('TWD');
   const [language, setLanguage] = useState(i18n.language || 'zh-TW');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
@@ -43,11 +43,24 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     setLanguage(i18n.language);
   }, [i18n.language]);
 
-  const toggleScope = (key: keyof InvestmentScope) => {
-    setInvestmentScope({
+  const toggleScope = async (key: keyof InvestmentScope) => {
+    const newScope = {
       ...investmentScope,
       [key]: !investmentScope[key]
-    });
+    };
+
+    // 立即更新 UI
+    setInvestmentScope(newScope);
+
+    // 保存到後端
+    try {
+      await updateInvestmentScope(newScope.tw, newScope.us, newScope.crypto);
+      console.log('✅ 投資範圍設定已保存');
+    } catch (error) {
+      console.error('❌ 保存投資範圍設定失敗:', error);
+      // 如果失敗，回復原狀態
+      setInvestmentScope(investmentScope);
+    }
   };
 
   const SettingSection = ({ title, children }: { title: string, children: React.ReactNode }) => (
@@ -127,13 +140,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       </div>
 
-      <SettingSection title={t('settings.languageAndCurrency')}>
-         <SettingItem
-           icon={CreditCard}
-           label={t('settings.displayCurrency')}
-           value={currency}
-           onClick={() => setCurrency(currency === 'USD' ? 'TWD' : 'USD')}
-         />
+      <SettingSection title={t('settings.language')}>
          <SettingItem
            icon={Globe}
            label={t('settings.language')}

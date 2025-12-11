@@ -7,7 +7,7 @@ import {
 import { COLORS } from '../constants';
 import { TrendingUp, TrendingDown, DollarSign, Calendar, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { getTransactions, getAccounts, getAssets } from '../services';
-import { Transaction, Account, Asset } from '../types';
+import { Transaction, Account, Asset, InvestmentScope } from '../types';
 import {
   parseISO,
   isSameDay,
@@ -35,16 +35,31 @@ import {
 
 interface AnalyticsPageProps {
   isPrivacyMode: boolean;
+  investmentScope: InvestmentScope;
 }
 
 type ViewMode = 'day' | 'week' | 'month' | 'year' | 'calendar';
 
-const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
+const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investmentScope }) => {
   const [activeTab, setActiveTab] = useState<'income_expense' | 'asset'>('income_expense');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Filter Assets based on Investment Scope
+  const scopeFilteredAssets = useMemo(() => {
+    return assets.filter(asset => {
+      const isTW = asset.currency === 'TWD';
+      const isCrypto = asset.type === 'Crypto';
+      const isUS = !isTW && !isCrypto;
+
+      if (isTW && !investmentScope.tw) return false;
+      if (isUS && !investmentScope.us) return false;
+      if (isCrypto && !investmentScope.crypto) return false;
+      return true;
+    });
+  }, [assets, investmentScope]);
 
   // Filter states
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -195,8 +210,8 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
       // 帳戶餘額
       const accountBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
-      // 持倉市值
-      const assetValue = assets.reduce((sum, asset) => sum + asset.avgPrice * asset.quantity, 0);
+      // 持倉市值（根據投資範圍篩選）
+      const assetValue = scopeFilteredAssets.reduce((sum, asset) => sum + asset.avgPrice * asset.quantity, 0);
 
       // 簡化計算：當前總資產
       const netWorth = accountBalance + assetValue;
@@ -205,7 +220,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
     }
 
     return data;
-  }, [transactions, accounts, assets]);
+  }, [transactions, accounts, scopeFilteredAssets]);
 
   // 計算當前時段支出分類數據（基於 filteredTransactions）
   const expenseCategoryData = useMemo(() => {
@@ -272,12 +287,12 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode }) => {
     };
   }, [filteredTransactions, transactions, currentDate, viewMode]);
 
-  // 計算總資產
+  // 計算總資產（根據投資範圍篩選）
   const totalNetWorth = React.useMemo(() => {
     const accountBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const assetValue = assets.reduce((sum, asset) => sum + asset.avgPrice * asset.quantity, 0);
+    const assetValue = scopeFilteredAssets.reduce((sum, asset) => sum + asset.avgPrice * asset.quantity, 0);
     return accountBalance + assetValue;
-  }, [accounts, assets]);
+  }, [accounts, scopeFilteredAssets]);
 
   // 計算總支出（用於圓餅圖）
   const totalExpense = React.useMemo(() => {

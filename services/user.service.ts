@@ -2,12 +2,15 @@
  * User Service - 用戶相關 API
  */
 
-import { get } from './core/http';
+import { get, patch } from './core/http';
 
 export interface User {
   id: string;
   displayName: string;
   bankroll: number;
+  enableTWStock: boolean;
+  enableUSStock: boolean;
+  enableCrypto: boolean;
   createdAt: string;
 }
 
@@ -86,4 +89,20 @@ export async function getPortfolio(): Promise<Portfolio | null> {
 export async function getSettings(): Promise<Settings | null> {
   const userId = getUserId();
   return get<Settings>(`/api/settings/${userId}`);
+}
+
+/**
+ * 更新用戶投資範圍設定
+ */
+export async function updateInvestmentScope(
+  enableTWStock: boolean,
+  enableUSStock: boolean,
+  enableCrypto: boolean
+): Promise<User | null> {
+  const userId = getUserId();
+  return patch<User>(`/api/user/${userId}`, {
+    enableTWStock,
+    enableUSStock,
+    enableCrypto
+  });
 }

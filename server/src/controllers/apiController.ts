@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import {
   getOrCreateUser,
+  updateUserInvestmentScope,
   getUserAssets,
   getUserTransactions,
   getUserSettings,
@@ -42,12 +43,48 @@ export async function getUser(req: Request, res: Response) {
         id: user.id,
         displayName: user.displayName,
         bankroll: user.bankroll,
+        enableTWStock: user.enableTWStock,
+        enableUSStock: user.enableUSStock,
+        enableCrypto: user.enableCrypto,
         createdAt: user.createdAt
       }
     });
   } catch (error) {
     console.error('Error fetching user:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch user' });
+  }
+}
+
+/**
+ * PATCH /api/user/:lineUserId
+ * 更新用戶投資範圍設定
+ */
+export async function updateUserSettings(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const { enableTWStock, enableUSStock, enableCrypto } = req.body;
+
+    const user = await getOrCreateUser(lineUserId);
+
+    const updatedUser = await updateUserInvestmentScope(
+      user.id,
+      enableTWStock,
+      enableUSStock,
+      enableCrypto
+    );
+
+    res.json({
+      success: true,
+      data: {
+        id: updatedUser.id,
+        enableTWStock: updatedUser.enableTWStock,
+        enableUSStock: updatedUser.enableUSStock,
+        enableCrypto: updatedUser.enableCrypto
+      }
+    });
+  } catch (error) {
+    console.error('Error updating user settings:', error);
+    res.status(500).json({ success: false, error: 'Failed to update user settings' });
   }
 }
 
@@ -323,7 +360,7 @@ export async function getSettings(req: Request, res: Response) {
 export async function createTransaction(req: Request, res: Response) {
   try {
     const { lineUserId } = req.params;
-    const { type, amount, category, note, accountId, originalCurrency, exchangeRate } = req.body;
+    const { type, amount, category, note, accountId, originalCurrency, exchangeRate, date } = req.body;
 
     // 驗證必填欄位
     if (!type || !amount || !category) {
@@ -356,7 +393,8 @@ export async function createTransaction(req: Request, res: Response) {
       note,
       accountId,
       originalCurrency,  // 支援原始幣別
-      exchangeRate       // 支援匯率快取
+      exchangeRate,      // 支援匯率快取
+      date               // 支援自訂日期
     );
 
     res.json({
