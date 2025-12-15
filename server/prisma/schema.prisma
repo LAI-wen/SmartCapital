@@ -12,76 +12,77 @@ datasource db {
 
 // 用戶表 - 儲存 LINE 用戶基本資料
 model User {
-  id          String   @id @default(cuid())
-  lineUserId  String   @unique
+  id          String  @id @default(cuid())
+  lineUserId  String  @unique
   displayName String?
-  bankroll    Float    @default(10000) // 預設本金 $10,000
-  
+  bankroll    Float   @default(10000) // 預設本金 $10,000
+
   // 🎯 投資範圍設定（漸進式揭露）
-  enableTWStock Boolean @default(true)  // 台股
+  enableTWStock Boolean @default(true) // 台股
   enableUSStock Boolean @default(false) // 美股
   enableCrypto  Boolean @default(false) // 加密貨幣
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  transactions Transaction[]
-  assets       Asset[]
-  accounts     Account[]      // 新增：帳戶關聯
-  transfers    Transfer[]     // 新增：轉帳記錄
-  settings     UserSettings?
-  notifications Notification[]
-  priceAlerts  PriceAlert[]   // 新增：價格警示
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions    Transaction[]
+  assets          Asset[]
+  accounts        Account[] // 新增：帳戶關聯
+  transfers       Transfer[] // 新增：轉帳記錄
+  settings        UserSettings?
+  notifications   Notification[]
+  priceAlerts     PriceAlert[] // 新增：價格警示
+  keywordMappings KeywordMapping[] // 新增：關鍵字映射
 
   @@map("users")
 }
 
 // 🏦 帳戶表 - 資金池管理（銀行、證券戶、現金）
 model Account {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  name      String   // "台新銀行", "國泰複委託", "Firstrade"
-  type      String   // "CASH" | "BANK" | "BROKERAGE" | "EXCHANGE"
-  currency  String   @default("TWD") // "TWD" | "USD" | "USDT"
-  balance   Float    @default(0)
-  isDefault Boolean  @default(false) // 預設帳戶
-  isSub     Boolean  @default(false) // 是否為複委託
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String // "台新銀行", "國泰複委託", "Firstrade"
+  type      String // "CASH" | "BANK" | "BROKERAGE" | "EXCHANGE"
+  currency  String  @default("TWD") // "TWD" | "USD" | "USDT"
+  balance   Float   @default(0)
+  isDefault Boolean @default(false) // 預設帳戶
+  isSub     Boolean @default(false) // 是否為複委託
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // 關聯
-  transactions      Transaction[]
-  transfersFrom     Transfer[] @relation("FromAccount")
-  transfersTo       Transfer[] @relation("ToAccount")
-  transactionsTo    Transaction[] @relation("TransferTarget") // 轉帳目標
-  
+  transactions   Transaction[]
+  transfersFrom  Transfer[]    @relation("FromAccount")
+  transfersTo    Transfer[]    @relation("ToAccount")
+  transactionsTo Transaction[] @relation("TransferTarget") // 轉帳目標
+
   @@index([userId, type])
   @@map("accounts")
 }
 
 // 💸 轉帳記錄表
 model Transfer {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   fromAccountId String
-  fromAccount   Account  @relation("FromAccount", fields: [fromAccountId], references: [id])
-  
-  toAccountId   String
-  toAccount     Account  @relation("ToAccount", fields: [toAccountId], references: [id])
-  
-  amount        Float
-  exchangeRate  Float?   // 跨幣別匯率
-  fee           Float?   // 手續費
-  note          String?
-  date          DateTime @default(now())
-  
-  createdAt     DateTime @default(now())
-  
+  fromAccount   Account @relation("FromAccount", fields: [fromAccountId], references: [id])
+
+  toAccountId String
+  toAccount   Account @relation("ToAccount", fields: [toAccountId], references: [id])
+
+  amount       Float
+  exchangeRate Float? // 跨幣別匯率
+  fee          Float? // 手續費
+  note         String?
+  date         DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@index([fromAccountId])
   @@index([toAccountId])
@@ -90,27 +91,27 @@ model Transfer {
 
 // 交易記錄表 - 生活記帳（已整合帳戶系統）
 model Transaction {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  date      DateTime @default(now())
-  type      String   // "income" | "expense" | "transfer" | "invest"
-  amount    Float
-  category  String   // 飲食、交通、居住、投資等
-  note      String?
-  
+  date     DateTime @default(now())
+  type     String // "income" | "expense" | "transfer" | "invest"
+  amount   Float
+  category String // 飲食、交通、居住、投資等
+  note     String?
+
   // 🏦 資金來源/目標帳戶（可選，向後兼容）
-  accountId     String?
-  account       Account?  @relation(fields: [accountId], references: [id])
-  
+  accountId String?
+  account   Account? @relation(fields: [accountId], references: [id])
+
   // 如果是轉帳，需要目標帳戶
-  toAccountId   String?
-  toAccount     Account? @relation("TransferTarget", fields: [toAccountId], references: [id])
-  
+  toAccountId String?
+  toAccount   Account? @relation("TransferTarget", fields: [toAccountId], references: [id])
+
   // 💱 多幣別支援
   originalCurrency String? // 原始交易幣別
-  exchangeRate     Float?  // 如果有換匯
+  exchangeRate     Float? // 如果有換匯
 
   createdAt DateTime @default(now())
 
@@ -121,20 +122,20 @@ model Transaction {
 
 // 資產持倉表 - 投資記錄（已整合多幣別）
 model Asset {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  symbol    String   // TSLA, BTC, 2330.TW 等
-  name      String?  // Tesla Inc., Bitcoin
-  type      String   // "Stock" | "Crypto" | "ETF"
-  quantity  Float
-  avgPrice  Float    // 平均買入價
-  
+  symbol   String // TSLA, BTC, 2330.TW 等
+  name     String? // Tesla Inc., Bitcoin
+  type     String // "Stock" | "Crypto" | "ETF"
+  quantity Float
+  avgPrice Float // 平均買入價
+
   // 💱 多幣別支援
-  currency        String  @default("TWD") // "TWD" | "USD" | "USDT"
-  avgCurrency     String  @default("TWD") // 成本計算幣別
-  currentCurrency String  @default("TWD") // 當前市值幣別
+  currency        String @default("TWD") // "TWD" | "USD" | "USDT"
+  avgCurrency     String @default("TWD") // 成本計算幣別
+  currentCurrency String @default("TWD") // 當前市值幣別
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -147,46 +148,46 @@ model Asset {
 
 // 用戶策略參數設定
 model UserSettings {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // 凱利公式參數
-  kellyWinProbability   Float    @default(55.0)  // 預設勝率 55%
-  kellyOdds             Float    @default(2.0)   // 預設賠率 1:1 (2.0)
+  kellyWinProbability Float @default(55.0) // 預設勝率 55%
+  kellyOdds           Float @default(2.0) // 預設賠率 1:1 (2.0)
 
   // 馬丁格爾參數
-  martingaleMultiplier  Float    @default(2.0)   // 預設倍數 2x
+  martingaleMultiplier Float @default(2.0) // 預設倍數 2x
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("user_settings")
 }
 
 // 對話狀態表 - 追蹤用戶當前操作狀態 (例如等待輸入股數)
 model ConversationState {
-  id            String   @id @default(cuid())
-  lineUserId    String   @unique
+  id         String @id @default(cuid())
+  lineUserId String @unique
 
-  state         String   // "IDLE" | "WAITING_EXPENSE_CATEGORY" | "WAITING_BUY_QUANTITY" | "WAITING_SELL_PRICE"
-  context       String?  // JSON 格式，儲存臨時資料 (例如 {"symbol": "TSLA", "price": 240.5})
+  state   String // "IDLE" | "WAITING_EXPENSE_CATEGORY" | "WAITING_BUY_QUANTITY" | "WAITING_SELL_PRICE"
+  context String? // JSON 格式，儲存臨時資料 (例如 {"symbol": "TSLA", "price": 240.5})
 
-  updatedAt     DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 
   @@map("conversation_states")
 }
 
 // 通知表 - 儲存系統通知和警報
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  type      String   // "info" | "alert" | "success"
-  title     String
-  message   String
-  read      Boolean  @default(false)
+  type    String // "info" | "alert" | "success"
+  title   String
+  message String
+  read    Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -197,12 +198,12 @@ model Notification {
 
 // 價格警示表 - 儲存用戶設定的股票價格警示
 model PriceAlert {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  symbol        String   // 股票代號 (2330.TW, TSLA, etc.)
-  name          String?  // 股票名稱
+  symbol String // 股票代號 (2330.TW, TSLA, etc.)
+  name   String? // 股票名稱
 
   // 警示類型
   // DAILY_CHANGE: 單日漲跌超過 X%
@@ -210,26 +211,49 @@ model PriceAlert {
   // STOP_PROFIT: 停利點
   // STOP_LOSS: 停損點
   // TARGET_PRICE: 目標價
-  alertType     String
+  alertType String
 
   // 條件設定
-  threshold     Float?   // 百分比閾值 (例如 5.0 代表 5%)
-  targetPrice   Float?   // 目標價格
-  direction     String?  // "UP" | "DOWN" | "BOTH" (for DAILY_CHANGE)
+  threshold   Float? // 百分比閾值 (例如 5.0 代表 5%)
+  targetPrice Float? // 目標價格
+  direction   String? // "UP" | "DOWN" | "BOTH" (for DAILY_CHANGE)
 
   // 參考價格（用於計算累計獲利/虧損）
-  referencePrice Float?  // 買入均價
+  referencePrice Float? // 買入均價
 
   // 狀態
-  isActive      Boolean  @default(true)
+  isActive      Boolean   @default(true)
   lastTriggered DateTime?
-  triggerCount  Int      @default(0)
+  triggerCount  Int       @default(0)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([symbol])
   @@index([userId, symbol, isActive])
   @@map("price_alerts")
+}
+
+// 關鍵字映射表 - 智能識別用
+model KeywordMapping {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  keyword     String // 關鍵字（如：下午茶、星巴克、Uber）
+  category    String // 對應的分類（飲食、交通等）
+  subcategory String? // 子分類（可選）
+
+  // 學習來源
+  isDefault  Boolean @default(false) // 是否為系統預設
+  usageCount Int     @default(0) // 使用次數（用於優化匹配優先級）
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, keyword])
+  @@index([userId, keyword])
+  @@index([keyword])
+  @@map("keyword_mappings")
 }
