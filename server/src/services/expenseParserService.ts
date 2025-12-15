@@ -45,6 +45,7 @@ export interface ParseResult {
   category: string;
   subcategory?: string;
   note?: string;
+  type?: 'income' | 'expense'; // 交易類型
   confidence: 'high' | 'medium' | 'low'; // 識別信心度
   needConfirmation: boolean; // 是否需要用戶確認
 }
@@ -71,17 +72,23 @@ export async function parseExpenseCommand(
   // 分割內容
   const parts = content.split(/\s+/);
 
-  // 第一部分必須是金額
-  const amount = parseFloat(parts[0]);
-  if (isNaN(amount) || amount <= 0) {
+  // 第一部分必須是金額（支援 +100 / -100 / 100）
+  const amountStr = parts[0];
+  const amount = parseFloat(amountStr);
+  if (isNaN(amount) || amount === 0) {
     return null;
   }
 
-  // 如果只有金額，預設為飲食
+  // 判斷類型：正數或 +100 → 收入，負數或 100 → 支出
+  const isIncome = amount > 0 && amountStr.startsWith('+');
+  const absAmount = Math.abs(amount);
+
+  // 如果只有金額，預設為飲食（支出）或其他（收入）
   if (parts.length === 1) {
     return {
-      amount,
-      category: '飲食',
+      amount: absAmount,
+      category: isIncome ? '其他' : '飲食',
+      type: isIncome ? 'income' : 'expense',
       confidence: 'low',
       needConfirmation: false // 預設行為，不需確認
     };
@@ -97,10 +104,11 @@ export async function parseExpenseCommand(
     const note = keywords.slice(2).join(' ') || subcategory;
 
     return {
-      amount,
+      amount: absAmount,
       category,
       subcategory,
       note,
+      type: isIncome ? 'income' : 'expense',
       confidence: 'high',
       needConfirmation: false
     };
@@ -111,10 +119,11 @@ export async function parseExpenseCommand(
 
   if (recognized) {
     return {
-      amount,
+      amount: absAmount,
       category: recognized.category,
       subcategory: recognized.subcategory,
       note: recognized.note || keywords.join(' '),
+      type: isIncome ? 'income' : 'expense',
       confidence: recognized.confidence,
       needConfirmation: recognized.confidence === 'low'
     };
@@ -122,9 +131,10 @@ export async function parseExpenseCommand(
 
   // 無法識別，需要用戶確認
   return {
-    amount,
-    category: '飲食', // 預設
+    amount: absAmount,
+    category: isIncome ? '其他' : '飲食', // 預設
     note: keywords.join(' '),
+    type: isIncome ? 'income' : 'expense',
     confidence: 'low',
     needConfirmation: true
   };

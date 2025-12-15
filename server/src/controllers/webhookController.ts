@@ -33,6 +33,18 @@ import {
   createTransactionSuccessCard
 } from '../utils/flexMessages.js';
 import { parseMessage, getHelpMessage, getHelpCard, validateQuantity, validateAmount } from '../utils/messageParser.js';
+import {
+  parseExpenseCommand,
+  parseBatchExpenseCommands,
+  learnKeyword
+} from '../services/expenseParserService.js';
+import {
+  setConversationState as setConvState,
+  clearConversationState as clearConvState,
+  generateCategoryConfirmationMessage,
+  generateCategorySelectionMessage,
+  numberToCategory
+} from '../services/conversationService.js';
 
 export class WebhookController {
   private client: Client;
@@ -83,6 +95,12 @@ export class WebhookController {
    * 處理一般訊息 (IDLE 狀態)
    */
   private async handleNormalMessage(lineUserId: string, userId: string, text: string): Promise<void> {
+    // 🤖 智能記帳：先檢查是否為「記」開頭的指令
+    if (text.trim().startsWith('記')) {
+      await this.handleSmartExpense(lineUserId, userId, text.trim());
+      return;
+    }
+
     const intent = parseMessage(text);
 
     switch (intent.type) {
@@ -229,6 +247,15 @@ export class WebhookController {
 
       case 'WAITING_SELL_QUANTITY':
         await this.handleSellQuantityInput(lineUserId, userId, text, context);
+        break;
+
+      // 🤖 智能記帳新增的狀態
+      case 'WAITING_CATEGORY_CONFIRMATION':
+        await this.handleCategoryConfirmation(lineUserId, userId, text, context);
+        break;
+
+      case 'WAITING_CATEGORY_SELECTION':
+        await this.handleSmartCategorySelection(lineUserId, userId, text, context);
         break;
 
       default:
@@ -1190,6 +1217,234 @@ export class WebhookController {
           }
         ]
       }
+    });
+  }
+
+  /**
+   * 🤖 智能記帳主處理函數
+   */
+  private async handleSmartExpense(lineUserId: string, userId: string, text: string): Promise<void> {
+    // 檢查是否為批次記帳（包含換行）
+    if (text.includes('\n')) {
+      await this.handleBatchExpense(lineUserId, userId, text);
+      return;
+    }
+
+    // 單筆記帳
+    const result = await parseExpenseCommand(userId, text);
+
+    if (!result) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '❌ 指令格式錯誤\n\n範例：\n記 100\n記 100 午餐\n記 100 飲食 下午茶 星巴克'
+      });
+      return;
+    }
+
+    // 如果需要確認
+    if (result.needConfirmation) {
+      // 保存 context 並等待用戶確認
+      await setConvState(lineUserId, 'WAITING_CATEGORY_CONFIRMATION', {
+        amount: result.amount,
+        keyword: result.note || '',
+        category: result.category,
+        subcategory: result.subcategory,
+        note: result.note
+      });
+
+      const message = generateCategoryConfirmationMessage(
+        result.amount,
+        result.note || '',
+        result.category
+      );
+
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: message
+      });
+      return;
+    }
+
+    // 直接記帳（信心度高）
+    await this.createSmartExpense(lineUserId, userId, result);
+  }
+
+  /**
+   * 🤖 批次記帳處理
+   */
+  private async handleBatchExpense(lineUserId: string, userId: string, text: string): Promise<void> {
+    const results = await parseBatchExpenseCommands(userId, text);
+
+    if (results.length === 0) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '❌ 沒有找到有效的記帳指令'
+      });
+      return;
+    }
+
+    // 批次處理每一筆
+    let successCount = 0;
+    const messages: string[] = [];
+
+    for (const result of results) {
+      try {
+        await this.createSmartExpense(lineUserId, userId, result, false); // 不發送個別成功訊息
+        successCount++;
+        messages.push(`✅ $${result.amount} - ${result.category}${result.subcategory ? ` > ${result.subcategory}` : ''}`);
+      } catch (error) {
+        console.error('Batch expense error:', error);
+        messages.push(`❌ $${result.amount} - 記帳失敗`);
+      }
+    }
+
+    // 發送批次結果
+    const summary = `📋 批次記帳完成\n\n${messages.join('\n')}\n\n成功：${successCount}/${results.length} 筆`;
+    await this.client.pushMessage(lineUserId, {
+      type: 'text',
+      text: summary
+    });
+  }
+
+  /**
+   * 🤖 處理分類確認（是/否）
+   */
+  private async handleCategoryConfirmation(
+    lineUserId: string,
+    userId: string,
+    text: string,
+    context: any
+  ): Promise<void> {
+    const response = text.trim();
+
+    // 用戶確認「是」
+    if (/^(是|yes|y|對|ok|確定)$/i.test(response)) {
+      const { amount, keyword, category, subcategory, note } = context;
+
+      // 學習關鍵字
+      if (keyword) {
+        await learnKeyword(userId, keyword, category, subcategory);
+      }
+
+      // 創建交易
+      const result = {
+        amount,
+        category,
+        subcategory,
+        note,
+        confidence: 'high' as const,
+        needConfirmation: false
+      };
+
+      await this.createSmartExpense(lineUserId, userId, result);
+      await clearConvState(lineUserId);
+      return;
+    }
+
+    // 用戶拒絕「否」
+    if (/^(否|no|n|不對|錯|不是)$/i.test(response)) {
+      const { amount, keyword } = context;
+
+      // 讓用戶重新選擇分類
+      await setConvState(lineUserId, 'WAITING_CATEGORY_SELECTION', {
+        amount,
+        keyword
+      });
+
+      const message = generateCategorySelectionMessage(amount, keyword);
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: message
+      });
+      return;
+    }
+
+    // 無效回應
+    await this.client.pushMessage(lineUserId, {
+      type: 'text',
+      text: '請回覆「是」或「否」'
+    });
+  }
+
+  /**
+   * 🤖 處理分類選擇（數字 1-8）
+   */
+  private async handleSmartCategorySelection(
+    lineUserId: string,
+    userId: string,
+    text: string,
+    context: any
+  ): Promise<void> {
+    const num = parseInt(text.trim());
+    const category = numberToCategory(num);
+
+    if (!category) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '請輸入數字 1-8 選擇分類'
+      });
+      return;
+    }
+
+    const { amount, keyword } = context;
+
+    // 學習關鍵字
+    if (keyword) {
+      await learnKeyword(userId, keyword, category);
+    }
+
+    // 創建交易
+    const result = {
+      amount,
+      category,
+      note: keyword,
+      confidence: 'high' as const,
+      needConfirmation: false
+    };
+
+    await this.createSmartExpense(lineUserId, userId, result);
+    await clearConvState(lineUserId);
+  }
+
+  /**
+   * 🤖 創建智能記帳交易
+   */
+  private async createSmartExpense(
+    lineUserId: string,
+    userId: string,
+    result: { amount: number; category: string; subcategory?: string; note?: string; type?: 'income' | 'expense' },
+    sendMessage: boolean = true
+  ): Promise<void> {
+    // 取得預設現金帳戶
+    const accountId = await this.getOrCreateDefaultCashAccount(userId);
+
+    // 組合完整備註
+    let fullNote = result.note || '';
+    if (result.subcategory && result.subcategory !== result.note) {
+      fullNote = result.subcategory + (fullNote ? ` - ${fullNote}` : '');
+    }
+
+    // 判斷交易類型（預設為支出）
+    const transactionType = result.type || 'expense';
+
+    // 創建交易
+    await createTransaction(
+      userId,
+      transactionType,
+      result.amount,
+      result.category,
+      fullNote,
+      accountId
+    );
+
+    if (!sendMessage) return;
+
+    // 發送成功訊息
+    const icon = transactionType === 'income' ? '💵' : '💰';
+    const typeText = transactionType === 'income' ? '收入' : '支出';
+    await this.client.pushMessage(lineUserId, {
+      type: 'text',
+      text: `✅ 已記帳 (${typeText})\n${icon} 金額: $${result.amount}\n📁 分類: ${result.category}${result.subcategory ? ` > ${result.subcategory}` : ''}${fullNote ? `\n📝 備註: ${fullNote}` : ''}`
     });
   }
 
