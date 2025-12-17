@@ -95,9 +95,10 @@ export class WebhookController {
    * 處理一般訊息 (IDLE 狀態)
    */
   private async handleNormalMessage(lineUserId: string, userId: string, text: string): Promise<void> {
-    // 🤖 智能記帳：先檢查是否為「記」開頭的指令
-    if (text.trim().startsWith('記')) {
-      await this.handleSmartExpense(lineUserId, userId, text.trim());
+    // 🤖 智能記帳：檢查是否為記帳指令（數字開頭，可選「記」）
+    const trimmed = text.trim();
+    if (trimmed.startsWith('記') || /^[+\-]?\d+/.test(trimmed)) {
+      await this.handleSmartExpense(lineUserId, userId, trimmed);
       return;
     }
 

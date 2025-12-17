@@ -54,26 +54,30 @@ export interface ParseResult {
  * 解析單筆記帳指令
  *
  * 支援格式：
- * - 記 100
- * - 記 100 交通
- * - 記 100 午餐
- * - 記 100 下午茶
- * - 記 100 飲食 下午茶 星巴克
+ * - 100 (可選：記 100)
+ * - 100 交通 (可選：記 100 交通)
+ * - 100午餐
+ * - 100 下午茶
+ * - 100 飲食 下午茶 星巴克
  */
 export async function parseExpenseCommand(
   userId: string,
   command: string
 ): Promise<ParseResult | null> {
-  // 移除 "記" 關鍵字，提取內容
+  // 移除可選的 "記" 關鍵字，提取內容
   const content = command.replace(/^記\s*/, '').trim();
 
   if (!content) return null;
 
-  // 分割內容
-  const parts = content.split(/\s+/);
+  // 智能分割：支援「記100午餐」和「記 100 午餐」
+  // 使用正則提取：可選的正負號 + 數字 + 剩餘文字
+  const match = content.match(/^([+\-]?\d+(?:\.\d+)?)\s*(.*)$/);
 
-  // 第一部分必須是金額（支援 +100 / -100 / 100）
-  const amountStr = parts[0];
+  if (!match) return null;
+
+  const amountStr = match[1];
+  const remainingText = match[2].trim();
+
   const amount = parseFloat(amountStr);
   if (isNaN(amount) || amount === 0) {
     return null;
@@ -84,7 +88,7 @@ export async function parseExpenseCommand(
   const absAmount = Math.abs(amount);
 
   // 如果只有金額，預設為飲食（支出）或其他（收入）
-  if (parts.length === 1) {
+  if (!remainingText) {
     return {
       amount: absAmount,
       category: isIncome ? '其他' : '飲食',
@@ -94,8 +98,8 @@ export async function parseExpenseCommand(
     };
   }
 
-  // 取得剩餘部分
-  const keywords = parts.slice(1);
+  // 取得剩餘部分（可能有空格分隔，也可能沒有）
+  const keywords = remainingText.split(/\s+/);
 
   // 情況 1: 記 100 交通 (第一個關鍵字是主分類)
   if (MAIN_CATEGORIES.includes(keywords[0])) {
