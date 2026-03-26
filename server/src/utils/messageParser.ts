@@ -9,9 +9,9 @@ import { FlexMessage } from '@line/bot-sdk';
 export type MessageIntent =
   | { type: 'EXPENSE'; amount: number; note?: string }
   | { type: 'INCOME'; amount: number; note?: string }
-  | { type: 'STOCK_QUERY'; symbol: string }
-  | { type: 'BUY_ACTION'; symbol: string }
-  | { type: 'SELL_ACTION'; symbol: string }
+  | { type: 'STOCK_QUERY'; symbol: string; showKelly: boolean }
+  | { type: 'BUY_ACTION'; symbol: string; quantity?: number }
+  | { type: 'SELL_ACTION'; symbol: string; quantity?: number }
   | { type: 'EXPENSE_CATEGORY'; category: string; subcategory?: string; amount: number; note?: string }
   | { type: 'INCOME_CATEGORY'; category: string; amount: number; note?: string }
   | { type: 'QUANTITY_INPUT'; quantity: number }
@@ -176,26 +176,32 @@ export function parseMessage(text: string): MessageIntent {
     return { type: 'INCOME', amount, note };
   }
 
-  // 5. 明確的股票查詢指令 (例如: "股票查詢 2330", "查詢 TSLA", "股 2330")
-  const stockQueryMatch = trimmed.match(/^(股票查詢|查詢|股票|股)\s+([A-Z0-9]+)$/i);
+  // 5. 查股指令
+  // 「TSLA kelly」「TSLA 凱利」→ 顯示 Kelly 建議
+  // 「TSLA」「查詢 2330」「股 2330」→ 只顯示股價
+  const kellyQueryMatch = trimmed.match(/^([A-Z0-9]+(?:\.[A-Z]+)?)\s+(kelly|凱利|kel)$/i);
+  if (kellyQueryMatch) {
+    return { type: 'STOCK_QUERY', symbol: formatTaiwanStockSymbol(kellyQueryMatch[1].toUpperCase()), showKelly: true };
+  }
+  const stockQueryMatch = trimmed.match(/^(?:股票查詢|查詢|股票|股)\s+([A-Z0-9]+)$/i);
   if (stockQueryMatch) {
-    const symbol = stockQueryMatch[2].toUpperCase();
-    const formattedSymbol = formatTaiwanStockSymbol(symbol);
-    return { type: 'STOCK_QUERY', symbol: formattedSymbol };
+    return { type: 'STOCK_QUERY', symbol: formatTaiwanStockSymbol(stockQueryMatch[1].toUpperCase()), showKelly: false };
   }
 
-  // 6. 檢查是否為買入操作 (例如: "買入 TSLA", "買 TSLA", "買入 2330")
-  const buyMatch = trimmed.match(/^(買入|買)\s+([A-Z0-9]+)$/i);
+  // 6. 買入：「買 TSLA 10」「買入 2330 1000」（含股數）或「買 TSLA」（不含股數）
+  const buyMatch = trimmed.match(/^(買入|買)\s+([A-Z0-9]+(?:\.[A-Z]+)?)\s*(\d+(?:\.\d+)?)?$/i);
   if (buyMatch) {
-    const formattedSymbol = formatTaiwanStockSymbol(buyMatch[2].toUpperCase());
-    return { type: 'BUY_ACTION', symbol: formattedSymbol };
+    const symbol = formatTaiwanStockSymbol(buyMatch[2].toUpperCase());
+    const quantity = buyMatch[3] ? parseFloat(buyMatch[3]) : undefined;
+    return { type: 'BUY_ACTION', symbol, quantity };
   }
 
-  // 7. 檢查是否為賣出操作 (例如: "賣出 TSLA", "賣 TSLA", "賣出 2330")
-  const sellMatch = trimmed.match(/^(賣出|賣)\s+([A-Z0-9]+)$/i);
+  // 7. 賣出：「賣 TSLA 5」「賣出 2330 500」或「賣 TSLA」
+  const sellMatch = trimmed.match(/^(賣出|賣)\s+([A-Z0-9]+(?:\.[A-Z]+)?)\s*(\d+(?:\.\d+)?)?$/i);
   if (sellMatch) {
-    const formattedSymbol = formatTaiwanStockSymbol(sellMatch[2].toUpperCase());
-    return { type: 'SELL_ACTION', symbol: formattedSymbol };
+    const symbol = formatTaiwanStockSymbol(sellMatch[2].toUpperCase());
+    const quantity = sellMatch[3] ? parseFloat(sellMatch[3]) : undefined;
+    return { type: 'SELL_ACTION', symbol, quantity };
   }
 
   // 8. 檢查是否為支出分類選擇 (例如: "飲食 120") - 兼容舊格式
