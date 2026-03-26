@@ -46,6 +46,18 @@ import {
   numberToCategory
 } from '../services/conversationService.js';
 
+/**
+ * 依台灣時間（UTC+8）推斷餐別
+ */
+function getMealSubcategoryByTime(): string {
+  const taiwanHour = (new Date().getUTCHours() + 8) % 24;
+  if (taiwanHour >= 6 && taiwanHour < 10) return '早餐';
+  if (taiwanHour >= 10 && taiwanHour < 14) return '午餐';
+  if (taiwanHour >= 14 && taiwanHour < 17) return '下午茶';
+  if (taiwanHour >= 17 && taiwanHour < 21) return '晚餐';
+  return '宵夜'; // 21:00 - 05:59
+}
+
 export class WebhookController {
   private client: Client;
 
@@ -159,8 +171,7 @@ export class WebhookController {
         break;
 
       case 'EXPENSE_CATEGORY':
-        // 直接輸入分類（支持備註）
-        await this.handleExpenseCategory(lineUserId, userId, intent.category, intent.amount, intent.note);
+        await this.handleExpenseCategory(lineUserId, userId, intent.category, intent.amount, intent.note, intent.subcategory);
         break;
 
       case 'INCOME_CATEGORY':
@@ -854,13 +865,16 @@ export class WebhookController {
     userId: string,
     category: string,
     amount: number,
-    note?: string
+    note?: string,
+    subcategory?: string
   ): Promise<void> {
-    // 取得預設現金帳戶
-    const accountId = await this.getOrCreateDefaultCashAccount(userId);
+    // 飲食類自動推斷餐別（Taiwan UTC+8）
+    const resolvedSubcategory = subcategory ?? (
+      category === '飲食' ? getMealSubcategoryByTime() : undefined
+    );
 
-    // 創建交易（帶備註和帳戶）
-    await createTransaction(userId, 'expense', amount, category, note, accountId);
+    const accountId = await this.getOrCreateDefaultCashAccount(userId);
+    await createTransaction(userId, 'expense', amount, category, note, accountId, undefined, undefined, undefined, resolvedSubcategory);
     await clearConversationState(lineUserId);
 
     // 獲取本月統計

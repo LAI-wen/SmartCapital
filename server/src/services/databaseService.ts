@@ -94,7 +94,8 @@ export async function createTransaction(
   accountId?: string,
   originalCurrency?: string,
   exchangeRate?: number,
-  date?: string
+  date?: string,
+  subcategory?: string
 ) {
   // 如果有指定帳戶，更新帳戶餘額
   if (accountId) {
@@ -130,25 +131,26 @@ export async function createTransaction(
           type,
           amount,
           category,
+          subcategory,
           note: note || '',
-          originalCurrency, // 儲存原始幣別
-          exchangeRate,     // 儲存匯率快取
-          date: date ? new Date(date) : undefined // 如果有指定日期，使用指定日期
+          originalCurrency,
+          exchangeRate,
+          date: date ? new Date(date) : undefined
         }
       });
     });
   } else {
-    // 沒有指定帳戶，僅創建記錄（向後兼容）
     return prisma.transaction.create({
       data: {
         userId,
         type,
         amount,
         category,
+        subcategory,
         note: note || '',
         originalCurrency,
         exchangeRate,
-        date: date ? new Date(date) : undefined // 如果有指定日期，使用指定日期
+        date: date ? new Date(date) : undefined
       }
     });
   }

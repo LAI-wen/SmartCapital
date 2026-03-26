@@ -12,7 +12,7 @@ export type MessageIntent =
   | { type: 'STOCK_QUERY'; symbol: string }
   | { type: 'BUY_ACTION'; symbol: string }
   | { type: 'SELL_ACTION'; symbol: string }
-  | { type: 'EXPENSE_CATEGORY'; category: string; amount: number; note?: string }
+  | { type: 'EXPENSE_CATEGORY'; category: string; subcategory?: string; amount: number; note?: string }
   | { type: 'INCOME_CATEGORY'; category: string; amount: number; note?: string }
   | { type: 'QUANTITY_INPUT'; quantity: number }
   | { type: 'HELP' }
@@ -39,38 +39,64 @@ function guessExpenseCategory(text: string): string {
   return '其他';
 }
 
+// 餐別關鍵字 → subcategory（手動覆蓋用）
+const MEAL_KEYWORDS: Record<string, string> = {
+  早餐: '早餐', 早午餐: '早餐',
+  午餐: '午餐', 中餐: '午餐',
+  下午茶: '下午茶', 點心: '下午茶', 甜點: '下午茶',
+  晚餐: '晚餐', 晚飯: '晚餐',
+  宵夜: '宵夜', 消夜: '宵夜', 夜市: '宵夜'
+};
+
+/**
+ * 從文字偵測餐別關鍵字（手動覆蓋）
+ * 回傳 subcategory 或 undefined
+ */
+function detectMealKeyword(text: string): string | undefined {
+  for (const [kw, sub] of Object.entries(MEAL_KEYWORDS)) {
+    if (text.includes(kw)) return sub;
+  }
+  return undefined;
+}
+
 /**
  * 解析用戶訊息，判斷意圖
  */
 export function parseMessage(text: string): MessageIntent {
   const trimmed = text.trim();
 
-  // 1. 支援 $金額 格式：「午餐摩斯$99」「星巴克$180」「麥當勞$120 跟朋友」
+  // 1. 支援 $金額 格式：「午餐摩斯$99」「星巴克$180」「宵夜鹹酥雞$150」
   const dollarAmountMatch = trimmed.match(/^([\u4e00-\u9fa5a-zA-Z][\u4e00-\u9fa5a-zA-Z0-9\s]*?)\$(\d+(?:\.\d{1,2})?)(.*)$/);
   if (dollarAmountMatch) {
     const noteText = dollarAmountMatch[1].trim();
     const amount = parseFloat(dollarAmountMatch[2]);
     const extra = dollarAmountMatch[3].trim();
     if (amount > 0) {
+      const category = guessExpenseCategory(noteText);
+      const subcategory = category === '飲食' ? detectMealKeyword(noteText) : undefined;
       return {
         type: 'EXPENSE_CATEGORY',
-        category: guessExpenseCategory(noteText),
+        category,
+        subcategory,
         amount,
         note: extra ? `${noteText} ${extra}` : noteText
       };
     }
   }
 
-  // 2. 一步式記帳 - 支出描述 + 金額 + 備註 (例如: "午餐 120", "咖啡 80 星巴克", "計程車 200 去公司")
-  // 支援常見消費場景的關鍵字
-  const oneStepExpenseMatch = trimmed.match(/^(午餐|早餐|晚餐|飲料|咖啡|零食|飲食|計程車|公車|捷運|Uber|交通|房租|水電|瓦斯|居住|電影|KTV|遊戲|娛樂|衣服|鞋子|包包|購物|看病|藥品|醫療|其他支出)\s*(\d+(\.\d{1,2})?)\s*(.*)$/);
+  // 2. 一步式記帳 - 支出描述 + 金額 + 備註 (例如: "午餐 120", "宵夜 150", "咖啡 80 星巴克")
+  const oneStepExpenseMatch = trimmed.match(/^(午餐|早餐|晚餐|宵夜|消夜|下午茶|點心|飲料|咖啡|零食|飲食|計程車|公車|捷運|Uber|交通|房租|水電|瓦斯|居住|電影|KTV|遊戲|娛樂|衣服|鞋子|包包|購物|看病|藥品|醫療|其他支出)\s*(\d+(\.\d{1,2})?)\s*(.*)$/i);
   if (oneStepExpenseMatch) {
     const description = oneStepExpenseMatch[1];
     const amount = parseFloat(oneStepExpenseMatch[2]);
     const note = oneStepExpenseMatch[4]?.trim() || undefined;
 
     let category = '其他';
-    if (/午餐|早餐|晚餐|飲料|咖啡|零食|飲食/.test(description)) category = '飲食';
+    let subcategory: string | undefined;
+    if (/午餐|早餐|晚餐|宵夜|消夜|下午茶|點心|飲料|咖啡|零食|飲食/.test(description)) {
+      category = '飲食';
+      subcategory = detectMealKeyword(description);
+    }
     else if (/計程車|公車|捷運|Uber|交通/.test(description)) category = '交通';
     else if (/房租|水電|瓦斯|居住/.test(description)) category = '居住';
     else if (/電影|KTV|遊戲|娛樂/.test(description)) category = '娛樂';
@@ -80,21 +106,25 @@ export function parseMessage(text: string): MessageIntent {
     return {
       type: 'EXPENSE_CATEGORY',
       category,
+      subcategory,
       amount,
       note
     };
   }
 
-  // 3. 中文開頭 + 金額：「摩斯漢堡 99」「麥當勞套餐 150」（文字開頭但不在固定關鍵字列表）
+  // 3. 中文開頭 + 金額：「摩斯漢堡 99」「宵夜鹹酥雞 150」
   const chineseFirstMatch = trimmed.match(/^([\u4e00-\u9fa5][\u4e00-\u9fa5a-zA-Z0-9]*(?:\s+[\u4e00-\u9fa5a-zA-Z0-9]+)*)\s+(\d+(?:\.\d{1,2})?)(.*)$/);
   if (chineseFirstMatch) {
     const noteText = chineseFirstMatch[1].trim();
     const amount = parseFloat(chineseFirstMatch[2]);
     const extra = chineseFirstMatch[3]?.trim();
     if (amount > 0) {
+      const category = guessExpenseCategory(noteText);
+      const subcategory = category === '飲食' ? detectMealKeyword(noteText) : undefined;
       return {
         type: 'EXPENSE_CATEGORY',
-        category: guessExpenseCategory(noteText),
+        category,
+        subcategory,
         amount,
         note: extra ? `${noteText} ${extra}` : noteText
       };

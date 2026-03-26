@@ -99,8 +99,9 @@ model Transaction {
   date     DateTime @default(now())
   type     String // "income" | "expense" | "transfer" | "invest"
   amount   Float
-  category String // 飲食、交通、居住、投資等
-  note     String?
+  category    String  // 飲食、交通、居住、投資等
+  subcategory String? // 早餐、午餐、晚餐、下午茶、宵夜 等子分類
+  note        String?
 
   // 🏦 資金來源/目標帳戶（可選，向後兼容）
   accountId String?
