@@ -109,6 +109,11 @@ app.delete('/api/accounts/:accountId', authenticateToken, apiController.removeAc
 app.post('/api/transfers/:lineUserId', authenticateToken, apiController.createNewTransfer);
 app.get('/api/transfers/:lineUserId', authenticateToken, apiController.getTransfers);
 
+// 預算 API
+app.get('/api/budgets/:lineUserId', authenticateToken, apiController.getBudgets);
+app.put('/api/budgets/:lineUserId', authenticateToken, apiController.setBudget);
+app.delete('/api/budgets/:lineUserId/:category', authenticateToken, apiController.removeBudget);
+
 // 價格警示 API
 app.get('/api/price-alerts/:lineUserId', authenticateToken, apiController.getPriceAlerts);
 app.post('/api/price-alerts/:lineUserId', authenticateToken, apiController.createPriceAlertAPI);

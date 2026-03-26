@@ -24,6 +24,9 @@ import {
   getUserTransfers,
   importAsset,
   upsertAsset,
+  getUserBudgets,
+  upsertBudget,
+  deleteBudget,
   prisma
 } from '../services/databaseService.js';
 import { getStockQuote, searchStocks } from '../services/stockService.js';
@@ -262,6 +265,7 @@ export async function getTransactions(req: Request, res: Response) {
         type: t.type,
         amount: t.amount,
         category: t.category,
+        subcategory: t.subcategory,
         note: t.note,
         accountId: t.accountId
       }))
@@ -1349,5 +1353,57 @@ export async function createDefaultAlertsAPI(req: Request, res: Response) {
   } catch (error) {
     console.error('Error creating default alerts:', error);
     res.status(500).json({ success: false, error: 'Failed to create default alerts' });
+  }
+}
+
+/**
+ * GET /api/budgets/:lineUserId
+ * 取得用戶所有預算設定
+ */
+export async function getBudgets(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const user = await getOrCreateUser(lineUserId);
+    const budgets = await getUserBudgets(user.id);
+    res.json({ success: true, data: budgets });
+  } catch (error) {
+    console.error('Error fetching budgets:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch budgets' });
+  }
+}
+
+/**
+ * PUT /api/budgets/:lineUserId
+ * 新增或更新分類預算
+ */
+export async function setBudget(req: Request, res: Response) {
+  try {
+    const { lineUserId } = req.params;
+    const { category, amount } = req.body;
+    if (!category || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ success: false, error: 'category and amount are required' });
+    }
+    const user = await getOrCreateUser(lineUserId);
+    const budget = await upsertBudget(user.id, category, amount);
+    res.json({ success: true, data: budget });
+  } catch (error) {
+    console.error('Error setting budget:', error);
+    res.status(500).json({ success: false, error: 'Failed to set budget' });
+  }
+}
+
+/**
+ * DELETE /api/budgets/:lineUserId/:category
+ * 刪除分類預算
+ */
+export async function removeBudget(req: Request, res: Response) {
+  try {
+    const { lineUserId, category } = req.params;
+    const user = await getOrCreateUser(lineUserId);
+    await deleteBudget(user.id, decodeURIComponent(category));
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting budget:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete budget' });
   }
 }

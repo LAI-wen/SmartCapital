@@ -3,7 +3,7 @@
  * 包含行情卡片、分類選單等精美視覺設計
  */
 
-import { FlexMessage, FlexBubble } from '@line/bot-sdk';
+import { FlexMessage, FlexBubble, FlexCarousel } from '@line/bot-sdk';
 import { StockQuote } from '../services/stockService.js';
 import { KellyResult, MartingaleResult } from '../services/strategyService.js';
 
@@ -382,6 +382,7 @@ interface TransactionSummary {
   type: 'income' | 'expense';
   amount: number;
   category: string;
+  subcategory?: string;
   monthlyIncome: number;
   monthlyExpense: number;
   monthlyBalance: number;
@@ -433,7 +434,7 @@ export function createTransactionSuccessCard(data: TransactionSummary): FlexMess
                 },
                 {
                   type: 'text',
-                  text: data.category,
+                  text: data.subcategory ? `${data.category} · ${data.subcategory}` : data.category,
                   size: 'sm',
                   color: COLORS.textMuted
                 }
@@ -602,6 +603,168 @@ export function createTransactionSuccessCard(data: TransactionSummary): FlexMess
   return {
     type: 'flex',
     altText: `${title} ${data.category} ${isIncome ? '+' : '-'}$${data.amount}`,
+    contents: bubble
+  };
+}
+
+/**
+ * 新用戶歡迎卡片
+ */
+export function createWelcomeCard(displayName?: string): FlexMessage {
+  const greeting = displayName ? `嗨 ${displayName} 👋` : '嗨！👋';
+
+  const bubble: FlexBubble = {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: '#44403C',
+      paddingAll: '24px',
+      paddingBottom: '20px',
+      contents: [
+        {
+          type: 'text',
+          text: greeting,
+          size: 'md',
+          color: '#D6C9B6',
+          weight: 'bold'
+        },
+        {
+          type: 'text',
+          text: 'SmartCapital',
+          size: 'xxl',
+          color: '#FFFFFF',
+          weight: 'bold',
+          margin: 'sm'
+        },
+        {
+          type: 'text',
+          text: '記帳 · 查花費 · 投資助理',
+          size: 'xs',
+          color: '#78716C',
+          margin: 'sm'
+        }
+      ]
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      paddingAll: '20px',
+      spacing: 'lg',
+      contents: [
+        {
+          type: 'box',
+          layout: 'horizontal',
+          spacing: 'md',
+          alignItems: 'center',
+          contents: [
+            {
+              type: 'box',
+              layout: 'vertical',
+              width: '44px',
+              height: '44px',
+              backgroundColor: '#F0F4F0',
+              cornerRadius: '12px',
+              justifyContent: 'center',
+              alignItems: 'center',
+              contents: [{ type: 'text', text: '💸', size: 'xl', align: 'center' }]
+            },
+            {
+              type: 'box',
+              layout: 'vertical',
+              flex: 1,
+              contents: [
+                { type: 'text', text: '一句話記帳', weight: 'bold', size: 'sm', color: '#44403C' },
+                { type: 'text', text: '「午餐 120」自動分類，即刻完成', size: 'xs', color: '#A8A29E', wrap: true, margin: 'xs' }
+              ]
+            }
+          ]
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          spacing: 'md',
+          alignItems: 'center',
+          contents: [
+            {
+              type: 'box',
+              layout: 'vertical',
+              width: '44px',
+              height: '44px',
+              backgroundColor: '#F0EDF5',
+              cornerRadius: '12px',
+              justifyContent: 'center',
+              alignItems: 'center',
+              contents: [{ type: 'text', text: '📊', size: 'xl', align: 'center' }]
+            },
+            {
+              type: 'box',
+              layout: 'vertical',
+              flex: 1,
+              contents: [
+                { type: 'text', text: '花費一目了然', weight: 'bold', size: 'sm', color: '#44403C' },
+                { type: 'text', text: '「今天花了多少」「本月預算」', size: 'xs', color: '#A8A29E', wrap: true, margin: 'xs' }
+              ]
+            }
+          ]
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          spacing: 'md',
+          alignItems: 'center',
+          contents: [
+            {
+              type: 'box',
+              layout: 'vertical',
+              width: '44px',
+              height: '44px',
+              backgroundColor: '#EDF2F5',
+              cornerRadius: '12px',
+              justifyContent: 'center',
+              alignItems: 'center',
+              contents: [{ type: 'text', text: '📈', size: 'xl', align: 'center' }]
+            },
+            {
+              type: 'box',
+              layout: 'vertical',
+              flex: 1,
+              contents: [
+                { type: 'text', text: '投資助理', weight: 'bold', size: 'sm', color: '#44403C' },
+                { type: 'text', text: '「TSLA」查即時股價、記錄買賣', size: 'xs', color: '#A8A29E', wrap: true, margin: 'xs' }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      paddingAll: '16px',
+      spacing: 'sm',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#44403C',
+          height: 'sm',
+          action: { type: 'message', label: '📖 查看完整說明', text: '說明' }
+        },
+        {
+          type: 'button',
+          style: 'secondary',
+          height: 'sm',
+          action: { type: 'message', label: '試試看：午餐 120', text: '午餐 120' }
+        }
+      ]
+    }
+  };
+
+  return {
+    type: 'flex',
+    altText: '歡迎使用 SmartCapital！',
     contents: bubble
   };
 }

@@ -21,6 +21,9 @@ export type MessageIntent =
   | { type: 'ACCOUNT_LIST' }
   | { type: 'CREATE_ACCOUNT' }
   | { type: 'TOTAL_ASSETS' }
+  | { type: 'EXPENSE_QUERY'; period: 'today' | 'week' | 'month'; category?: string }
+  | { type: 'BUDGET_QUERY' }
+  | { type: 'SET_BUDGET'; category: string; amount: number }
   | { type: 'LEDGER' }
   | { type: 'UNKNOWN' };
 
@@ -256,6 +259,47 @@ export function parseMessage(text: string): MessageIntent {
     return { type: 'LEDGER' };
   }
 
+  // 預算查詢：「預算」「查預算」「本月預算」
+  if (/^(預算|查預算|本月預算|我的預算|budget)$/i.test(trimmed)) {
+    return { type: 'BUDGET_QUERY' };
+  }
+
+  // 設定預算：「設預算 飲食 3000」「設定預算 飲食 3000」「飲食預算 3000」
+  const setBudgetMatch = trimmed.match(/^(?:設定?預算|預算設定?)\s+([\u4e00-\u9fa5]+)\s+(\d+(?:\.\d+)?)$/) ||
+    trimmed.match(/^([\u4e00-\u9fa5]+)預算\s+(\d+(?:\.\d+)?)$/);
+  if (setBudgetMatch) {
+    const VALID_BUDGET_CATS = ['飲食', '交通', '居住', '娛樂', '購物', '醫療', '其他', '總計'];
+    const cat = setBudgetMatch[1];
+    if (VALID_BUDGET_CATS.includes(cat)) {
+      return { type: 'SET_BUDGET', category: cat, amount: parseFloat(setBudgetMatch[2]) };
+    }
+  }
+
+  // 費用查詢：今天 / 這週 / 本月（可選帶分類）
+  // 支援：「今天花了多少」「我今天花了多少」「本月餐飲花多少」「這週交通」
+  const CATEGORIES_RE = '(飲食|早餐|午餐|晚餐|下午茶|宵夜|交通|居住|娛樂|購物|醫療|投資|其他)';
+  const categoryMatch = trimmed.match(new RegExp(CATEGORIES_RE));
+  const queriedCategory = categoryMatch?.[1];
+
+  if (/(今天|今日|今日花|today)/.test(trimmed) && /(花|多少|支出|花費|消費|查|看)/.test(trimmed)) {
+    return { type: 'EXPENSE_QUERY', period: 'today', category: queriedCategory };
+  }
+  if (/(今天|今日|today)/.test(trimmed) && !queriedCategory) {
+    // 只有「今天」但沒有動詞，也視為查詢
+    return { type: 'EXPENSE_QUERY', period: 'today' };
+  }
+  if (/(這週|本週|this\s*week|week)/.test(trimmed) && /(花|多少|支出|花費|消費|查|看)?/.test(trimmed)) {
+    return { type: 'EXPENSE_QUERY', period: 'week', category: queriedCategory };
+  }
+  if (/(本月|這個月|this\s*month|month)/.test(trimmed) && /(花|多少|支出|花費|消費|查|看)?/.test(trimmed)) {
+    return { type: 'EXPENSE_QUERY', period: 'month', category: queriedCategory };
+  }
+  // 純分類查詢：「本月餐飲」「這週交通」
+  if (queriedCategory && /(本月|這個月|這週|本週)/.test(trimmed)) {
+    const period = /(這週|本週)/.test(trimmed) ? 'week' : 'month';
+    return { type: 'EXPENSE_QUERY', period, category: queriedCategory };
+  }
+
   // 未知訊息
   return { type: 'UNKNOWN' };
 }
@@ -287,449 +331,178 @@ export function getHelpMessage(): string {
 💡 提示：支援更多口語化關鍵字！`;
 }
 
+// 幫助卡片輔助：生成指令範例行
+function helpRow(cmd: string, desc: string): object {
+  return {
+    type: 'box',
+    layout: 'horizontal',
+    paddingAll: '10px',
+    contents: [
+      { type: 'text', text: cmd, size: 'sm', color: '#44403C', weight: 'bold', flex: 5, wrap: true },
+      { type: 'text', text: desc, size: 'xs', color: '#A8A29E', flex: 4, align: 'end', wrap: true, gravity: 'center' }
+    ]
+  };
+}
+
+function helpDivider(): object {
+  return { type: 'separator', color: '#F5F2EE' };
+}
+
 /**
- * 生成幫助訊息卡片 (Flex Message)
+ * 生成幫助訊息卡片 (Flex Message) - 3 張卡片 carousel
  */
 export function getHelpCard(): FlexMessage {
+  const card = (
+    headerColor: string,
+    headerText: string,
+    subText: string,
+    rows: object[],
+    btnLabel: string,
+    btnText: string
+  ) => ({
+    type: 'bubble' as const,
+    size: 'mega' as const,
+    header: {
+      type: 'box' as const,
+      layout: 'vertical' as const,
+      backgroundColor: headerColor,
+      paddingAll: '20px',
+      paddingBottom: '18px',
+      contents: [
+        { type: 'text' as const, text: headerText, size: 'lg' as const, color: '#FFFFFF', weight: 'bold' as const },
+        { type: 'text' as const, text: subText, size: 'xs' as const, color: 'rgba(255,255,255,0.5)', margin: 'xs' as const }
+      ]
+    },
+    body: {
+      type: 'box' as const,
+      layout: 'vertical' as const,
+      paddingAll: 'none' as const,
+      contents: rows as any[]
+    },
+    footer: {
+      type: 'box' as const,
+      layout: 'vertical' as const,
+      paddingAll: '14px' as const,
+      contents: [{
+        type: 'button' as const,
+        style: 'primary' as const,
+        color: headerColor,
+        height: 'sm' as const,
+        action: { type: 'message' as const, label: btnLabel, text: btnText }
+      }]
+    }
+  });
+
   return {
     type: 'flex',
-    altText: '📖 SmartCapital 快速指南',
+    altText: '📖 SmartCapital 使用指南',
     contents: {
       type: 'carousel',
       contents: [
-        // 第一張卡片 - 記帳功能（整合生活記帳）
-        {
-          type: 'bubble',
-          size: 'mega',
-          body: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              {
-                type: 'box',
-                layout: 'vertical',
-                contents: [
-                  {
-                    type: 'text',
-                    text: '✨',
-                    size: '3xl',
-                    align: 'center'
-                  },
-                  {
-                    type: 'text',
-                    text: '快速記帳',
-                    weight: 'bold',
-                    size: 'xl',
-                    align: 'center',
-                    color: '#44403C',
-                    margin: 'md'
-                  },
-                  {
-                    type: 'text',
-                    text: '一行輸入，自動分類',
-                    size: 'xs',
-                    align: 'center',
-                    color: '#A8A29E',
-                    margin: 'sm'
-                  }
-                ],
-                spacing: 'none',
-                margin: 'none',
-                paddingBottom: 'md'
-              },
-              {
-                type: 'separator',
-                margin: 'md'
-              },
-              {
-                type: 'box',
-                layout: 'vertical',
-                contents: [
-                  {
-                    type: 'box',
-                    layout: 'baseline',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '💰',
-                        size: 'sm',
-                        flex: 0,
-                        margin: 'none'
-                      },
-                      {
-                        type: 'text',
-                        text: '記支出（新功能）',
-                        color: '#78716C',
-                        size: 'sm',
-                        weight: 'bold',
-                        flex: 0,
-                        margin: 'sm'
-                      }
-                    ],
-                    margin: 'lg',
-                    spacing: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'vertical',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '「午餐 120」「咖啡 80」',
-                        size: 'sm',
-                        color: '#8FA5B5',
-                        wrap: true,
-                        weight: 'bold'
-                      },
-                      {
-                        type: 'text',
-                        text: '「計程車 200」「電影 300」',
-                        size: 'xs',
-                        color: '#D6D3D1',
-                        margin: 'xs',
-                        wrap: true
-                      }
-                    ],
-                    margin: 'sm',
-                    paddingStart: 'md',
-                    paddingAll: 'sm',
-                    backgroundColor: '#E6ECF0',
-                    cornerRadius: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'baseline',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '💵',
-                        size: 'sm',
-                        flex: 0
-                      },
-                      {
-                        type: 'text',
-                        text: '記收入',
-                        color: '#78716C',
-                        size: 'sm',
-                        weight: 'bold',
-                        flex: 0,
-                        margin: 'sm'
-                      }
-                    ],
-                    margin: 'md',
-                    spacing: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'vertical',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '「薪水 50000」「獎金 10000」',
-                        size: 'sm',
-                        color: '#8FA5B5',
-                        wrap: true,
-                        weight: 'bold'
-                      }
-                    ],
-                    margin: 'sm',
-                    paddingStart: 'md',
-                    paddingAll: 'sm',
-                    backgroundColor: '#E6ECF0',
-                    cornerRadius: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'baseline',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '⚡',
-                        size: 'sm',
-                        flex: 0
-                      },
-                      {
-                        type: 'text',
-                        text: '傳統方式',
-                        color: '#78716C',
-                        size: 'sm',
-                        weight: 'bold',
-                        flex: 0,
-                        margin: 'sm'
-                      }
-                    ],
-                    margin: 'md',
-                    spacing: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'vertical',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '「120」→ 選擇分類',
-                        size: 'xs',
-                        color: '#A8A29E',
-                        wrap: true
-                      },
-                      {
-                        type: 'text',
-                        text: '「+5000」→ 選擇收入類別',
-                        size: 'xs',
-                        color: '#A8A29E',
-                        margin: 'xs',
-                        wrap: true
-                      }
-                    ],
-                    margin: 'sm',
-                    paddingStart: 'md'
-                  }
-                ],
-                spacing: 'none'
-              }
-            ],
-            paddingAll: 'lg',
-            backgroundColor: '#F9F7F2'
-          },
-          styles: {
-            body: {
-              separator: true
+        // Card 1 - 記帳
+        card(
+          '#44403C',
+          '💸  記帳',
+          '直接說就好，自動分類',
+          [
+            helpRow('午餐 120', '飲食·午餐 支出'),
+            helpDivider(),
+            helpRow('咖啡$80', '飲食·下午茶 支出'),
+            helpDivider(),
+            helpRow('計程車 250', '交通 支出'),
+            helpDivider(),
+            helpRow('薪水 50000', '薪資 收入'),
+            helpDivider(),
+            helpRow('+1000 獎金', '收入'),
+            helpDivider(),
+            {
+              type: 'box',
+              layout: 'vertical',
+              paddingAll: '12px',
+              backgroundColor: '#FAFAF9',
+              contents: [{
+                type: 'text',
+                text: '💡 支援口語化輸入，說什麼都懂',
+                size: 'xs',
+                color: '#A8A29E',
+                align: 'center',
+                wrap: true
+              }]
             }
-          }
-        },
-        // 第二張卡片 - 投資與查詢（整合投資助理、策略實驗室、快捷指令）
-        {
-          type: 'bubble',
-          size: 'mega',
-          body: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              {
-                type: 'box',
-                layout: 'vertical',
-                contents: [
-                  {
-                    type: 'text',
-                    text: '📈',
-                    size: '3xl',
-                    align: 'center'
-                  },
-                  {
-                    type: 'text',
-                    text: '投資 & 查詢',
-                    weight: 'bold',
-                    size: 'xl',
-                    align: 'center',
-                    color: '#44403C',
-                    margin: 'md'
-                  },
-                  {
-                    type: 'text',
-                    text: '交易、分析、資產管理',
-                    size: 'xs',
-                    align: 'center',
-                    color: '#A8A29E',
-                    margin: 'sm'
-                  }
-                ],
-                spacing: 'none',
-                margin: 'none',
-                paddingBottom: 'md'
-              },
-              {
-                type: 'separator',
-                margin: 'md'
-              },
-              {
-                type: 'box',
-                layout: 'vertical',
-                contents: [
-                  {
-                    type: 'box',
-                    layout: 'baseline',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '📊',
-                        size: 'sm',
-                        flex: 0
-                      },
-                      {
-                        type: 'text',
-                        text: '查詢股價',
-                        color: '#78716C',
-                        size: 'sm',
-                        weight: 'bold',
-                        flex: 0,
-                        margin: 'sm'
-                      }
-                    ],
-                    margin: 'lg',
-                    spacing: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'vertical',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '「TSLA」「2330」「AAPL」',
-                        size: 'sm',
-                        color: '#8FA5B5',
-                        wrap: true,
-                        weight: 'bold'
-                      },
-                      {
-                        type: 'text',
-                        text: '→ 顯示即時股價、凱利建議',
-                        size: 'xs',
-                        color: '#D6D3D1',
-                        margin: 'xs'
-                      }
-                    ],
-                    margin: 'sm',
-                    paddingStart: 'md',
-                    paddingAll: 'sm',
-                    backgroundColor: '#E6ECF0',
-                    cornerRadius: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'baseline',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '💼',
-                        size: 'sm',
-                        flex: 0
-                      },
-                      {
-                        type: 'text',
-                        text: '買賣交易',
-                        color: '#78716C',
-                        size: 'sm',
-                        weight: 'bold',
-                        flex: 0,
-                        margin: 'sm'
-                      }
-                    ],
-                    margin: 'md',
-                    spacing: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'vertical',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '「買 TSLA」「賣 2330」',
-                        size: 'sm',
-                        color: '#8FA5B5',
-                        wrap: true,
-                        weight: 'bold'
-                      }
-                    ],
-                    margin: 'sm',
-                    paddingStart: 'md',
-                    paddingAll: 'sm',
-                    backgroundColor: '#E6ECF0',
-                    cornerRadius: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'baseline',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '🎯',
-                        size: 'sm',
-                        flex: 0
-                      },
-                      {
-                        type: 'text',
-                        text: '常用指令',
-                        color: '#78716C',
-                        size: 'sm',
-                        weight: 'bold',
-                        flex: 0,
-                        margin: 'sm'
-                      }
-                    ],
-                    margin: 'md',
-                    spacing: 'sm'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'vertical',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '「帳戶」→ 查看所有帳戶',
-                        size: 'xs',
-                        color: '#A8A29E',
-                        wrap: true
-                      },
-                      {
-                        type: 'text',
-                        text: '「資產」→ 查看總資產',
-                        size: 'xs',
-                        color: '#A8A29E',
-                        margin: 'xs',
-                        wrap: true
-                      },
-                      {
-                        type: 'text',
-                        text: '「持倉」→ 查看投資組合',
-                        size: 'xs',
-                        color: '#A8A29E',
-                        margin: 'xs',
-                        wrap: true
-                      },
-                      {
-                        type: 'text',
-                        text: '「網站」→ 開啟完整版',
-                        size: 'xs',
-                        color: '#A8A29E',
-                        margin: 'xs',
-                        wrap: true
-                      }
-                    ],
-                    margin: 'sm',
-                    paddingStart: 'md'
-                  },
-                  {
-                    type: 'box',
-                    layout: 'vertical',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: '💡 支援更多口語化關鍵字',
-                        size: 'sm',
-                        color: '#8FA5B5',
-                        weight: 'bold',
-                        align: 'center',
-                        wrap: true
-                      }
-                    ],
-                    margin: 'lg',
-                    paddingAll: 'sm',
-                    backgroundColor: '#E6ECF0',
-                    cornerRadius: 'md'
-                  }
-                ],
-                spacing: 'none'
-              }
-            ],
-            paddingAll: 'lg',
-            backgroundColor: '#F9F7F2'
-          },
-          styles: {
-            body: {
-              separator: true
+          ],
+          '試試看：午餐 120',
+          '午餐 120'
+        ),
+        // Card 2 - 查詢 & 預算
+        card(
+          '#769F86',
+          '📊  查詢 & 預算',
+          '掌握每分錢的去向',
+          [
+            helpRow('今天花了多少', '今日支出統計'),
+            helpDivider(),
+            helpRow('本月花多少', '本月收支總覽'),
+            helpDivider(),
+            helpRow('這週飲食', '分類篩選查詢'),
+            helpDivider(),
+            helpRow('預算', '查看預算使用狀況'),
+            helpDivider(),
+            helpRow('設預算 飲食 5000', '設定分類月預算'),
+            helpDivider(),
+            {
+              type: 'box',
+              layout: 'vertical',
+              paddingAll: '12px',
+              backgroundColor: '#FAFAF9',
+              contents: [{
+                type: 'text',
+                text: '📱 輸入「帳本」開啟完整記帳頁面',
+                size: 'xs',
+                color: '#A8A29E',
+                align: 'center',
+                wrap: true
+              }]
             }
-          }
-        }
+          ],
+          '查今天花費',
+          '今天花了多少'
+        ),
+        // Card 3 - 投資
+        card(
+          '#8FA5B5',
+          '📈  投資',
+          '即時股價、記錄買賣',
+          [
+            helpRow('TSLA', '查美股即時股價'),
+            helpDivider(),
+            helpRow('2330', '查台股即時股價'),
+            helpDivider(),
+            helpRow('TSLA kelly', '股價 + 凱利倉位建議'),
+            helpDivider(),
+            helpRow('買 TSLA 10', '記錄買入 10 股'),
+            helpDivider(),
+            helpRow('賣 2330 100', '記錄賣出 100 股'),
+            helpDivider(),
+            helpRow('持倉', '查看投資組合'),
+            helpDivider(),
+            {
+              type: 'box',
+              layout: 'vertical',
+              paddingAll: '12px',
+              backgroundColor: '#FAFAF9',
+              contents: [{
+                type: 'text',
+                text: '🌐 輸入「網站」開啟完整版',
+                size: 'xs',
+                color: '#A8A29E',
+                align: 'center',
+                wrap: true
+              }]
+            }
+          ],
+          '查詢 TSLA',
+          'TSLA'
+        )
       ]
     }
   };

@@ -724,6 +724,45 @@ export async function getUserTransfers(userId: string, limit: number = 20) {
 }
 
 /**
+ * 設定（新增或更新）分類預算
+ */
+export async function upsertBudget(userId: string, category: string, amount: number) {
+  return prisma.budget.upsert({
+    where: { userId_category: { userId, category } },
+    create: { userId, category, amount },
+    update: { amount }
+  });
+}
+
+/**
+ * 取得用戶所有預算設定
+ */
+export async function getUserBudgets(userId: string) {
+  return prisma.budget.findMany({
+    where: { userId },
+    orderBy: { category: 'asc' }
+  });
+}
+
+/**
+ * 取得單一分類預算
+ */
+export async function getCategoryBudget(userId: string, category: string) {
+  return prisma.budget.findUnique({
+    where: { userId_category: { userId, category } }
+  });
+}
+
+/**
+ * 刪除分類預算
+ */
+export async function deleteBudget(userId: string, category: string) {
+  return prisma.budget.deleteMany({
+    where: { userId, category }
+  });
+}
+
+/**
  * 關閉資料庫連線 (應用程式關閉時調用)
  */
 export async function disconnectDatabase() {

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 
 export type Currency = 'TWD' | 'USD';
 export type AccountType = 'CASH' | 'BANK' | 'BROKERAGE';
@@ -41,7 +42,7 @@ export interface PortfolioSummary {
 export interface NavItem {
   id: string;
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   path: string;
 }
 
@@ -88,6 +89,7 @@ export interface Transaction {
   type: TransactionType;
   amount: number;
   category: string;
+  subcategory?: string;
   accountId: string; // Source of fund
   toAccountId?: string; // For transfer
   note: string;

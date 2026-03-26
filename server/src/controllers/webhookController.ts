@@ -19,7 +19,9 @@ import {
   getUserAccounts,
   getAccount,
   updateAccountBalance,
-  createAccount
+  createAccount,
+  upsertBudget,
+  getUserBudgets
 } from '../services/databaseService.js';
 import { getStockQuote } from '../services/stockService.js';
 import { calculateKelly } from '../services/strategyService.js';
@@ -30,7 +32,8 @@ import {
   createExpenseCategoryQuickReply,
   createIncomeCategoryQuickReply,
   createPortfolioSummaryCard,
-  createTransactionSuccessCard
+  createTransactionSuccessCard,
+  createWelcomeCard
 } from '../utils/flexMessages.js';
 import { parseMessage, getHelpMessage, getHelpCard, validateQuantity, validateAmount } from '../utils/messageParser.js';
 import {
@@ -69,6 +72,20 @@ export class WebhookController {
    * 處理 Webhook 事件
    */
   async handleEvent(event: WebhookEvent): Promise<void> {
+    // 新用戶加入 → 發送歡迎卡片
+    if (event.type === 'follow') {
+      const userId = event.source.userId;
+      if (!userId) return;
+      try {
+        const profile = await this.client.getProfile(userId);
+        await getOrCreateUser(userId, profile.displayName);
+        await this.client.pushMessage(userId, createWelcomeCard(profile.displayName));
+      } catch (error) {
+        console.error('Follow event error:', error);
+      }
+      return;
+    }
+
     // 只處理文字訊息事件
     if (event.type !== 'message' || event.message.type !== 'text') {
       return;
@@ -205,14 +222,31 @@ export class WebhookController {
         await this.handleLedgerLink(lineUserId);
         break;
 
+      case 'EXPENSE_QUERY':
+        await this.handleExpenseQuery(lineUserId, userId, intent.period, intent.category);
+        break;
+
+      case 'BUDGET_QUERY':
+        await this.handleBudgetQuery(lineUserId, userId);
+        break;
+
+      case 'SET_BUDGET':
+        await this.handleSetBudget(lineUserId, userId, intent.category, intent.amount);
+        break;
+
       default:
         await this.client.pushMessage(lineUserId, {
           type: 'text',
-          text: '💡 試試這些指令：\n\n' +
-            '📝 記帳：「記帳」「午餐 120」「薪水 50000」\n' +
-            '📊 投資：「TSLA」「買 2330」\n' +
-            '📈 查詢：「帳戶」「資產」「持倉」\n\n' +
-            '輸入「說明」查看完整指南'
+          text: '看不太懂你說的 🤔\n\n點下方快速開始，或輸入「說明」查看完整指南',
+          quickReply: {
+            items: [
+              { type: 'action', action: { type: 'message', label: '💸 午餐 120', text: '午餐 120' } },
+              { type: 'action', action: { type: 'message', label: '📊 今天花了多少', text: '今天花了多少' } },
+              { type: 'action', action: { type: 'message', label: '💰 本月預算', text: '預算' } },
+              { type: 'action', action: { type: 'message', label: '📈 查 TSLA', text: 'TSLA' } },
+              { type: 'action', action: { type: 'message', label: '📖 說明', text: '說明' } }
+            ]
+          }
         });
     }
   }
@@ -667,11 +701,11 @@ export class WebhookController {
     const liffId = process.env.LIFF_ID;
     const liffUrl = liffId ? `https://liff.line.me/${liffId}#/ledger` : undefined;
 
-    // 發送卡片
     const card = createTransactionSuccessCard({
       type: 'expense',
       amount,
       category,
+      subcategory: resolvedSubcategory,
       monthlyIncome,
       monthlyExpense,
       monthlyBalance: monthlyIncome - monthlyExpense,
@@ -680,6 +714,62 @@ export class WebhookController {
     });
 
     await this.client.pushMessage(lineUserId, card);
+
+    // 非同步檢查預算警告（不阻塞主流程）
+    this.checkBudgetAlert(lineUserId, userId, category, monthlyExpense).catch(console.error);
+  }
+
+  /**
+   * 記帳後檢查是否觸發預算警告
+   */
+  private async checkBudgetAlert(lineUserId: string, userId: string, category: string, totalMonthlyExpense: number): Promise<void> {
+    const budgets = await getUserBudgets(userId);
+    if (budgets.length === 0) return;
+
+    // 重新計算本月該分類支出
+    const now = new Date();
+    const taiwanOffset = 8 * 60 * 60 * 1000;
+    const taiwanNow = new Date(now.getTime() + taiwanOffset);
+    const startOfMonth = new Date(Date.UTC(
+      taiwanNow.getUTCFullYear(), taiwanNow.getUTCMonth(), 1
+    ) - taiwanOffset);
+
+    const allTx = await getUserTransactions(userId, 500);
+    const monthExpenses = allTx.filter(tx => tx.type === 'expense' && new Date(tx.date) >= startOfMonth);
+
+    const spentByCategory: Record<string, number> = { '總計': 0 };
+    monthExpenses.forEach(tx => {
+      spentByCategory[tx.category] = (spentByCategory[tx.category] || 0) + tx.amount;
+      spentByCategory['總計'] += tx.amount;
+    });
+
+    const THRESHOLDS = [
+      { pct: 100, emoji: '🔴', label: '已超出' },
+      { pct: 90, emoji: '🟠', label: '已達 90%' },
+      { pct: 70, emoji: '🟡', label: '已達 70%' }
+    ];
+
+    const warnings: string[] = [];
+
+    for (const b of budgets) {
+      if (b.category !== category && b.category !== '總計') continue;
+      const spent = spentByCategory[b.category] || 0;
+      const pct = (spent / b.amount) * 100;
+
+      for (const t of THRESHOLDS) {
+        if (pct >= t.pct) {
+          warnings.push(`${t.emoji} ${b.category}預算${t.label}\n已用 $${spent.toFixed(0)} / $${b.amount.toLocaleString()}（${Math.round(pct)}%）`);
+          break;
+        }
+      }
+    }
+
+    if (warnings.length > 0) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: `⚠️ 預算提醒\n\n${warnings.join('\n\n')}`
+      });
+    }
   }
 
   /**
@@ -746,6 +836,166 @@ export class WebhookController {
     });
 
     await this.client.pushMessage(lineUserId, card);
+  }
+
+  /**
+   * 處理費用查詢（今天/本週/本月花了多少）
+   */
+  private async handleExpenseQuery(
+    lineUserId: string,
+    userId: string,
+    period: 'today' | 'week' | 'month',
+    category?: string
+  ): Promise<void> {
+    // 計算台灣時間的日期範圍（UTC+8）
+    const now = new Date();
+    const taiwanOffset = 8 * 60 * 60 * 1000;
+    const taiwanNow = new Date(now.getTime() + taiwanOffset);
+
+    let startDate: Date;
+    let periodLabel: string;
+
+    if (period === 'today') {
+      startDate = new Date(Date.UTC(
+        taiwanNow.getUTCFullYear(),
+        taiwanNow.getUTCMonth(),
+        taiwanNow.getUTCDate()
+      ) - taiwanOffset);
+      periodLabel = '今天';
+    } else if (period === 'week') {
+      const dayOfWeek = taiwanNow.getUTCDay(); // 0=日, 1=一...
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      startDate = new Date(Date.UTC(
+        taiwanNow.getUTCFullYear(),
+        taiwanNow.getUTCMonth(),
+        taiwanNow.getUTCDate() - daysFromMonday
+      ) - taiwanOffset);
+      periodLabel = '本週';
+    } else {
+      startDate = new Date(Date.UTC(
+        taiwanNow.getUTCFullYear(),
+        taiwanNow.getUTCMonth(),
+        1
+      ) - taiwanOffset);
+      periodLabel = '本月';
+    }
+
+    // 取得該時段所有交易（多取一些）
+    const allTransactions = await getUserTransactions(userId, 500);
+    const periodTransactions = allTransactions.filter(tx => new Date(tx.date) >= startDate);
+
+    // 分類對應（子分類也對應到飲食）
+    const SUBCATEGORIES_TO_PARENT: Record<string, string> = {
+      '早餐': '飲食', '午餐': '飲食', '晚餐': '飲食', '下午茶': '飲食', '宵夜': '飲食'
+    };
+
+    const filtered = category
+      ? periodTransactions.filter(tx => {
+          const cat = tx.category;
+          const sub = (tx as any).subcategory;
+          const matchCat = cat === category || SUBCATEGORIES_TO_PARENT[category] === cat;
+          const matchSub = sub === category;
+          return tx.type === 'expense' && (matchCat || matchSub);
+        })
+      : periodTransactions.filter(tx => tx.type === 'expense');
+
+    const totalExpense = filtered.reduce((sum, tx) => sum + tx.amount, 0);
+    const totalIncome = periodTransactions
+      .filter(tx => tx.type === 'income')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    // 計算分類明細
+    const categoryBreakdown: Record<string, number> = {};
+    filtered.forEach(tx => {
+      const key = (tx as any).subcategory || tx.category;
+      categoryBreakdown[key] = (categoryBreakdown[key] || 0) + tx.amount;
+    });
+
+    const sortedCategories = Object.entries(categoryBreakdown)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5);
+
+    let msg = category
+      ? `📊 ${periodLabel}${category}支出\n\n總計：$${totalExpense.toFixed(0)} 元\n筆數：${filtered.length} 筆`
+      : `📊 ${periodLabel}花費\n\n💸 支出：$${totalExpense.toFixed(0)} 元\n💰 收入：$${totalIncome.toFixed(0)} 元\n📈 結餘：$${(totalIncome - totalExpense).toFixed(0)} 元`;
+
+    if (sortedCategories.length > 0 && !category) {
+      msg += '\n\n📋 分類明細：';
+      sortedCategories.forEach(([cat, amt]) => {
+        msg += `\n• ${cat}：$${amt.toFixed(0)}`;
+      });
+    }
+
+    if (filtered.length === 0) {
+      msg = `${periodLabel}還沒有${category ? category + '的' : ''}支出記錄 🎉`;
+    }
+
+    await this.client.pushMessage(lineUserId, { type: 'text', text: msg });
+  }
+
+  /**
+   * 設定分類預算
+   */
+  private async handleSetBudget(lineUserId: string, userId: string, category: string, amount: number): Promise<void> {
+    await upsertBudget(userId, category, amount);
+    await this.client.pushMessage(lineUserId, {
+      type: 'text',
+      text: `✅ 已設定${category}月預算：$${amount.toLocaleString()} 元\n\n輸入「預算」可查看所有預算狀況`
+    });
+  }
+
+  /**
+   * 查詢預算使用狀況
+   */
+  private async handleBudgetQuery(lineUserId: string, userId: string): Promise<void> {
+    const budgets = await getUserBudgets(userId);
+    if (budgets.length === 0) {
+      await this.client.pushMessage(lineUserId, {
+        type: 'text',
+        text: '尚未設定任何預算\n\n💡 設定方式：\n「設預算 飲食 5000」\n「設預算 交通 2000」\n「設預算 總計 20000」'
+      });
+      return;
+    }
+
+    // 計算本月支出（台灣時間）
+    const now = new Date();
+    const taiwanOffset = 8 * 60 * 60 * 1000;
+    const taiwanNow = new Date(now.getTime() + taiwanOffset);
+    const startOfMonth = new Date(Date.UTC(
+      taiwanNow.getUTCFullYear(),
+      taiwanNow.getUTCMonth(),
+      1
+    ) - taiwanOffset);
+
+    const allTransactions = await getUserTransactions(userId, 500);
+    const monthExpenses = allTransactions.filter(
+      tx => tx.type === 'expense' && new Date(tx.date) >= startOfMonth
+    );
+
+    // 計算各分類支出
+    const spentByCategory: Record<string, number> = { '總計': 0 };
+    monthExpenses.forEach(tx => {
+      spentByCategory[tx.category] = (spentByCategory[tx.category] || 0) + tx.amount;
+      spentByCategory['總計'] += tx.amount;
+    });
+
+    const BAR_WIDTH = 10;
+    const makeBar = (pct: number) => {
+      const filled = Math.min(Math.round(pct / 10), BAR_WIDTH);
+      return '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled);
+    };
+
+    let msg = '📊 本月預算使用狀況\n\n';
+    for (const b of budgets) {
+      const spent = spentByCategory[b.category] || 0;
+      const pct = Math.round((spent / b.amount) * 100);
+      const bar = makeBar(pct);
+      const status = pct >= 100 ? ' 🔴' : pct >= 90 ? ' 🟠' : pct >= 70 ? ' 🟡' : ' 🟢';
+      msg += `${b.category}${status}\n${bar} ${pct}%\n$${spent.toFixed(0)} / $${b.amount.toLocaleString()}\n\n`;
+    }
+    msg += '💡 設預算 [分類] [金額] 可修改';
+
+    await this.client.pushMessage(lineUserId, { type: 'text', text: msg });
   }
 
   /**

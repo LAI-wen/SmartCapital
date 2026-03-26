@@ -60,8 +60,8 @@ async function main() {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        enableTW: true,
-        enableUS: false,
+        enableTWStock: true,
+        enableUSStock: false,
         enableCrypto: false
       }
     });

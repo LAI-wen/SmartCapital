@@ -84,6 +84,24 @@ export async function patch<T>(endpoint: string, body: unknown): Promise<T | nul
 }
 
 /**
+ * 通用的 PUT 請求封裝
+ */
+export async function put<T>(endpoint: string, body: unknown): Promise<T | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(body),
+    });
+    const result: ApiResponse<T> = await response.json();
+    return result.success ? (result.data ?? null) : null;
+  } catch (error) {
+    console.error(`PUT ${endpoint} failed:`, error);
+    return null;
+  }
+}
+
+/**
  * 通用的 DELETE 請求封裝
  */
 export async function del(endpoint: string): Promise<boolean> {

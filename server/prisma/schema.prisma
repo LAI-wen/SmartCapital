@@ -34,6 +34,7 @@ model User {
   notifications   Notification[]
   priceAlerts     PriceAlert[] // 新增：價格警示
   keywordMappings KeywordMapping[] // 新增：關鍵字映射
+  budgets         Budget[] // 預算設定
 
   @@map("users")
 }
@@ -235,6 +236,23 @@ model PriceAlert {
   @@index([symbol])
   @@index([userId, symbol, isActive])
   @@map("price_alerts")
+}
+
+// 預算表 - 每月分類預算設定
+model Budget {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category String // "飲食" | "交通" | ... | "總計"
+  amount   Float  // 月預算金額
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, category])
+  @@index([userId])
+  @@map("budgets")
 }
 
 // 關鍵字映射表 - 智能識別用

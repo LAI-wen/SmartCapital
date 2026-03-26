@@ -99,5 +99,13 @@ export {
   startAutoRefresh,
 } from './auth.service';
 
+// Budget Service
+export {
+  type Budget,
+  getBudgets,
+  setBudget,
+  removeBudget,
+} from './budget.service';
+
 // Exchange Rate Service (existing)
 export * from './exchangeRateService';
