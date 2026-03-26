@@ -33,8 +33,8 @@ export function startScheduler(lineClient: Client) {
   priceCheckTask.start();
   console.log('✅ 價格檢查排程已啟動 (每 5 分鐘執行一次)');
 
-  // 每天早上 9:00 執行一次每日總結
-  const dailySummaryTask = cron.schedule('0 9 * * *', async () => {
+  // 每天晚上 21:00 執行一次每日總結
+  const dailySummaryTask = cron.schedule('0 21 * * *', async () => {
     try {
       console.log('⏰ [排程] 開始執行每日總結...');
       const result = await sendDailySummaryToAllUsers(lineClient);
@@ -45,7 +45,7 @@ export function startScheduler(lineClient: Client) {
   });
 
   dailySummaryTask.start();
-  console.log('✅ 每日總結排程已啟動 (每天 09:00 執行)');
+  console.log('✅ 每日總結排程已啟動 (每天 21:00 執行)');
 
   return {
     priceCheckTask,

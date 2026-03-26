@@ -4,6 +4,7 @@
  */
 
 import { prisma } from './databaseService.js';
+import { parseWithGemini, isGeminiEnabled } from './geminiParserService.js';
 
 // 預設關鍵字映射（系統內建）
 const DEFAULT_KEYWORDS = {
@@ -69,23 +70,24 @@ export async function parseExpenseCommand(
 
   if (!content) return null;
 
-  // 智能分割：支援「記100午餐」和「記 100 午餐」
-  // 使用正則提取：可選的正負號 + 數字 + 剩餘文字
-  const match = content.match(/^([+\-]?\d+(?:\.\d+)?)\s*(.*)$/);
+  // 智能分割：支援「記100午餐」「記 100 午餐」「+ 100 午餐」「- 100 午餐」
+  // 符號後允許空格，例如 "+ 770 電影票"
+  const match = content.match(/^([+\-])?\s*(\d+(?:\.\d+)?)\s*(.*)$/);
 
   if (!match) return null;
 
-  const amountStr = match[1];
-  const remainingText = match[2].trim();
+  const sign = match[1] || '';
+  const numStr = match[2];
+  const remainingText = match[3].trim();
 
-  const amount = parseFloat(amountStr);
+  const amount = parseFloat(numStr);
   if (isNaN(amount) || amount === 0) {
     return null;
   }
 
-  // 判斷類型：正數或 +100 → 收入，負數或 100 → 支出
-  const isIncome = amount > 0 && amountStr.startsWith('+');
-  const absAmount = Math.abs(amount);
+  // 判斷類型：+ 或純正數 → 收入（需明確 +），負數或 - → 支出，無符號 → 支出
+  const isIncome = sign === '+';
+  const absAmount = amount;
 
   // 如果只有金額，預設為飲食（支出）或其他（收入）
   if (!remainingText) {
@@ -131,6 +133,21 @@ export async function parseExpenseCommand(
       confidence: recognized.confidence,
       needConfirmation: recognized.confidence === 'low'
     };
+  }
+
+  // 嘗試 Gemini fallback
+  if (isGeminiEnabled()) {
+    const geminiResult = await parseWithGemini(remainingText, absAmount);
+    if (geminiResult) {
+      return {
+        amount: absAmount,
+        category: geminiResult.category,
+        note: geminiResult.note,
+        type: geminiResult.type,
+        confidence: 'medium',
+        needConfirmation: false
+      };
+    }
   }
 
   // 無法識別，需要用戶確認
@@ -218,8 +235,8 @@ export async function parseBatchExpenseCommands(
   const results: ParseResult[] = [];
 
   for (const line of lines) {
-    // 確認是記帳指令
-    if (line.startsWith('記')) {
+    // 支援「記 100 午餐」或直接「100 午餐」格式
+    if (/^記?\s*[+\-]?\d/.test(line)) {
       const result = await parseExpenseCommand(userId, line);
       if (result) {
         results.push(result);

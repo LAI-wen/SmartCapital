@@ -25,20 +25,50 @@ export type MessageIntent =
   | { type: 'UNKNOWN' };
 
 /**
+ * 從文字猜測支出分類
+ */
+function guessExpenseCategory(text: string): string {
+  const t = text.toLowerCase();
+  if (/餐|飯|麵|便當|漢堡|壽司|披薩|pizza|拉麵|牛肉|雞肉|豬肉|吃|喝|早餐|午餐|晚餐|宵夜|飲食|食物|摩斯|麥當勞|肯德基|subway|全家|7-?eleven|超商/.test(t)) return '飲食';
+  if (/咖啡|星巴克|starbucks|cama|85度|手搖|珍奶|奶茶|飲料|可樂|果汁|下午茶/.test(t)) return '飲食';
+  if (/計程車|taxi|uber|捷運|公車|火車|高鐵|台鐵|停車|油費|加油|交通/.test(t)) return '交通';
+  if (/電影|ktv|唱歌|遊戲|旅遊|旅行|娛樂/.test(t)) return '娛樂';
+  if (/衣|鞋|包|購物|蝦皮|momo|pchome|網購/.test(t)) return '購物';
+  if (/房租|租金|水費|電費|瓦斯|網路費|居住/.test(t)) return '居住';
+  if (/藥|醫院|診所|看病|醫療/.test(t)) return '醫療';
+  return '其他';
+}
+
+/**
  * 解析用戶訊息，判斷意圖
  */
 export function parseMessage(text: string): MessageIntent {
   const trimmed = text.trim();
 
-  // 1. 一步式記帳 - 支出描述 + 金額 + 備註 (例如: "午餐 120", "咖啡 80 星巴克", "計程車 200 去公司")
+  // 1. 支援 $金額 格式：「午餐摩斯$99」「星巴克$180」「麥當勞$120 跟朋友」
+  const dollarAmountMatch = trimmed.match(/^([\u4e00-\u9fa5a-zA-Z][\u4e00-\u9fa5a-zA-Z0-9\s]*?)\$(\d+(?:\.\d{1,2})?)(.*)$/);
+  if (dollarAmountMatch) {
+    const noteText = dollarAmountMatch[1].trim();
+    const amount = parseFloat(dollarAmountMatch[2]);
+    const extra = dollarAmountMatch[3].trim();
+    if (amount > 0) {
+      return {
+        type: 'EXPENSE_CATEGORY',
+        category: guessExpenseCategory(noteText),
+        amount,
+        note: extra ? `${noteText} ${extra}` : noteText
+      };
+    }
+  }
+
+  // 2. 一步式記帳 - 支出描述 + 金額 + 備註 (例如: "午餐 120", "咖啡 80 星巴克", "計程車 200 去公司")
   // 支援常見消費場景的關鍵字
   const oneStepExpenseMatch = trimmed.match(/^(午餐|早餐|晚餐|飲料|咖啡|零食|飲食|計程車|公車|捷運|Uber|交通|房租|水電|瓦斯|居住|電影|KTV|遊戲|娛樂|衣服|鞋子|包包|購物|看病|藥品|醫療|其他支出)\s*(\d+(\.\d{1,2})?)\s*(.*)$/);
   if (oneStepExpenseMatch) {
     const description = oneStepExpenseMatch[1];
     const amount = parseFloat(oneStepExpenseMatch[2]);
-    const note = oneStepExpenseMatch[4]?.trim() || undefined; // 備註（可選）
+    const note = oneStepExpenseMatch[4]?.trim() || undefined;
 
-    // 映射到標準分類
     let category = '其他';
     if (/午餐|早餐|晚餐|飲料|咖啡|零食|飲食/.test(description)) category = '飲食';
     else if (/計程車|公車|捷運|Uber|交通/.test(description)) category = '交通';
@@ -53,6 +83,22 @@ export function parseMessage(text: string): MessageIntent {
       amount,
       note
     };
+  }
+
+  // 3. 中文開頭 + 金額：「摩斯漢堡 99」「麥當勞套餐 150」（文字開頭但不在固定關鍵字列表）
+  const chineseFirstMatch = trimmed.match(/^([\u4e00-\u9fa5][\u4e00-\u9fa5a-zA-Z0-9]*(?:\s+[\u4e00-\u9fa5a-zA-Z0-9]+)*)\s+(\d+(?:\.\d{1,2})?)(.*)$/);
+  if (chineseFirstMatch) {
+    const noteText = chineseFirstMatch[1].trim();
+    const amount = parseFloat(chineseFirstMatch[2]);
+    const extra = chineseFirstMatch[3]?.trim();
+    if (amount > 0) {
+      return {
+        type: 'EXPENSE_CATEGORY',
+        category: guessExpenseCategory(noteText),
+        amount,
+        note: extra ? `${noteText} ${extra}` : noteText
+      };
+    }
   }
 
   // 2. 一步式記帳 - 收入描述 + 金額 + 備註 (例如: "薪水 50000", "獎金 10000 年終")

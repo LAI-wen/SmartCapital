@@ -25,6 +25,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@line/bot-sdk": "^9.3.0",
     "@prisma/client": "^5.22.0",
     "@types/express": "^5.0.5",

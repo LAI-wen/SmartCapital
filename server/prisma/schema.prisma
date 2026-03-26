@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")       // pooler (port 6543) - runtime 用
+  directUrl = env("DIRECT_URL")         // direct (port 5432) - migrate/db push 用
 }
 
 // 用戶表 - 儲存 LINE 用戶基本資料
