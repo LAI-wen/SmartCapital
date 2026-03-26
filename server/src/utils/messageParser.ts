@@ -115,6 +115,20 @@ export function parseMessage(text: string): MessageIntent {
     };
   }
 
+  // 預算指令要在記帳 pattern 之前，否則「設預算 飲食 5000」會被誤認為記帳
+  if (/^(預算|查預算|本月預算|我的預算|budget)$/i.test(trimmed)) {
+    return { type: 'BUDGET_QUERY' };
+  }
+  const _setBudgetEarly = trimmed.match(/^(?:設定?預算|預算設定?)\s+([\u4e00-\u9fa5]+)\s+(\d+(?:\.\d+)?)$/) ||
+    trimmed.match(/^([\u4e00-\u9fa5]+)預算\s+(\d+(?:\.\d+)?)$/);
+  if (_setBudgetEarly) {
+    const VALID_BUDGET_CATS = ['飲食', '交通', '居住', '娛樂', '購物', '醫療', '其他', '總計'];
+    const cat = _setBudgetEarly[1];
+    if (VALID_BUDGET_CATS.includes(cat)) {
+      return { type: 'SET_BUDGET', category: cat, amount: parseFloat(_setBudgetEarly[2]) };
+    }
+  }
+
   // 3. 中文開頭 + 金額：「摩斯漢堡 99」「宵夜鹹酥雞 150」
   const chineseFirstMatch = trimmed.match(/^([\u4e00-\u9fa5][\u4e00-\u9fa5a-zA-Z0-9]*(?:\s+[\u4e00-\u9fa5a-zA-Z0-9]+)*)\s+(\d+(?:\.\d{1,2})?)(.*)$/);
   if (chineseFirstMatch) {
@@ -370,7 +384,7 @@ export function getHelpCard(): FlexMessage {
       paddingBottom: '18px',
       contents: [
         { type: 'text' as const, text: headerText, size: 'lg' as const, color: '#FFFFFF', weight: 'bold' as const },
-        { type: 'text' as const, text: subText, size: 'xs' as const, color: 'rgba(255,255,255,0.5)', margin: 'xs' as const }
+        { type: 'text' as const, text: subText, size: 'xs' as const, color: '#FFFFFF80', margin: 'xs' as const }
       ]
     },
     body: {
