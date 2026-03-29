@@ -666,57 +666,7 @@ export class WebhookController {
     const accountId = await this.getOrCreateDefaultCashAccount(userId);
     await createTransaction(userId, 'expense', amount, category, note, accountId, undefined, undefined, undefined, resolvedSubcategory);
     await clearConversationState(lineUserId);
-
-    // 獲取本月統計
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const allTransactions = await getUserTransactions(userId, 100);
-
-    // 計算本月收支
-    let monthlyIncome = 0;
-    let monthlyExpense = 0;
-
-    allTransactions.forEach(tx => {
-      const txDate = new Date(tx.date);
-      if (txDate >= startOfMonth) {
-        if (tx.type === 'income') {
-          monthlyIncome += tx.amount;
-        } else {
-          monthlyExpense += tx.amount;
-        }
-      }
-    });
-
-    // 獲取最近2筆交易（不包括剛剛的這筆）
-    const recentTransactions = allTransactions
-      .slice(1, 3) // 跳過第一筆（剛剛創建的），取接下來2筆
-      .map(tx => ({
-        date: typeof tx.date === 'string' ? tx.date : tx.date.toISOString(),
-        type: tx.type as 'income' | 'expense',
-        amount: tx.amount,
-        category: tx.category
-      }));
-
-    // 獲取 LIFF URL
-    const liffId = process.env.LIFF_ID;
-    const liffUrl = liffId ? `https://liff.line.me/${liffId}#/ledger` : undefined;
-
-    const card = createTransactionSuccessCard({
-      type: 'expense',
-      amount,
-      category,
-      subcategory: resolvedSubcategory,
-      monthlyIncome,
-      monthlyExpense,
-      monthlyBalance: monthlyIncome - monthlyExpense,
-      recentTransactions,
-      liffUrl
-    });
-
-    await this.client.pushMessage(lineUserId, card);
-
-    // 非同步檢查預算警告（不阻塞主流程）
-    this.checkBudgetAlert(lineUserId, userId, category, monthlyExpense).catch(console.error);
+    await this.sendSuccessCard(lineUserId, userId, category, amount, note || '', resolvedSubcategory, 'expense');
   }
 
   /**
@@ -904,10 +854,10 @@ export class WebhookController {
       .filter(tx => tx.type === 'income')
       .reduce((sum, tx) => sum + tx.amount, 0);
 
-    // 計算分類明細
+    // 計算分類明細（以父分類為鍵，子分類不單獨列出）
     const categoryBreakdown: Record<string, number> = {};
     filtered.forEach(tx => {
-      const key = (tx as any).subcategory || tx.category;
+      const key = tx.category; // 統一用父分類
       categoryBreakdown[key] = (categoryBreakdown[key] || 0) + tx.amount;
     });
 
@@ -1436,37 +1386,74 @@ export class WebhookController {
     result: { amount: number; category: string; subcategory?: string; note?: string; type?: 'income' | 'expense' },
     sendMessage: boolean = true
   ): Promise<void> {
-    // 取得預設現金帳戶
     const accountId = await this.getOrCreateDefaultCashAccount(userId);
-
-    // 組合完整備註
-    let fullNote = result.note || '';
-    if (result.subcategory && result.subcategory !== result.note) {
-      fullNote = result.subcategory + (fullNote ? ` - ${fullNote}` : '');
-    }
-
-    // 判斷交易類型（預設為支出）
+    const fullNote = result.note || '';
     const transactionType = result.type || 'expense';
 
-    // 創建交易
+    // 自動推斷餐別
+    const resolvedSubcategory = result.subcategory ??
+      (result.category === '飲食' ? getMealSubcategoryByTime() : undefined);
+
     await createTransaction(
-      userId,
-      transactionType,
-      result.amount,
-      result.category,
-      fullNote,
-      accountId
+      userId, transactionType, result.amount, result.category,
+      fullNote, accountId, undefined, undefined, undefined, resolvedSubcategory
     );
 
     if (!sendMessage) return;
 
-    // 發送成功訊息
-    const icon = transactionType === 'income' ? '💵' : '💰';
-    const typeText = transactionType === 'income' ? '收入' : '支出';
-    await this.client.pushMessage(lineUserId, {
-      type: 'text',
-      text: `✅ 已記帳 (${typeText})\n${icon} 金額: $${result.amount}\n📁 分類: ${result.category}${result.subcategory ? ` > ${result.subcategory}` : ''}${fullNote ? `\n📝 備註: ${fullNote}` : ''}`
+    await this.sendSuccessCard(lineUserId, userId, result.category, result.amount, fullNote, resolvedSubcategory, transactionType);
+  }
+
+  /**
+   * 發送記帳成功卡片（統一入口）
+   */
+  private async sendSuccessCard(
+    lineUserId: string,
+    userId: string,
+    category: string,
+    amount: number,
+    note: string,
+    subcategory?: string,
+    type: 'income' | 'expense' = 'expense'
+  ): Promise<void> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const allTransactions = await getUserTransactions(userId, 100);
+
+    let monthlyIncome = 0;
+    let monthlyExpense = 0;
+    allTransactions.forEach(tx => {
+      const txDate = new Date(tx.date);
+      if (txDate >= startOfMonth) {
+        if (tx.type === 'income') monthlyIncome += tx.amount;
+        else monthlyExpense += tx.amount;
+      }
     });
+
+    const recentTransactions = allTransactions.slice(1, 3).map(tx => ({
+      date: typeof tx.date === 'string' ? tx.date : tx.date.toISOString(),
+      type: tx.type as 'income' | 'expense',
+      amount: tx.amount,
+      category: tx.category
+    }));
+
+    const liffId = process.env.LIFF_ID;
+    const liffUrl = liffId ? `https://liff.line.me/${liffId}#/ledger` : undefined;
+
+    const card = createTransactionSuccessCard({
+      type,
+      amount,
+      category,
+      subcategory,
+      monthlyIncome,
+      monthlyExpense,
+      monthlyBalance: monthlyIncome - monthlyExpense,
+      recentTransactions,
+      liffUrl
+    });
+
+    await this.client.pushMessage(lineUserId, card);
+    this.checkBudgetAlert(lineUserId, userId, category, monthlyExpense).catch(console.error);
   }
 
   /**

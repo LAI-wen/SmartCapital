@@ -768,3 +768,105 @@ export function createWelcomeCard(displayName?: string): FlexMessage {
     contents: bubble
   };
 }
+
+/**
+ * 每日記帳摘要卡片
+ */
+export function createDailySummaryCard(data: {
+  dateLabel: string;
+  income: number;
+  expense: number;
+  topCategories: Array<{ category: string; amount: number }>;
+  liffUrl?: string;
+}): FlexMessage {
+  const net = data.income - data.expense;
+  const netColor = net >= 0 ? '#769F86' : '#B07070';
+
+  const catRows = data.topCategories.slice(0, 4).map(c => ({
+    type: 'box' as const,
+    layout: 'horizontal' as const,
+    contents: [
+      { type: 'text' as const, text: `• ${c.category}`, size: 'sm' as const, color: '#78716C', flex: 3 },
+      { type: 'text' as const, text: `-$${c.amount.toFixed(0)}`, size: 'sm' as const, color: '#A8A29E', flex: 2, align: 'end' as const }
+    ]
+  }));
+
+  const bubble: FlexBubble = {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: '#44403C',
+      paddingAll: '20px',
+      paddingBottom: '18px',
+      contents: [
+        { type: 'text', text: '📋  昨日記帳摘要', size: 'lg', color: '#FFFFFF', weight: 'bold' },
+        { type: 'text', text: data.dateLabel, size: 'xs', color: '#78716C', margin: 'xs' }
+      ]
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      paddingAll: '20px',
+      spacing: 'md',
+      contents: [
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'box', layout: 'vertical', flex: 1,
+              backgroundColor: '#F5F0F0', cornerRadius: '12px', paddingAll: '12px',
+              contents: [
+                { type: 'text', text: '支出', size: 'xs', color: '#A8A29E', align: 'center' },
+                { type: 'text', text: `-$${data.expense.toFixed(0)}`, size: 'lg', weight: 'bold', color: '#B07070', align: 'center', margin: 'xs' }
+              ]
+            },
+            { type: 'separator', margin: 'md' },
+            {
+              type: 'box', layout: 'vertical', flex: 1,
+              backgroundColor: '#F0F5F0', cornerRadius: '12px', paddingAll: '12px', margin: 'md',
+              contents: [
+                { type: 'text', text: '收入', size: 'xs', color: '#A8A29E', align: 'center' },
+                { type: 'text', text: `+$${data.income.toFixed(0)}`, size: 'lg', weight: 'bold', color: '#769F86', align: 'center', margin: 'xs' }
+              ]
+            }
+          ]
+        },
+        {
+          type: 'box', layout: 'horizontal', paddingAll: '12px',
+          backgroundColor: '#FAFAF9', cornerRadius: '12px',
+          contents: [
+            { type: 'text', text: '結餘', size: 'sm', color: '#78716C' },
+            { type: 'text', text: `${net >= 0 ? '+' : ''}$${net.toFixed(0)}`, size: 'sm', weight: 'bold', color: netColor, align: 'end' }
+          ]
+        },
+        ...(catRows.length > 0 ? [
+          { type: 'separator' as const, color: '#F5F2EE' },
+          {
+            type: 'box' as const, layout: 'vertical' as const, spacing: 'sm' as const,
+            contents: catRows as any[]
+          }
+        ] : [])
+      ]
+    },
+    footer: data.liffUrl ? {
+      type: 'box',
+      layout: 'vertical',
+      paddingAll: '14px',
+      contents: [{
+        type: 'button',
+        style: 'secondary',
+        height: 'sm',
+        action: { type: 'uri', label: '📱 查看完整帳本', uri: data.liffUrl }
+      }]
+    } : undefined
+  };
+
+  return {
+    type: 'flex',
+    altText: `昨日記帳摘要 支出 $${data.expense.toFixed(0)}`,
+    contents: bubble
+  };
+}

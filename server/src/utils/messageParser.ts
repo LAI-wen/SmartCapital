@@ -69,7 +69,7 @@ export function parseMessage(text: string): MessageIntent {
   const trimmed = text.trim();
 
   // 1. 支援 $金額 格式：「午餐摩斯$99」「星巴克$180」「宵夜鹹酥雞$150」
-  const dollarAmountMatch = trimmed.match(/^([\u4e00-\u9fa5a-zA-Z][\u4e00-\u9fa5a-zA-Z0-9\s]*?)\$(\d+(?:\.\d{1,2})?)(.*)$/);
+  const dollarAmountMatch = trimmed.match(/^([\u4e00-\u9fa5a-zA-Z][\u4e00-\u9fa5a-zA-Z0-9（）()\-—–、\s]*?)\$(\d+(?:\.\d{1,2})?)(.*)$/);
   if (dollarAmountMatch) {
     const noteText = dollarAmountMatch[1].trim();
     const amount = parseFloat(dollarAmountMatch[2]);
@@ -129,8 +129,8 @@ export function parseMessage(text: string): MessageIntent {
     }
   }
 
-  // 3. 中文開頭 + 金額：「摩斯漢堡 99」「宵夜鹹酥雞 150」
-  const chineseFirstMatch = trimmed.match(/^([\u4e00-\u9fa5][\u4e00-\u9fa5a-zA-Z0-9]*(?:\s+[\u4e00-\u9fa5a-zA-Z0-9]+)*)\s+(\d+(?:\.\d{1,2})?)(.*)$/);
+  // 3. 中文開頭 + 金額：「摩斯漢堡 99」「高鐵（台北-桃園） 155」
+  const chineseFirstMatch = trimmed.match(/^([\u4e00-\u9fa5][\u4e00-\u9fa5a-zA-Z0-9（）()\-—–、]*(?:\s+[\u4e00-\u9fa5a-zA-Z0-9（）()\-—–、]+)*)\s+(\d+(?:\.\d{1,2})?)(.*)$/);
   if (chineseFirstMatch) {
     const noteText = chineseFirstMatch[1].trim();
     const amount = parseFloat(chineseFirstMatch[2]);
