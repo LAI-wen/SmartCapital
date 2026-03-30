@@ -150,10 +150,11 @@ export async function parseExpenseCommand(
     }
   }
 
-  // 無法識別，需要用戶確認
+  // 無法識別 — 較長的文字可能是商品名，預設購物；短的預設飲食
+  const fallbackCategory = isIncome ? '其他' : (remainingText.length > 8 ? '購物' : '飲食');
   return {
     amount: absAmount,
-    category: isIncome ? '其他' : '飲食', // 預設
+    category: fallbackCategory,
     note: keywords.join(' '),
     type: isIncome ? 'income' : 'expense',
     confidence: 'low',
@@ -204,16 +205,19 @@ async function recognizeKeywords(
     };
   }
 
-  // 2. 使用預設關鍵字映射
+  // 2. 商品格式（以【開頭，例如【TP-Link】Tapo L920）
+  if (/^【/.test(keyword.trim())) {
+    return { category: '購物', note: keywords.join(' '), confidence: 'medium' };
+  }
+
+  // 3. 使用預設關鍵字映射
   for (const [cat, kws] of Object.entries(DEFAULT_KEYWORDS)) {
     const matched = kws.some(kw => keyword.includes(kw.toLowerCase()));
 
     if (matched) {
-      // 判斷是主分類還是子分類
       const isMainCategory = MAIN_CATEGORIES.includes(cat);
-
       return {
-        category: isMainCategory ? cat : '飲食', // 如果是子分類，主分類預設為飲食
+        category: isMainCategory ? cat : '飲食',
         subcategory: isMainCategory ? undefined : cat,
         note: keywords.join(' '),
         confidence: 'medium'
