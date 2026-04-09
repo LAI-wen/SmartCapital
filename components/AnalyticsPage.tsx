@@ -171,8 +171,8 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
       const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
 
       const monthTxs = transactions.filter(tx => {
-        const txDate = new Date(tx.date);
-        return txDate >= startOfMonth && txDate <= endOfMonth;
+        const [y, m] = tx.date.split('T')[0].split('-').map(Number);
+        return y === monthDate.getFullYear() && m === monthDate.getMonth() + 1;
       });
 
       const income = monthTxs
@@ -189,36 +189,32 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
     return data;
   }, [transactions]);
 
-  // 計算資產趨勢（簡化版：使用帳戶餘額 + 持倉市值）
+  // 計算資產趨勢：從當前總資產反推，扣除/加回各月後的現金流
   const assetTrendData = React.useMemo(() => {
-    // 這裡簡化為使用當前值，實際應該從歷史快照獲取
     const now = new Date();
-    const data = [];
+    const currentAccountBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const currentAssetValue = scopeFilteredAssets.reduce((sum, asset) => sum + asset.avgPrice * asset.quantity, 0);
+    const currentTotal = currentAccountBalance + currentAssetValue;
 
+    const data = [];
     for (let i = 5; i >= 0; i--) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthName = monthDate.toLocaleDateString('zh-TW', { month: 'short' });
+      const monthEndStr = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 2).padStart(2, '0')}-01`;
 
-      // 計算該月份的淨資產（簡化：使用累積交易推算）
-      const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-      const txsUntilMonth = transactions.filter(tx => new Date(tx.date) <= monthEnd);
+      // 該月結束後發生的現金流（正=收入，負=支出）
+      const cashFlowAfter = transactions
+        .filter(tx => tx.date.split('T')[0] >= monthEndStr)
+        .reduce((sum, tx) => {
+          if (tx.type === 'income') return sum + tx.amount;
+          if (tx.type === 'expense') return sum - tx.amount;
+          return sum;
+        }, 0);
 
-      const netCashFlow = txsUntilMonth.reduce((sum, tx) => {
-        return sum + (tx.type === 'income' ? tx.amount : -tx.amount);
-      }, 0);
-
-      // 帳戶餘額
-      const accountBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-
-      // 持倉市值（根據投資範圍篩選）
-      const assetValue = scopeFilteredAssets.reduce((sum, asset) => sum + asset.avgPrice * asset.quantity, 0);
-
-      // 簡化計算：當前總資產
-      const netWorth = accountBalance + assetValue;
-
+      // 當月底的估算淨資產 = 當前總資產 - 之後的現金流
+      const netWorth = Math.max(0, currentTotal - cashFlowAfter);
       data.push({ month: monthName, netWorth });
     }
-
     return data;
   }, [transactions, accounts, scopeFilteredAssets]);
 
@@ -298,6 +294,56 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
   const totalExpense = React.useMemo(() => {
     return expenseCategoryData.reduce((sum, cat) => sum + cat.value, 0);
   }, [expenseCategoryData]);
+
+  // 上期支出分類 map（用於環比）
+  const prevPeriodCategoryMap = useMemo(() => {
+    let prevStart: Date, prevEnd: Date;
+    if (viewMode === 'day') { prevStart = subDays(currentDate, 1); prevEnd = subDays(currentDate, 1); }
+    else if (viewMode === 'week') {
+      const p = subWeeks(currentDate, 1);
+      prevStart = startOfWeek(p, { weekStartsOn: 1 }); prevEnd = endOfWeek(p, { weekStartsOn: 1 });
+    } else if (viewMode === 'month') {
+      const p = subMonths(currentDate, 1);
+      prevStart = startOfMonth(p); prevEnd = endOfMonth(p);
+    } else {
+      const p = subYears(currentDate, 1);
+      prevStart = startOfYear(p); prevEnd = endOfYear(p);
+    }
+    const map: Record<string, number> = {};
+    transactions.filter(tx => {
+      const d = parseISO(tx.date);
+      return tx.type === 'expense' && d >= prevStart && d <= prevEnd;
+    }).forEach(tx => { map[tx.category] = (map[tx.category] || 0) + tx.amount; });
+    return map;
+  }, [transactions, currentDate, viewMode]);
+
+  // 日均支出
+  const dailyAvgExpense = useMemo(() => {
+    const daysInPeriod = viewMode === 'day' ? 1
+      : viewMode === 'week' ? 7
+      : viewMode === 'month' ? new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+      : 365;
+    return currentPeriodStats.currentExpense / daysInPeriod;
+  }, [currentPeriodStats, viewMode, currentDate]);
+
+  // 儲蓄率
+  const savingsRate = useMemo(() => {
+    if (currentPeriodStats.currentIncome === 0) return null;
+    return ((currentPeriodStats.currentIncome - currentPeriodStats.currentExpense) / currentPeriodStats.currentIncome) * 100;
+  }, [currentPeriodStats]);
+
+  // 最高消費日
+  const peakSpendDay = useMemo(() => {
+    const dayMap: Record<string, number> = {};
+    filteredTransactions.filter(t => t.type === 'expense').forEach(t => {
+      const key = t.date.split('T')[0];
+      dayMap[key] = (dayMap[key] || 0) + t.amount;
+    });
+    const entries = Object.entries(dayMap);
+    if (entries.length === 0) return null;
+    const [date, amount] = entries.sort(([, a], [, b]) => b - a)[0];
+    return { date: date.slice(5), amount }; // MM-DD
+  }, [filteredTransactions]);
 
   const formatCurrency = (val: number) => {
     if (isPrivacyMode) return '••••••';
@@ -481,6 +527,28 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
             renderCalendar()
           ) : (
             <>
+              {/* Top Metrics Row */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-white rounded-2xl p-3 border border-stone-100 shadow-sm text-center">
+                  <div className="text-[10px] text-ink-400 font-serif mb-1 tracking-wide">日均支出</div>
+                  <div className="text-sm font-serif-num font-bold text-ink-900">
+                    {isPrivacyMode ? '••••' : dailyAvgExpense > 0 ? `$${Math.round(dailyAvgExpense).toLocaleString()}` : '--'}
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl p-3 border border-stone-100 shadow-sm text-center">
+                  <div className="text-[10px] text-ink-400 font-serif mb-1 tracking-wide">儲蓄率</div>
+                  <div className={`text-sm font-serif-num font-bold ${savingsRate === null ? 'text-ink-400' : savingsRate >= 0 ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
+                    {isPrivacyMode ? '••' : savingsRate === null ? '--' : `${savingsRate.toFixed(0)}%`}
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl p-3 border border-stone-100 shadow-sm text-center">
+                  <div className="text-[10px] text-ink-400 font-serif mb-1 tracking-wide">最高消費日</div>
+                  <div className="text-sm font-serif-num font-bold text-ink-900">
+                    {isPrivacyMode ? '••••' : peakSpendDay ? peakSpendDay.date : '--'}
+                  </div>
+                </div>
+              </div>
+
               {/* Summary Cards */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-morandi-sageLight/40 p-5 rounded-2xl border border-morandi-sage/20">
@@ -523,9 +591,27 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
                       <YAxis stroke="#78716C" fontSize={12} axisLine={false} tickLine={false} tickFormatter={(val) => `${val/1000}k`} />
                       <Tooltip
                         cursor={{ fill: '#F5F5F4' }}
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                        formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
-                        labelStyle={{ color: '#292524', fontWeight: 'bold' }}
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload || !payload.length) return null;
+                          const income = payload.find(p => p.dataKey === 'income')?.value as number ?? 0;
+                          const expense = payload.find(p => p.dataKey === 'expense')?.value as number ?? 0;
+                          return (
+                            <div className="bg-white rounded-xl shadow-lg border border-stone-100 p-3 text-xs font-serif min-w-[120px]">
+                              <div className="font-bold text-ink-900 mb-2">{label}</div>
+                              <div className="flex justify-between gap-4 text-morandi-sage mb-1">
+                                <span>收入</span><span className="font-serif-num font-bold">${income.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between gap-4 text-morandi-rose">
+                                <span>支出</span><span className="font-serif-num font-bold">${expense.toLocaleString()}</span>
+                              </div>
+                              {income - expense !== 0 && (
+                                <div className={`flex justify-between gap-4 mt-2 pt-2 border-t border-stone-100 font-bold ${income >= expense ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
+                                  <span>結餘</span><span className="font-serif-num">${Math.abs(income - expense).toLocaleString()}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }}
                       />
                       <Bar dataKey="income" fill={COLORS.profit} radius={[4, 4, 0, 0]} name="收入" />
                       <Bar dataKey="expense" fill={COLORS.loss} radius={[4, 4, 0, 0]} name="支出" />
@@ -555,26 +641,40 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
                       <span className="text-lg font-bold font-serif-num text-ink-900">{formatCurrency(totalExpense)}</span>
                     </div>
                   </div>
-                  <div className="flex-1 w-full space-y-3">
+                  <div className="flex-1 w-full space-y-4">
                     {expenseCategoryData.length === 0 ? (
                       <div className="text-center text-sm text-ink-400 font-serif py-4">
                         {viewMode === 'day' ? '本日' : viewMode === 'week' ? '本週' : viewMode === 'month' ? '本月' : viewMode === 'year' ? '本年' : '本月'}尚無支出記錄
                       </div>
                     ) : (
-                      expenseCategoryData.map((item, idx) => (
-                        <div key={item.name} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.chart[idx % COLORS.chart.length] }}></div>
-                            <span className="text-ink-600 font-serif">{item.name}</span>
+                      expenseCategoryData.sort((a, b) => b.value - a.value).map((item, idx) => {
+                        const pct = totalExpense > 0 ? (item.value / totalExpense) * 100 : 0;
+                        const prev = prevPeriodCategoryMap[item.name] || 0;
+                        const change = prev > 0 ? ((item.value - prev) / prev) * 100 : null;
+                        const color = COLORS.chart[idx % COLORS.chart.length];
+                        return (
+                          <div key={item.name}>
+                            <div className="flex items-center justify-between text-sm mb-1">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }}></div>
+                                <span className="text-ink-700 font-serif">{item.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-serif-num font-bold text-ink-900">{formatCurrency(item.value)}</span>
+                                <span className="text-[10px] text-ink-300 w-6 text-right">{pct.toFixed(0)}%</span>
+                                {change !== null && (
+                                  <span className={`text-[10px] font-bold w-10 text-right ${change > 0 ? 'text-morandi-rose' : 'text-morandi-sage'}`}>
+                                    {change > 0 ? '↑' : '↓'}{Math.abs(change).toFixed(0)}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-serif-num font-bold text-ink-900">{formatCurrency(item.value)}</span>
-                            <span className="text-xs text-ink-400 w-8 text-right">
-                              {totalExpense > 0 ? ((item.value / totalExpense) * 100).toFixed(0) : 0}%
-                            </span>
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -624,9 +724,16 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
                     <XAxis dataKey="month" stroke="#78716C" fontSize={12} axisLine={false} tickLine={false} dy={10} />
                     <YAxis stroke="#78716C" fontSize={12} axisLine={false} tickLine={false} tickFormatter={(val) => `${val/10000}w`} domain={['dataMin - 100000', 'auto']} />
                     <Tooltip
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                      formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
-                      labelStyle={{ color: '#292524', fontWeight: 'bold' }}
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        const val = payload[0].value as number;
+                        return (
+                          <div className="bg-white rounded-xl shadow-lg border border-stone-100 p-3 text-xs font-serif">
+                            <div className="font-bold text-ink-900 mb-1">{label}</div>
+                            <div className="text-morandi-blue font-serif-num font-bold text-sm">${val.toLocaleString()}</div>
+                          </div>
+                        );
+                      }}
                     />
                     <Area type="monotone" dataKey="netWorth" stroke={COLORS.brand} strokeWidth={3} fillOpacity={1} fill="url(#colorNetWorth)" name="淨資產" />
                  </AreaChart>

@@ -32,7 +32,7 @@ export type MessageIntent =
  */
 function guessExpenseCategory(text: string): string {
   const t = text.toLowerCase();
-  if (/餐|飯|麵|便當|漢堡|壽司|披薩|pizza|拉麵|牛肉|雞肉|豬肉|吃|喝|早餐|午餐|晚餐|宵夜|飲食|食物|摩斯|麥當勞|肯德基|subway|全家|7-?eleven|超商/.test(t)) return '飲食';
+  if (/餐|飯|麵|便當|漢堡|壽司|披薩|pizza|拉麵|牛肉|雞肉|豬肉|吃|喝|早餐|午餐|晚餐|宵夜|飲食|食物|摩斯|麥當勞|肯德基|subway|全家|7-?eleven|超商|粥|湯|滷|燒|烤|炒|豆花|豆漿|仙草|愛玉|饅頭|包子|水餃|餃|三明治|沙拉|關東煮|綠豆|紅豆|八寶|米/.test(t)) return '飲食';
   if (/咖啡|星巴克|starbucks|cama|85度|手搖|珍奶|奶茶|飲料|可樂|果汁|下午茶/.test(t)) return '飲食';
   if (/計程車|taxi|uber|捷運|公車|火車|高鐵|台鐵|停車|油費|加油|交通/.test(t)) return '交通';
   if (/電影|ktv|唱歌|遊戲|旅遊|旅行|娛樂/.test(t)) return '娛樂';
