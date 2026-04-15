@@ -1,25 +1,35 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, ReceiptText, Bell, Menu, Settings, ChevronRight, TrendingUp, Calculator, HelpCircle, Wallet } from 'lucide-react';
-import Dashboard from './components/Dashboard';
-import StrategyLab from './components/StrategyLab';
-import Ledger from './components/Ledger';
-import MorePage from './components/MorePage';
-import NotificationsPage from './components/NotificationsPage';
-import AnalyticsPage from './components/AnalyticsPage';
-import SettingsPage from './components/SettingsPage';
-import HelpPage from './components/HelpPage';
 import WelcomePage from './components/WelcomePage';
 import OnboardingModal from './components/OnboardingModal';
-import AccountManagementPage from './components/AccountManagementPage';
-import PriceAlertsPage from './components/PriceAlertsPage';
 import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
 import { Notification, Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets, createAccount, getUser } from './services/api';
 import { useLiff } from './contexts/LiffContext';
 import './i18n/config'; // Initialize i18n
 import { useTranslation } from 'react-i18next';
+
+const DashboardPage = lazy(() => import('./components/Dashboard'));
+const StrategyLabPage = lazy(() => import('./components/StrategyLab'));
+const LedgerPage = lazy(() => import('./components/Ledger'));
+const MorePage = lazy(() => import('./components/MorePage'));
+const NotificationsPage = lazy(() => import('./components/NotificationsPage'));
+const AnalyticsPage = lazy(() => import('./components/AnalyticsPage'));
+const SettingsPage = lazy(() => import('./components/SettingsPage'));
+const HelpPage = lazy(() => import('./components/HelpPage'));
+const AccountManagementPage = lazy(() => import('./components/AccountManagementPage'));
+const PriceAlertsPage = lazy(() => import('./components/PriceAlertsPage'));
+
+const PageLoader: React.FC = () => (
+  <div className="flex min-h-[40vh] items-center justify-center">
+    <div className="text-center">
+      <div className="w-12 h-12 border-4 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-ink-400 font-serif">載入頁面中...</p>
+    </div>
+  </div>
+);
 
 const AppContent: React.FC = () => {
   const { t } = useTranslation();
@@ -383,83 +393,85 @@ const AppContent: React.FC = () => {
         {/* Scrollable Content Area */}
         <div id="main-scroll-container" className="flex-1 overflow-y-auto scroll-smooth bg-paper">
           <div className="max-w-5xl mx-auto h-full pb-24 md:pb-10 p-4 md:p-8">
-            <Routes>
-              <Route 
-                path="/" 
-                element={
-                  <Dashboard 
-                    assets={assets} 
-                    accounts={accounts} 
-                    onAssetUpdate={handleAssetUpdate} 
-                    onAccountUpdate={handleAccountUpdate}
-                    isPrivacyMode={isPrivacyMode}
-                    investmentScope={investmentScope}
-                  />
-                } 
-              />
-              <Route
-                path="/ledger"
-                element={
-                  <Ledger
-                    accounts={accounts}
-                    isPrivacyMode={isPrivacyMode}
-                    onAccountsUpdate={async () => {
-                      console.log('🔄 Ledger 觸發帳戶刷新...');
-                      const fetchedAccounts = await getAccounts();
-                      setAccounts(fetchedAccounts);
-                      console.log('✅ App: 帳戶已刷新，共', fetchedAccounts.length, '個帳戶');
-                    }}
-                  />
-                }
-              />
-              <Route path="/strategy" element={<StrategyLab />} />
-              <Route path="/notifications" element={<NotificationsPage notifications={notifications} setNotifications={setNotifications} />} />
-              <Route path="/more" element={<MorePage onLogout={handleLogout} authMode={authMode} />} />
-              <Route
-                path="/analytics"
-                element={
-                  <AnalyticsPage
-                    isPrivacyMode={isPrivacyMode}
-                    investmentScope={investmentScope}
-                  />
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <SettingsPage
-                    isPrivacyMode={isPrivacyMode}
-                    togglePrivacy={togglePrivacy}
-                    investmentScope={investmentScope}
-                    setInvestmentScope={setInvestmentScope}
-                    onLogout={handleLogout}
-                    authMode={authMode}
-                    displayName={displayName || 'SmartCapital'}
-                  />
-                } 
-              />
-              <Route path="/help" element={<HelpPage />} />
-              <Route
-                path="/account-management"
-                element={
-                  <AccountManagementPage
-                    onAccountsUpdate={async () => {
-                      const fetchedAccounts = await getAccounts();
-                      setAccounts(fetchedAccounts);
-                    }}
-                  />
-                }
-              />
-              <Route
-                path="/price-alerts"
-                element={
-                  <PriceAlertsPage
-                    assets={assets}
-                    investmentScope={investmentScope}
-                  />
-                }
-              />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route 
+                  path="/" 
+                  element={
+                    <DashboardPage
+                      assets={assets} 
+                      accounts={accounts} 
+                      onAssetUpdate={handleAssetUpdate} 
+                      onAccountUpdate={handleAccountUpdate}
+                      isPrivacyMode={isPrivacyMode}
+                      investmentScope={investmentScope}
+                    />
+                  } 
+                />
+                <Route
+                  path="/ledger"
+                  element={
+                    <LedgerPage
+                      accounts={accounts}
+                      isPrivacyMode={isPrivacyMode}
+                      onAccountsUpdate={async () => {
+                        console.log('🔄 Ledger 觸發帳戶刷新...');
+                        const fetchedAccounts = await getAccounts();
+                        setAccounts(fetchedAccounts);
+                        console.log('✅ App: 帳戶已刷新，共', fetchedAccounts.length, '個帳戶');
+                      }}
+                    />
+                  }
+                />
+                <Route path="/strategy" element={<StrategyLabPage />} />
+                <Route path="/notifications" element={<NotificationsPage notifications={notifications} setNotifications={setNotifications} />} />
+                <Route path="/more" element={<MorePage onLogout={handleLogout} authMode={authMode} />} />
+                <Route
+                  path="/analytics"
+                  element={
+                    <AnalyticsPage
+                      isPrivacyMode={isPrivacyMode}
+                      investmentScope={investmentScope}
+                    />
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <SettingsPage
+                      isPrivacyMode={isPrivacyMode}
+                      togglePrivacy={togglePrivacy}
+                      investmentScope={investmentScope}
+                      setInvestmentScope={setInvestmentScope}
+                      onLogout={handleLogout}
+                      authMode={authMode}
+                      displayName={displayName || 'SmartCapital'}
+                    />
+                  } 
+                />
+                <Route path="/help" element={<HelpPage />} />
+                <Route
+                  path="/account-management"
+                  element={
+                    <AccountManagementPage
+                      onAccountsUpdate={async () => {
+                        const fetchedAccounts = await getAccounts();
+                        setAccounts(fetchedAccounts);
+                      }}
+                    />
+                  }
+                />
+                <Route
+                  path="/price-alerts"
+                  element={
+                    <PriceAlertsPage
+                      assets={assets}
+                      investmentScope={investmentScope}
+                    />
+                  }
+                />
+              </Routes>
+            </Suspense>
           </div>
         </div>
 

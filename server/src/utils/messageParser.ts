@@ -129,26 +129,7 @@ export function parseMessage(text: string): MessageIntent {
     }
   }
 
-  // 3. 中文開頭 + 金額：「摩斯漢堡 99」「高鐵（台北-桃園） 155」
-  const chineseFirstMatch = trimmed.match(/^([\u4e00-\u9fa5][\u4e00-\u9fa5a-zA-Z0-9（）()\-—–、]*(?:\s+[\u4e00-\u9fa5a-zA-Z0-9（）()\-—–、]+)*)\s+(\d+(?:\.\d{1,2})?)(.*)$/);
-  if (chineseFirstMatch) {
-    const noteText = chineseFirstMatch[1].trim();
-    const amount = parseFloat(chineseFirstMatch[2]);
-    const extra = chineseFirstMatch[3]?.trim();
-    if (amount > 0) {
-      const category = guessExpenseCategory(noteText);
-      const subcategory = category === '飲食' ? detectMealKeyword(noteText) : undefined;
-      return {
-        type: 'EXPENSE_CATEGORY',
-        category,
-        subcategory,
-        amount,
-        note: extra ? `${noteText} ${extra}` : noteText
-      };
-    }
-  }
-
-  // 2. 一步式記帳 - 收入描述 + 金額 + 備註 (例如: "薪水 50000", "獎金 10000 年終")
+  // 3. 一步式記帳 - 收入描述 + 金額 + 備註 (例如: "薪水 50000", "獎金 10000 年終")
   const oneStepIncomeMatch = trimmed.match(/^(薪水|薪資|獎金|紅利|股息|配息|投資獲利|兼職|副業|其他收入)\s*(\d+(\.\d{1,2})?)\s*(.*)$/);
   if (oneStepIncomeMatch) {
     const description = oneStepIncomeMatch[1];
@@ -171,7 +152,7 @@ export function parseMessage(text: string): MessageIntent {
     };
   }
 
-  // 3. 傳統兩步式 - 純數字 + 備註 (例如: "100 牛肉麵", "-120 計程車")
+  // 4. 傳統兩步式 - 純數字 + 備註 (例如: "100 牛肉麵", "-120 計程車")
   // 優先級提高：純數字應該是記帳，而非股票查詢
   const numberWithNoteMatch = trimmed.match(/^(-?\d+(\.\d{1,2})?)\s*(.*)$/);
   if (numberWithNoteMatch) {
@@ -185,7 +166,7 @@ export function parseMessage(text: string): MessageIntent {
     }
   }
 
-  // 4. 收入快捷方式 + 備註 (例如: "+5000", "+100 牛肉麵")
+  // 5. 收入快捷方式 + 備註 (例如: "+5000", "+100 牛肉麵")
   const incomeWithNoteMatch = trimmed.match(/^\+(\d+(\.\d{1,2})?)\s*(.*)$/);
   if (incomeWithNoteMatch) {
     const amount = parseFloat(incomeWithNoteMatch[1]);
@@ -193,7 +174,7 @@ export function parseMessage(text: string): MessageIntent {
     return { type: 'INCOME', amount, note };
   }
 
-  // 5. 查股指令
+  // 6. 查股指令
   // 「TSLA kelly」「TSLA 凱利」→ 顯示 Kelly 建議
   // 「TSLA」「查詢 2330」「股 2330」→ 只顯示股價
   const kellyQueryMatch = trimmed.match(/^([A-Z0-9]+(?:\.[A-Z]+)?)\s+(kelly|凱利|kel)$/i);
@@ -205,7 +186,7 @@ export function parseMessage(text: string): MessageIntent {
     return { type: 'STOCK_QUERY', symbol: formatTaiwanStockSymbol(stockQueryMatch[1].toUpperCase()), showKelly: false };
   }
 
-  // 6. 買入：「買 TSLA 10」「買入 2330 1000」（含股數）或「買 TSLA」（不含股數）
+  // 7. 買入：「買 TSLA 10」「買入 2330 1000」（含股數）或「買 TSLA」（不含股數）
   const buyMatch = trimmed.match(/^(買入|買)\s+([A-Z0-9]+(?:\.[A-Z]+)?)\s*(\d+(?:\.\d+)?)?$/i);
   if (buyMatch) {
     const symbol = formatTaiwanStockSymbol(buyMatch[2].toUpperCase());
@@ -213,7 +194,7 @@ export function parseMessage(text: string): MessageIntent {
     return { type: 'BUY_ACTION', symbol, quantity };
   }
 
-  // 7. 賣出：「賣 TSLA 5」「賣出 2330 500」或「賣 TSLA」
+  // 8. 賣出：「賣 TSLA 5」「賣出 2330 500」或「賣 TSLA」
   const sellMatch = trimmed.match(/^(賣出|賣)\s+([A-Z0-9]+(?:\.[A-Z]+)?)\s*(\d+(?:\.\d+)?)?$/i);
   if (sellMatch) {
     const symbol = formatTaiwanStockSymbol(sellMatch[2].toUpperCase());
@@ -221,7 +202,27 @@ export function parseMessage(text: string): MessageIntent {
     return { type: 'SELL_ACTION', symbol, quantity };
   }
 
-  // 8. 檢查是否為支出分類選擇 (例如: "飲食 120") - 兼容舊格式
+  // 9. 中文開頭 + 金額：「摩斯漢堡 99」「高鐵（台北-桃園） 155」
+  // 放在較後面，避免吃掉收入、股票查詢與買賣指令。
+  const chineseFirstMatch = trimmed.match(/^([\u4e00-\u9fa5][\u4e00-\u9fa5a-zA-Z0-9（）()\-—–、]*(?:\s+[\u4e00-\u9fa5a-zA-Z0-9（）()\-—–、]+)*)\s+(\d+(?:\.\d{1,2})?)(.*)$/);
+  if (chineseFirstMatch) {
+    const noteText = chineseFirstMatch[1].trim();
+    const amount = parseFloat(chineseFirstMatch[2]);
+    const extra = chineseFirstMatch[3]?.trim();
+    if (amount > 0) {
+      const category = guessExpenseCategory(noteText);
+      const subcategory = category === '飲食' ? detectMealKeyword(noteText) : undefined;
+      return {
+        type: 'EXPENSE_CATEGORY',
+        category,
+        subcategory,
+        amount,
+        note: extra ? `${noteText} ${extra}` : noteText
+      };
+    }
+  }
+
+  // 10. 檢查是否為支出分類選擇 (例如: "飲食 120") - 兼容舊格式
   const expenseCategoryMatch = trimmed.match(/^(飲食|交通|居住|娛樂|購物|醫療|其他)\s+(\d+(\.\d{1,2})?)$/);
   if (expenseCategoryMatch) {
     return {
@@ -231,7 +232,7 @@ export function parseMessage(text: string): MessageIntent {
     };
   }
 
-  // 9. 檢查是否為收入分類選擇 (例如: "薪資 50000") - 兼容舊格式
+  // 11. 檢查是否為收入分類選擇 (例如: "薪資 50000") - 兼容舊格式
   const incomeCategoryMatch = trimmed.match(/^(薪資|獎金|股息|投資獲利|兼職|其他)\s+(\d+(\.\d{1,2})?)$/);
   if (incomeCategoryMatch) {
     return {

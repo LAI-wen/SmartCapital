@@ -1,13 +1,15 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Asset, Account, InvestmentScope } from '../types';
 import { MOCK_EXCHANGE_RATE } from '../constants';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Wallet, TrendingUp, TrendingDown, Search, Activity, ReceiptText, Briefcase, ChevronRight, Landmark, Info, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import StockDetailModal from './StockDetailModal';
-import BuyStockModal, { StockTransaction } from './BuyStockModal';
+import type { StockTransaction } from './BuyStockModal';
 import { useExchangeRates } from '../services/exchangeRateService';
+
+const DashboardAllocationChart = lazy(() => import('./DashboardAllocationChart'));
+const StockDetailModal = lazy(() => import('./StockDetailModal'));
+const BuyStockModal = lazy(() => import('./BuyStockModal'));
 
 interface DashboardProps {
   assets: Asset[];
@@ -22,6 +24,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'All' | 'Stock' | 'Crypto' | 'Cash'>('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [shouldLoadAllocationChart, setShouldLoadAllocationChart] = useState(false);
 
   // Get real-time exchange rates
   const { rates, loading: ratesLoading } = useExchangeRates('USD');
@@ -34,6 +37,16 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [buyModalMode, setBuyModalMode] = useState<'buy' | 'sell' | 'import'>('buy');
   const [transactionAsset, setTransactionAsset] = useState<Asset | null>(null);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setShouldLoadAllocationChart(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, []);
 
   // Filter Assets based on Scope FIRST
   const scopeFilteredAssets = useMemo(() => {
@@ -280,6 +293,13 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     'Cash': '現金'
   };
 
+  const renderAllocationChartFallback = () => (
+    <div className="w-32 h-32 relative shrink-0 flex items-center justify-center">
+      <div className="absolute inset-3 rounded-full border-[18px] border-stone-100"></div>
+      <div className="text-[10px] text-ink-400 font-serif">載入中</div>
+    </div>
+  );
+
   return (
     <div className="space-y-6 animate-fade-in pb-20">
       
@@ -389,33 +409,16 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
              <Activity size={16} className="text-ink-400"/> 資產配置
           </h3>
           <div className="flex-1 flex flex-row items-center gap-4">
-            <div className="w-32 h-32 relative shrink-0">
-               <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie 
-                      data={allocationData} 
-                      innerRadius={40} 
-                      outerRadius={60} 
-                      paddingAngle={5} 
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {allocationData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '8px 12px' }}
-                       formatter={(value: number) => formatCurrency(value)}
-                       itemStyle={{ color: '#4A4A4A', fontSize: '12px', fontWeight: 'bold' }}
-                    />
-                  </PieChart>
-               </ResponsiveContainer>
-               {/* Center Text */}
-               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="text-[10px] text-ink-400 font-serif">分布</span>
-               </div>
-            </div>
+            {shouldLoadAllocationChart ? (
+              <Suspense fallback={renderAllocationChartFallback()}>
+                <DashboardAllocationChart
+                  allocationData={allocationData}
+                  formatCurrency={formatCurrency}
+                />
+              </Suspense>
+            ) : (
+              renderAllocationChartFallback()
+            )}
             
             <div className="flex-1 space-y-2 overflow-y-auto max-h-32 custom-scrollbar pr-2">
                {allocationData.map((item) => (
@@ -584,24 +587,32 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
       </div>
 
       {/* Detail Modal */}
-      <StockDetailModal 
-        asset={selectedAsset} 
-        isOpen={!!selectedAsset} 
-        onClose={() => setSelectedAsset(null)} 
-        isPrivacyMode={isPrivacyMode}
-        onBuy={() => selectedAsset && handleTransaction(selectedAsset, 'buy')}
-        onSell={() => selectedAsset && handleTransaction(selectedAsset, 'sell')}
-      />
+      {selectedAsset && (
+        <Suspense fallback={null}>
+          <StockDetailModal 
+            asset={selectedAsset} 
+            isOpen={!!selectedAsset} 
+            onClose={() => setSelectedAsset(null)} 
+            isPrivacyMode={isPrivacyMode}
+            onBuy={() => selectedAsset && handleTransaction(selectedAsset, 'buy')}
+            onSell={() => selectedAsset && handleTransaction(selectedAsset, 'sell')}
+          />
+        </Suspense>
+      )}
 
       {/* Buy/Sell Transaction Modal */}
-      <BuyStockModal 
-        isOpen={isBuyModalOpen}
-        onClose={() => setIsBuyModalOpen(false)}
-        mode={buyModalMode}
-        existingAsset={transactionAsset}
-        onConfirm={confirmTransaction}
-        accounts={accounts} // Pass accounts for selection
-      />
+      {isBuyModalOpen && (
+        <Suspense fallback={null}>
+          <BuyStockModal 
+            isOpen={isBuyModalOpen}
+            onClose={() => setIsBuyModalOpen(false)}
+            mode={buyModalMode}
+            existingAsset={transactionAsset}
+            onConfirm={confirmTransaction}
+            accounts={accounts} // Pass accounts for selection
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

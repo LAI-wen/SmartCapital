@@ -63,29 +63,22 @@ export async function createTransaction(
 
 /**
  * 刪除交易記錄
- * 🔒 現在需要傳遞 lineUserId 進行授權驗證
  * @param transactionId - 交易記錄 ID
  * @param skipBalanceUpdate - 是否跳過資金池更新（預設 false，即會連動資金池）
  */
 export async function deleteTransaction(transactionId: string, skipBalanceUpdate: boolean = false): Promise<boolean> {
-  const lineUserId = getUserId();
   return delWithQuery(`/api/transactions/${transactionId}`, {
-    lineUserId,
     skipBalanceUpdate: skipBalanceUpdate ? 'true' : 'false'
   });
 }
 
 /**
  * 批次刪除交易記錄
- * 🔒 需要傳遞 lineUserId 進行授權驗證
  * @param transactionIds - 交易記錄 ID 陣列
  * @param skipBalanceUpdate - 是否跳過資金池更新（預設 false，即會連動資金池）
  */
 export async function batchDeleteTransactions(transactionIds: string[], skipBalanceUpdate: boolean = false): Promise<BatchDeleteResult | null> {
-  const lineUserId = getUserId();
-
   const result = await post<BatchDeleteResult>('/api/transactions/batch-delete', {
-    lineUserId,
     transactionIds,
     skipBalanceUpdate,
   });

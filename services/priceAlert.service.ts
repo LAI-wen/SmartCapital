@@ -2,7 +2,7 @@
  * Price Alert Service - 價格警示相關 API
  */
 
-import { get, post, patch, delWithQuery } from './core/http';
+import { get, post, patch, del } from './core/http';
 import { getUserId } from './user.service';
 
 export type AlertType =
@@ -59,24 +59,17 @@ export async function createPriceAlert(input: CreatePriceAlertInput): Promise<Pr
 
 /**
  * 更新價格警示狀態
- * 🔒 現在需要傳遞 lineUserId 進行授權驗證
  */
 export async function updatePriceAlert(alertId: string, isActive: boolean): Promise<boolean> {
-  const lineUserId = getUserId();
-  const result = await patch<PriceAlert>(`/api/price-alerts/${alertId}`, {
-    isActive,
-    lineUserId,
-  });
+  const result = await patch<PriceAlert>(`/api/price-alerts/${alertId}`, { isActive });
   return result !== null;
 }
 
 /**
  * 刪除價格警示
- * 🔒 現在需要傳遞 lineUserId 進行授權驗證
  */
 export async function deletePriceAlert(alertId: string): Promise<boolean> {
-  const lineUserId = getUserId();
-  return delWithQuery(`/api/price-alerts/${alertId}`, { lineUserId });
+  return del(`/api/price-alerts/${alertId}`);
 }
 
 /**

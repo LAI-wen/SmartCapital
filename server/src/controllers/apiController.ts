@@ -31,6 +31,45 @@ import {
 } from '../services/databaseService.js';
 import { getStockQuote, searchStocks } from '../services/stockService.js';
 
+function getAuthenticatedLineUserId(req: Request, res: Response): string | null {
+  const authenticatedLineUserId = req.user?.lineUserId;
+
+  if (!authenticatedLineUserId) {
+    res.status(401).json({
+      success: false,
+      error: 'Unauthorized: Authentication required'
+    });
+    return null;
+  }
+
+  return authenticatedLineUserId;
+}
+
+function ensureAuthenticatedUser(
+  req: Request,
+  res: Response,
+  requestedLineUserId?: unknown
+): string | null {
+  const authenticatedLineUserId = getAuthenticatedLineUserId(req, res);
+  if (!authenticatedLineUserId) {
+    return null;
+  }
+
+  if (
+    requestedLineUserId !== undefined &&
+    requestedLineUserId !== null &&
+    requestedLineUserId !== authenticatedLineUserId
+  ) {
+    res.status(403).json({
+      success: false,
+      error: 'Forbidden: lineUserId does not match authenticated user'
+    });
+    return null;
+  }
+
+  return authenticatedLineUserId;
+}
+
 /**
  * GET /api/user/:lineUserId
  * 取得用戶基本資料
@@ -429,13 +468,10 @@ export async function createTransaction(req: Request, res: Response) {
 export async function batchDeleteTransactions(req: Request, res: Response) {
   try {
     const { transactionIds, lineUserId, skipBalanceUpdate } = req.body;
+    const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
 
-    // 🔒 安全檢查：必須提供 lineUserId
-    if (!lineUserId || typeof lineUserId !== 'string') {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized: lineUserId is required'
-      });
+    if (!authenticatedLineUserId) {
+      return;
     }
 
     // 驗證 transactionIds 格式
@@ -464,7 +500,7 @@ export async function batchDeleteTransactions(req: Request, res: Response) {
 
     // 🔒 安全檢查：驗證所有交易都屬於當前用戶
     const unauthorizedTransactions = transactions.filter(
-      t => t.user.lineUserId !== lineUserId
+      t => t.user.lineUserId !== authenticatedLineUserId
     );
 
     if (unauthorizedTransactions.length > 0) {
@@ -545,13 +581,10 @@ export async function deleteTransaction(req: Request, res: Response) {
   try {
     const { transactionId } = req.params;
     const { lineUserId, skipBalanceUpdate } = req.query;
+    const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
 
-    // 🔒 安全檢查：必須提供 lineUserId
-    if (!lineUserId || typeof lineUserId !== 'string') {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized: lineUserId is required'
-      });
+    if (!authenticatedLineUserId) {
+      return;
     }
 
     // 解析 skipBalanceUpdate 參數（預設為 false，即會連動資金池）
@@ -568,7 +601,7 @@ export async function deleteTransaction(req: Request, res: Response) {
     }
 
     // 🔒 安全檢查：驗證交易擁有者
-    if (transaction.user.lineUserId !== lineUserId) {
+    if (transaction.user.lineUserId !== authenticatedLineUserId) {
       return res.status(403).json({
         success: false,
         error: 'Forbidden: You can only delete your own transactions'
@@ -652,6 +685,28 @@ export async function getNotifications(req: Request, res: Response) {
 export async function markNotificationAsRead(req: Request, res: Response) {
   try {
     const { notificationId } = req.params;
+    const authenticatedLineUserId = ensureAuthenticatedUser(req, res);
+
+    if (!authenticatedLineUserId) {
+      return;
+    }
+
+    const notification = await prisma.notification.findUnique({
+      where: { id: notificationId },
+      include: { user: true }
+    });
+
+    if (!notification) {
+      return res.status(404).json({ success: false, error: 'Notification not found' });
+    }
+
+    if (notification.user.lineUserId !== authenticatedLineUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: You can only update your own notifications'
+      });
+    }
+
     await markNotificationRead(notificationId);
 
     res.json({ success: true });
@@ -784,13 +839,10 @@ export async function updateAccountInfo(req: Request, res: Response) {
   try {
     const { accountId } = req.params;
     const { name, isDefault, lineUserId } = req.body;
+    const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
 
-    // 🔒 安全檢查：必須提供 lineUserId
-    if (!lineUserId || typeof lineUserId !== 'string') {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized: lineUserId is required'
-      });
+    if (!authenticatedLineUserId) {
+      return;
     }
 
     // 🔒 安全檢查：驗證帳戶擁有者
@@ -803,7 +855,7 @@ export async function updateAccountInfo(req: Request, res: Response) {
       return res.status(404).json({ success: false, error: 'Account not found' });
     }
 
-    if (existingAccount.user.lineUserId !== lineUserId) {
+    if (existingAccount.user.lineUserId !== authenticatedLineUserId) {
       return res.status(403).json({
         success: false,
         error: 'Forbidden: You can only update your own accounts'
@@ -837,13 +889,10 @@ export async function removeAccount(req: Request, res: Response) {
   try {
     const { accountId } = req.params;
     const { lineUserId } = req.query;
+    const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
 
-    // 🔒 安全檢查：必須提供 lineUserId
-    if (!lineUserId || typeof lineUserId !== 'string') {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized: lineUserId is required'
-      });
+    if (!authenticatedLineUserId) {
+      return;
     }
 
     // 🔒 安全檢查：驗證帳戶擁有者
@@ -856,7 +905,7 @@ export async function removeAccount(req: Request, res: Response) {
       return res.status(404).json({ success: false, error: 'Account not found' });
     }
 
-    if (existingAccount.user.lineUserId !== lineUserId) {
+    if (existingAccount.user.lineUserId !== authenticatedLineUserId) {
       return res.status(403).json({
         success: false,
         error: 'Forbidden: You can only delete your own accounts'
@@ -883,6 +932,7 @@ export async function updateBalance(req: Request, res: Response) {
   try {
     const { accountId } = req.params;
     const { amount, operation, lineUserId } = req.body;
+    const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
 
     // 驗證必填欄位
     if (typeof amount !== 'number' || !operation) {
@@ -899,12 +949,8 @@ export async function updateBalance(req: Request, res: Response) {
       });
     }
 
-    // 🔒 安全檢查：必須提供 lineUserId
-    if (!lineUserId || typeof lineUserId !== 'string') {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized: lineUserId is required'
-      });
+    if (!authenticatedLineUserId) {
+      return;
     }
 
     // 🔒 安全檢查：驗證帳戶擁有者
@@ -917,7 +963,7 @@ export async function updateBalance(req: Request, res: Response) {
       return res.status(404).json({ success: false, error: 'Account not found' });
     }
 
-    if (existingAccount.user.lineUserId !== lineUserId) {
+    if (existingAccount.user.lineUserId !== authenticatedLineUserId) {
       return res.status(403).json({
         success: false,
         error: 'Forbidden: You can only update your own account balance'
@@ -1235,6 +1281,7 @@ export async function updatePriceAlertAPI(req: Request, res: Response) {
   try {
     const { alertId } = req.params;
     const { isActive, lineUserId } = req.body;
+    const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
 
     if (typeof isActive !== 'boolean') {
       return res.status(400).json({
@@ -1243,12 +1290,8 @@ export async function updatePriceAlertAPI(req: Request, res: Response) {
       });
     }
 
-    // 🔒 安全檢查：必須提供 lineUserId
-    if (!lineUserId || typeof lineUserId !== 'string') {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized: lineUserId is required'
-      });
+    if (!authenticatedLineUserId) {
+      return;
     }
 
     // 🔒 安全檢查：驗證警示擁有者
@@ -1261,7 +1304,7 @@ export async function updatePriceAlertAPI(req: Request, res: Response) {
       return res.status(404).json({ success: false, error: 'Price alert not found' });
     }
 
-    if (existingAlert.user.lineUserId !== lineUserId) {
+    if (existingAlert.user.lineUserId !== authenticatedLineUserId) {
       return res.status(403).json({
         success: false,
         error: 'Forbidden: You can only update your own price alerts'
@@ -1291,13 +1334,10 @@ export async function deletePriceAlertAPI(req: Request, res: Response) {
   try {
     const { alertId } = req.params;
     const { lineUserId } = req.query;
+    const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
 
-    // 🔒 安全檢查：必須提供 lineUserId
-    if (!lineUserId || typeof lineUserId !== 'string') {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized: lineUserId is required'
-      });
+    if (!authenticatedLineUserId) {
+      return;
     }
 
     // 🔒 安全檢查：驗證警示擁有者
@@ -1310,7 +1350,7 @@ export async function deletePriceAlertAPI(req: Request, res: Response) {
       return res.status(404).json({ success: false, error: 'Price alert not found' });
     }
 
-    if (existingAlert.user.lineUserId !== lineUserId) {
+    if (existingAlert.user.lineUserId !== authenticatedLineUserId) {
       return res.status(403).json({
         success: false,
         error: 'Forbidden: You can only delete your own price alerts'

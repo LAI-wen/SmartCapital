@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import liff from '@line/liff';
 import { lineLogin, guestLogin, startAutoRefresh } from '../services/auth.service';
 
 interface LiffContextType {
@@ -35,25 +34,31 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const initializeLiff = async () => {
       const liffId = import.meta.env.VITE_LIFF_ID;
 
       // 如果沒有 LIFF ID，則跳過 LIFF 初始化（訪客模式）
       if (!liffId) {
         console.log('🔧 No LIFF_ID found, running in guest mode');
-        setIsLiffReady(true);
+        if (isMounted) {
+          setIsLiffReady(true);
+        }
 
         // 檢查 localStorage 中的 userId
         const storedUserId = localStorage.getItem('lineUserId');
         if (storedUserId) {
           console.log('✅ 從 localStorage 載入 userId:', storedUserId);
-          setLineUserId(storedUserId);
-          setDisplayName(localStorage.getItem('displayName') || '訪客用戶');
-          setIsLoggedIn(true);
+          if (isMounted) {
+            setLineUserId(storedUserId);
+            setDisplayName(localStorage.getItem('displayName') || '訪客用戶');
+            setIsLoggedIn(true);
+          }
 
           // 🔐 使用已存在的訪客 ID 向後端登入並獲取 JWT
           guestLogin(storedUserId, localStorage.getItem('displayName') || '訪客用戶').then((authResult) => {
-            if (authResult) {
+            if (authResult && isMounted) {
               console.log('✅ 訪客 Token 已獲取');
               startAutoRefresh();
             }
@@ -74,7 +79,7 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
 
         // 🔐 向後端註冊並獲取 JWT Token
         guestLogin(mockUserId, '訪客用戶').then((authResult) => {
-          if (authResult) {
+          if (authResult && isMounted) {
             setLineUserId(authResult.user.lineUserId);
             setDisplayName(authResult.user.displayName);
             setIsLoggedIn(true);
@@ -93,8 +98,12 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
       }
 
       try {
+        const { default: liff } = await import('@line/liff');
+
         await liff.init({ liffId });
-        setIsLiffReady(true);
+        if (isMounted) {
+          setIsLiffReady(true);
+        }
 
         if (!liff.isLoggedIn()) {
           // 如果未登入，執行 LINE 登入
@@ -131,6 +140,10 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
           );
 
           if (authResult) {
+            if (!isMounted) {
+              return;
+            }
+
             // 登入成功，設置用戶資訊
             setLineUserId(authResult.user.lineUserId);
             setDisplayName(authResult.user.displayName);
@@ -158,6 +171,10 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
           const authResult = await guestLogin(profile.userId, profile.displayName);
 
           if (authResult) {
+            if (!isMounted) {
+              return;
+            }
+
             setLineUserId(authResult.user.lineUserId);
             setDisplayName(authResult.user.displayName);
             setPictureUrl(profile.pictureUrl || null);
@@ -176,12 +193,18 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
         }
       } catch (err) {
         console.error('❌ LIFF 初始化失敗', err);
-        setError(err instanceof Error ? err.message : 'LIFF 初始化失敗');
-        setIsLiffReady(true);
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'LIFF 初始化失敗');
+          setIsLiffReady(true);
+        }
       }
     };
 
     initializeLiff();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (

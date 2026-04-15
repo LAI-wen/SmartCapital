@@ -1,94 +1,273 @@
-# 📊 SmartCapital
+# SmartCapital
 
-一個整合記帳與投資分析的智慧理財平台，結合 LINE Bot 與 Web 介面，提供無縫的記帳與投資追蹤體驗。
+SmartCapital 是一個把「對話式記帳」與「投資追蹤分析」整合在一起的理財平台。系統由 Web 介面、LINE Bot、LIFF 登入流程與 Node.js 後端組成，目標是降低日常記帳摩擦，同時把資產、帳戶、警示與投資策略集中到同一套體驗中。
 
-## ✨ 功能特色
+## 專案定位
 
-### 🌐 Web 平台
-- **Dashboard**: 資產總覽與視覺化圖表
-- **Portfolio**: 投資組合管理與即時股價
-- **Strategy Lab**: 投資策略計算器
-  - 凱利公式（Kelly Criterion）
-  - 馬丁格爾策略（Martingale）
-  - 金字塔加碼（Pyramid）
-  - 網格交易（Grid Trading）
-  - 價值平均法（Value Averaging）
-- **Ledger**: 生活記帳與分類統計
+多數個人理財工具只做其中一塊：
 
-### 📱 LINE Bot
-- **對話式記帳**: 輸入數字即可快速記帳
-- **投資助理**: 查詢股價、買入/賣出記錄
-- **智慧建議**: 凱利公式倉位建議、馬丁格爾救援點
-- **一鍵開啟網站**: 從 LINE 快速查看完整資料
+- 記帳工具偏重收支分類，但缺少投資視角
+- 投資工具偏重持倉管理，但忽略生活現金流
+- 聊天機器人雖然輸入快，但不易做後續分析
 
-## 🚀 技術架構
+SmartCapital 的設計重點是把三件事接起來：
 
-### 前端
-- React 19 + TypeScript
-- Vite
-- React Router
-- Recharts (圖表)
-- Lucide React (圖示)
-- Morandi 配色設計
+1. 在 LINE 中快速完成輸入
+2. 在 Web 上集中檢視、調整與分析
+3. 透過排程、警示與摘要形成持續回饋
 
-### 後端
-- Node.js + Express
-- TypeScript
-- Prisma ORM
-- SQLite (開發) / PostgreSQL (生產)
-- LINE Bot SDK
-- Yahoo Finance API (股價數據)
+## 核心功能
 
-## 📦 本地開發
+### Web 平台
 
-### 前端
+- Dashboard：資產總覽、資產配置、現金與投資市值彙整
+- Ledger：收支記錄、分類查詢與帳務回顧
+- Analytics：依日、週、月、年檢視收支與資產變化
+- Strategy Lab：凱利公式、馬丁格爾與其他資金策略工具
+- Account Management：多帳戶、轉帳與餘額管理
+- Price Alerts：單日漲跌、停利、停損、目標價警示
+- Settings / Onboarding：投資市場範圍、LIFF 與個人設定
+
+### LINE Bot
+
+- 輸入金額即可快速記帳
+- 支援支出與收入分類選單
+- 查詢台股、美股與持倉資訊
+- 透過對話完成買入、賣出與投資紀錄
+- 回傳 Flex Message 卡片顯示行情與建議
+- 提供網站與帳本快速入口
+
+### 後端與自動化
+
+- JWT 驗證與 LIFF / 訪客登入流程
+- Prisma 資料模型管理使用者、資產、交易、帳戶、預算與通知
+- 即時股價與匯率查詢
+- 價格警示排程，每 5 分鐘檢查一次
+- 每日摘要推播，整理用戶前一日收支活動
+- 規則式交易分類預測與對話狀態管理
+
+## 系統架構
+
+```txt
+LINE App / Browser
+  ├─ LINE Bot 對話輸入
+  └─ LIFF / Web Dashboard
+          │
+          ▼
+Frontend (React + Vite + React Router)
+  ├─ Dashboard / Ledger / Analytics / Alerts
+  ├─ LIFF 初始化與使用者狀態管理
+  └─ 呼叫 REST API
+          │
+          ▼
+Backend (Express + TypeScript)
+  ├─ Auth API
+  ├─ Assets / Transactions / Accounts / Budgets API
+  ├─ LINE Webhook Controller
+  ├─ Stock / FX / Alert / Summary Services
+  └─ Scheduler
+          │
+          ▼
+Prisma + PostgreSQL
+```
+
+## 技術亮點
+
+- 同時整合 Web 與 LINE Bot，讓輸入與分析發生在不同但互補的介面
+- 使用 `LIFF + JWT` 建立登入與身分驗證流程
+- 受保護 API 已補上 ownership 驗證，避免僅憑 `lineUserId` path 參數存取他人資料
+- 以 `Prisma` 建立資產、交易、帳戶、預算、通知與價格警示資料模型
+- 透過排程機制推動價格警示與每日摘要，讓系統不只被動展示資料
+- 使用規則式分類預測與對話狀態機，讓記帳輸入更接近日常語言
+- 在前端加入多市場範圍篩選、帳戶資金流與資產配置視覺化
+- 前端已做 route-level lazy loading、Dashboard 圖表 / modal 按需載入，以及 LIFF 動態載入，降低首屏負擔
+
+## 技術棧
+
+- Frontend: React 19, TypeScript, Vite, React Router
+- UI / Charting: Tailwind CSS（CDN 配置）, Lucide React, Recharts
+- Auth / Mini App: LIFF
+- Backend: Node.js, Express, TypeScript
+- Bot: `@line/bot-sdk`
+- ORM / Database: Prisma, PostgreSQL
+- Scheduling: `node-cron`
+- AI / Parsing: Gemini API, rule-based category prediction
+- Market Data: stock quote / exchange rate services
+
+## 專案結構
+
+```txt
+smartcapital/
+  App.tsx                 Web 主入口與路由殼層
+  components/             Dashboard、Ledger、Analytics、Alerts 等頁面元件
+  services/               前端 API 封裝與 domain services
+  contexts/               LIFF 與全域狀態
+  server/
+    src/
+      controllers/        Auth、API、Webhook 控制器
+      services/           stock、alert、summary、scheduler、parser 等服務
+      middleware/         JWT 驗證中介層
+      utils/              訊息解析與 Flex Message 模板
+    prisma/
+      schema.prisma       資料模型
+      seed.ts             種子資料
+```
+
+## 主線來源
+
+目前正式來源請只看：
+
+- repo 根目錄前端
+- `server/` 後端
+
+`backup_20251124/` 與 `ＮＥＷsmartcapital/` 目前都只保留為本地歷史參考，已自 git 解除追蹤，不是正式開發入口，也不應作為 build、typecheck、review 或文件判斷依據。整理規則可參考 [docs/REPO_HYGIENE.md](/Users/wen/Documents/dev/smartcapital/docs/REPO_HYGIENE.md)。
+
+## 主要資料模型
+
+- `User`：LINE 使用者與投資範圍設定
+- `Account`：現金、銀行、券商與多幣別帳戶
+- `Transaction`：收入、支出、轉帳與投資記錄
+- `Asset`：股票 / ETF / 加密貨幣持倉
+- `PriceAlert`：目標價、停利、停損與漲跌幅通知
+- `Budget`：分類預算
+- `Notification`：系統通知與價格警示紀錄
+
+## 本地開發
+
+### 1. 前端安裝與設定
+
 ```bash
 npm install
-npm run dev
 ```
-訪問 `http://localhost:3001`
 
-### 後端
+可建立 `.env.local`：
+
+```env
+VITE_API_URL=http://localhost:3000
+VITE_LIFF_ID=your_liff_id
+```
+
+若未提供 `VITE_LIFF_ID`，前端會自動以訪客模式啟動，方便本地開發與 demo。
+
+目前 `vite.config.ts` 預設前端埠號也是 `3000`。若要和後端同時本地開發，建議以前端改埠方式啟動：
+
+```bash
+npm run dev -- --port 3001
+```
+
+### 2. 後端安裝與設定
+
 ```bash
 cd server
 npm install
+```
+
+建立 `server/.env`，至少補齊：
+
+```env
+PORT=3000
+JWT_SECRET=your_jwt_secret
+LINE_CHANNEL_ID=your_line_channel_id
+LINE_CHANNEL_SECRET=your_line_channel_secret
+LINE_CHANNEL_ACCESS_TOKEN=your_line_channel_access_token
+LIFF_ID=your_liff_id
+FRONTEND_URL=http://localhost:3001
+CORS_ALLOWED_ORIGINS=http://localhost:3001
+DATABASE_URL=your_postgres_pooler_url
+DIRECT_URL=your_postgres_direct_url
+GEMINI_API_KEY=your_gemini_api_key
+```
+
+`FRONTEND_URL` 會作為後端 CORS 白名單與 LINE / LIFF 回跳網址的基礎設定；若有多個前端來源，可用 `CORS_ALLOWED_ORIGINS` 以逗號分隔補充。
+
+### 3. 初始化資料庫
+
+```bash
+cd server
 npm run prisma:generate
 npm run prisma:migrate
+```
+
+### 4. 啟動服務
+
+前端：
+
+```bash
+npm run dev -- --port 3001
+```
+
+後端：
+
+```bash
+cd server
 npm run dev
 ```
-訪問 `http://localhost:3000`
 
-## 🌍 部署
+### 5. 常用指令
 
-詳見 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+前端：
 
-- **前端**: Vercel
-- **後端**: Render
-- **資料庫**: PostgreSQL (Render)
+```bash
+npm run typecheck
+npm run test:smoke
+npm run build
+npm run preview
+```
 
-## 📚 文件
+後端：
 
-- [LINE Bot 架構設計](./LINEBOT_ARCHITECTURE.md)
-- [前端整合指南](./FRONTEND_INTEGRATION.md)
-- [LIFF 整合指南](./LIFF_INTEGRATION_GUIDE.md)
-- [部署指南](./DEPLOYMENT_GUIDE.md)
+```bash
+cd server
+npm run build
+npm run start
+npm run test:run
+npm run prisma:studio
+```
 
-## 🎨 設計理念
+## 已驗證狀態
 
-採用 Morandi 色系打造優雅寧靜的視覺體驗：
-- Sage Green (#84A98C) - 獲利
-- Dusty Rose (#D68C92) - 虧損
-- Warm Charcoal (#44403C) - 主文字
-- Stone Grey (#78716C) - 次要文字
-- Paper (#F9F8F4) - 背景
+以下內容為目前實際在本 repo 驗證過的狀態：
 
-## 📄 授權
+- 前端 `npm run build` 可通過
+- 後端 `npm run build` 可通過
+- 後端測試 `npm run test:run` 目前為 `67/67` 通過
+- `messageParser` 先前的收入 / 查股 / 買賣誤判問題已修正
+- JWT 保護 API 已加上 ownership 驗證，避免僅修改 path / query / body 中的 `lineUserId` 即存取他人資源
+- CORS 已由萬用 `*` 改為白名單模式，使用 `FRONTEND_URL` / `CORS_ALLOWED_ORIGINS`
 
-MIT License
+## 效能調整
 
-## 👨‍💻 開發者
+近期已完成的前端載入優化：
 
-SmartCapital Team
-# SmartCapital
-# SmartCapital
-# SmartCapital
+- 頁面層級 lazy loading：Dashboard、Ledger、Analytics、Strategy、Settings、Accounts、Alerts 等頁面獨立分包
+- Dashboard 圖表與交易 / 詳情 modal 改為按需載入
+- `@line/liff` 改為僅在設定 `VITE_LIFF_ID` 時動態載入
+- vendor chunk 依 `framework`、`router`、`icons`、`i18n`、`date-utils`、`charts` 分組，改善快取與首屏載入
+
+目前 build 下的主要結果：
+
+- 主入口 `index` 約 `47.40 kB`，gzip 約 `14.36 kB`
+- Dashboard 頁面 chunk 約 `16.44 kB`，gzip 約 `5.05 kB`
+- 圖表相關依賴仍集中在 `charts` chunk，約 `369.13 kB`，後續仍可持續優化
+
+## 已知限制
+
+- 前端目前已補上 `typecheck` 與 build-based smoke test，但仍未建立正式 ESLint 與元件 / 整合測試流程
+- `Analytics` 中部分進階投資績效指標仍屬開發中 / 逐步補強階段
+- `charts` chunk 仍偏大，若要進一步壓縮，需減少 Recharts 使用範圍或更換較輕量圖表方案
+- 本地工作目錄仍保留 `backup_20251124/`、`ＮＥＷsmartcapital/` 等歷史快照，但已自 git 解除追蹤
+
+## 目前狀態
+
+- Web、LINE Bot 與後端 API 已形成完整產品雛形
+- 已具備帳戶、交易、資產、預算、通知與價格警示等核心資料模型
+- 已支援排程式價格警示檢查與每日摘要推播
+- 安全性與前端效能已完成一輪實作級補強，但仍有文件、測試與部署整理空間
+
+## 後續方向
+
+- 加入系統截圖、使用流程圖與架構圖
+- 補上 API 請求 / 回應範例
+- 整理正式部署流程與環境設定
+- 補充測試覆蓋、驗證方式與已知限制
+- 增加個人貢獻說明，方便整理成履歷與面試材料

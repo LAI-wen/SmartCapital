@@ -2,7 +2,7 @@
  * Account Service - 帳戶管理相關 API
  */
 
-import { get, post, patch, delWithQuery, postBoolean } from './core/http';
+import { get, post, patch, del, postBoolean } from './core/http';
 import { getUserId } from './user.service';
 
 export interface Account {
@@ -69,43 +69,33 @@ export async function createAccount(accountData: CreateAccountInput): Promise<Ac
 
 /**
  * 更新帳戶資訊
- * 🔒 現在需要傳遞 lineUserId 進行授權驗證
  */
 export async function updateAccount(
   accountId: string,
   data: UpdateAccountInput
 ): Promise<Account | null> {
-  const lineUserId = getUserId();
-  return patch<Account>(`/api/accounts/${accountId}`, {
-    ...data,
-    lineUserId,
-  });
+  return patch<Account>(`/api/accounts/${accountId}`, data);
 }
 
 /**
  * 更新帳戶餘額
- * 🔒 現在需要傳遞 lineUserId 進行授權驗證
  */
 export async function updateAccountBalance(
   accountId: string,
   amount: number,
   operation: 'add' | 'subtract'
 ): Promise<boolean> {
-  const lineUserId = getUserId();
   return postBoolean(`/api/accounts/${accountId}/balance`, {
     amount,
     operation,
-    lineUserId,
   });
 }
 
 /**
  * 刪除帳戶
- * 🔒 現在需要傳遞 lineUserId 進行授權驗證
  */
 export async function deleteAccount(accountId: string): Promise<boolean> {
-  const lineUserId = getUserId();
-  return delWithQuery(`/api/accounts/${accountId}`, { lineUserId });
+  return del(`/api/accounts/${accountId}`);
 }
 
 /**
