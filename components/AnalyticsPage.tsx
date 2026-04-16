@@ -592,10 +592,21 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
               {/* Top Metrics Row */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-white rounded-2xl p-3 border border-stone-100 shadow-sm text-center">
-                  <div className="text-[10px] text-ink-400 font-serif mb-1 tracking-wide">日均支出</div>
-                  <div className="text-sm font-serif-num font-bold text-ink-900">
-                    {isPrivacyMode ? '••••' : dailyAvgExpense > 0 ? `$${Math.round(dailyAvgExpense).toLocaleString()}` : '--'}
-                  </div>
+                  {viewMode === 'day' ? (
+                    <>
+                      <div className="text-[10px] text-ink-400 font-serif mb-1 tracking-wide">今日交易</div>
+                      <div className="text-sm font-serif-num font-bold text-ink-900">
+                        {filteredTransactions.length} 筆
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[10px] text-ink-400 font-serif mb-1 tracking-wide">日均支出</div>
+                      <div className="text-sm font-serif-num font-bold text-ink-900">
+                        {isPrivacyMode ? '••••' : dailyAvgExpense > 0 ? `$${Math.round(dailyAvgExpense).toLocaleString()}` : '--'}
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="bg-white rounded-2xl p-3 border border-stone-100 shadow-sm text-center">
                   <div className="text-[10px] text-ink-400 font-serif mb-1 tracking-wide">儲蓄率</div>
