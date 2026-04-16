@@ -98,7 +98,7 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
 
     if (monthParam) {
       const [year, month] = monthParam.split('-').map(Number);
-      if (!Number.isNaN(year) && !Number.isNaN(month)) {
+      if (!Number.isNaN(year) && !Number.isNaN(month) && month >= 1 && month <= 12) {
         setCurrentDate(new Date(year, month - 1, 1));
       }
     }

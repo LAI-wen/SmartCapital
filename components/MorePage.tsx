@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calculator, Settings, Shield, ChevronRight,
   MessageCircle, FileText, PieChart, HelpCircle,
-  LogOut, Wallet, Bell
+  LogOut, Wallet, Bell, PiggyBank
 } from 'lucide-react';
 
 interface MorePageProps {
@@ -54,7 +53,7 @@ const MorePage: React.FC<MorePageProps> = ({ onLogout, authMode }) => {
         },
         {
           label: "預算設定",
-          icon: <Wallet size={20} />,
+          icon: <PiggyBank size={20} />,
           desc: "設定各類別月預算上限",
           action: () => navigate('/budget-settings'),
           color: "bg-morandi-sageLight text-morandi-sage"

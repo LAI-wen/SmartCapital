@@ -362,6 +362,8 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
     return { date: date.slice(5), amount }; // MM-DD
   }, [filteredTransactions]);
 
+  const monthParam = format(currentDate, 'yyyy-MM');
+
   const formatCurrency = (val: number) => {
     if (isPrivacyMode) return '••••••';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
@@ -596,7 +598,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
                     <>
                       <div className="text-[10px] text-ink-400 font-serif mb-1 tracking-wide">今日交易</div>
                       <div className="text-sm font-serif-num font-bold text-ink-900">
-                        {filteredTransactions.length} 筆
+                        {isPrivacyMode ? '••' : filteredTransactions.length} 筆
                       </div>
                     </>
                   ) : (
@@ -725,7 +727,6 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
                         const prev = prevPeriodCategoryMap[item.name] || 0;
                         const change = prev > 0 ? ((item.value - prev) / prev) * 100 : null;
                         const color = COLORS.chart[idx % COLORS.chart.length];
-                        const monthParam = format(currentDate, 'yyyy-MM');
                         return (
                           <div key={item.name}>
                             <div className="flex items-center justify-between text-sm mb-1">
