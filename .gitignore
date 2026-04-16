@@ -27,3 +27,4 @@ dist-ssr
 # Archived / historical snapshots
 /backup_20251124/
 /ＮＥＷsmartcapital/
+.worktrees/
