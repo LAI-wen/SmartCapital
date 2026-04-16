@@ -473,7 +473,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
           ))}
           {/* Calendar Mode Button */}
           <button
-            onClick={() => { setViewMode('calendar'); setCurrentDate(new Date()); }}
+            onClick={() => { setViewMode('calendar'); setCurrentDate(new Date()); setSelectedCategory('All'); }}
             className={`flex-1 px-3 py-2 rounded-lg text-xs font-serif transition-all flex items-center justify-center gap-1 ${
               viewMode === 'calendar'
                 ? 'bg-white text-morandi-blue shadow-sm font-bold border border-stone-100'
@@ -502,22 +502,24 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
           </div>
         </div>
 
-        {/* Category Filter */}
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar px-1">
-          {allCategories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-serif whitespace-nowrap border transition-all ${
-                selectedCategory === cat
-                  ? 'bg-ink-800 text-white border-ink-800 shadow-sm'
-                  : 'bg-white text-ink-400 border-stone-200 hover:border-ink-400'
-              }`}
-            >
-              {cat === 'All' ? '全部' : cat}
-            </button>
-          ))}
-        </div>
+        {/* Category Filter — hidden in calendar mode */}
+        {viewMode !== 'calendar' && (
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar px-1">
+            {allCategories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-serif whitespace-nowrap border transition-all ${
+                  selectedCategory === cat
+                    ? 'bg-ink-800 text-white border-ink-800 shadow-sm'
+                    : 'bg-white text-ink-400 border-stone-200 hover:border-ink-400'
+                }`}
+              >
+                {cat === 'All' ? '全部' : cat}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {activeTab === 'income_expense' && (
