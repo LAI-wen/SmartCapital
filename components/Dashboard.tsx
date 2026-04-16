@@ -566,6 +566,57 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
         </button>
       )}
 
+      {/* Section 4: 最近交易 */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold font-serif text-ink-900">最近交易</h3>
+          <button
+            onClick={() => navigate('/ledger')}
+            className="text-xs text-morandi-blue font-serif hover:underline"
+          >
+            更多交易 →
+          </button>
+        </div>
+        {recentTransactions.length === 0 ? (
+          <p className="text-xs text-ink-400 font-serif text-center py-4">尚無交易記錄</p>
+        ) : (
+          <div className="space-y-3">
+            {recentTransactions.map(t => (
+              <div key={t.id} className="flex items-center gap-3">
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white ${
+                    t.type === 'income' ? 'bg-ink-800' : 'bg-morandi-rose'
+                  }`}
+                >
+                  {getCategoryIcon(t.category)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-ink-900 font-serif">
+                    {t.category}{t.subcategory ? ` · ${t.subcategory}` : ''}
+                  </div>
+                  <div className="text-[10px] text-ink-400 truncate">
+                    {t.note || '無備註'}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div
+                    className={`text-sm font-bold font-serif-num ${
+                      t.type === 'income' ? 'text-ink-900' : 'text-morandi-rose'
+                    }`}
+                  >
+                    {t.type === 'income' ? '+' : ''}
+                    {isPrivacyMode ? '••' : formatCurrency(t.amount)}
+                  </div>
+                  <div className="text-[10px] text-ink-400 font-serif">
+                    {formatRelativeDate(t.date)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 3. Mid Section: Allocation & Top Movers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
