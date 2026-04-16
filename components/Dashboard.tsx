@@ -2,7 +2,7 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Asset, Account, InvestmentScope } from '../types';
 import { MOCK_EXCHANGE_RATE } from '../constants';
-import { Wallet, TrendingUp, TrendingDown, Search, Activity, ReceiptText, Briefcase, ChevronRight, Landmark, Info, Package, Coffee, ShoppingBag, Home, Bus, HeartPulse, Gift, Tag } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Briefcase, ChevronRight, Info, Coffee, ShoppingBag, Home, Bus, HeartPulse, Gift, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { StockTransaction } from './BuyStockModal';
 import { useExchangeRates } from '../services/exchangeRateService';
@@ -11,7 +11,6 @@ import { getTransactions, getBudgets, fetchLivePrices } from '../services';
 import type { Transaction } from '../services/transaction.service';
 import type { Budget } from '../services/budget.service';
 
-const DashboardAllocationChart = lazy(() => import('./DashboardAllocationChart'));
 const StockDetailModal = lazy(() => import('./StockDetailModal'));
 const BuyStockModal = lazy(() => import('./BuyStockModal'));
 
@@ -26,9 +25,6 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, onAccountUpdate, isPrivacyMode, investmentScope }) => {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<'All' | 'Stock' | 'Crypto' | 'Cash'>('All');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [shouldLoadAllocationChart, setShouldLoadAllocationChart] = useState(false);
 
   // Get real-time exchange rates
   const { rates, loading: ratesLoading } = useExchangeRates('USD');
@@ -48,16 +44,6 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   const [pricesLoading, setPricesLoading] = useState(true);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [isHoldingsExpanded, setIsHoldingsExpanded] = useState(false);
-
-  useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => {
-      setShouldLoadAllocationChart(true);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,56 +220,6 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     return { totalValue, pnl, pnlPct, count: scopeFilteredAssets.length };
   }, [scopeFilteredAssets, liveprices, exchangeRate]);
 
-  // Filtered List Logic (Search + Type Filter)
-  const displayAssets = useMemo(() => {
-    return scopeFilteredAssets.filter(asset => {
-      const matchesFilter = filter === 'All' || asset.type === filter;
-      const matchesSearch = asset.symbol.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            asset.name.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesFilter && matchesSearch;
-    });
-  }, [scopeFilteredAssets, filter, searchTerm]);
-
-  // Data for Allocation Pie Chart
-  const allocationData = useMemo(() => {
-    const groups = {
-      'TW': { name: '台股', value: 0, color: '#A8B9A5' }, // morandi-sage
-      'US': { name: '美股', value: 0, color: '#8FA5B5' }, // morandi-blue
-      'Crypto': { name: '加密貨幣', value: 0, color: '#B8A293' }, // morandi-clay
-      'Cash': { name: '現金', value: 0, color: '#C8D5E0' }, // morandi-blueLight
-    };
-
-    // Add Investments
-    scopeFilteredAssets.forEach(asset => {
-      let valueTWD = asset.quantity * asset.currentPrice;
-      if (asset.currency === 'USD') valueTWD *= exchangeRate;
-
-      if (asset.type === 'Crypto') {
-        groups['Crypto'].value += valueTWD;
-      } else if (asset.currency === 'TWD') {
-        groups['TW'].value += valueTWD;
-      } else {
-        groups['US'].value += valueTWD;
-      }
-    });
-
-    // Add Accounts to "Cash"
-    accounts.forEach(acc => {
-      if (acc.currency === 'USD') groups['Cash'].value += acc.balance * exchangeRate;
-      else groups['Cash'].value += acc.balance;
-    });
-
-    return Object.values(groups).filter(g => g.value > 0);
-  }, [scopeFilteredAssets, accounts, exchangeRate]);
-
-  // Data for Top Movers
-  const topMovers = useMemo(() => {
-    return [...scopeFilteredAssets]
-      .filter(a => a.type !== 'Cash' && a.quantity > 0)
-      .sort((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h))
-      .slice(0, 3);
-  }, [scopeFilteredAssets]);
-
   const formatCurrency = (val: number, currency: string = 'TWD', minimumFractionDigits = 0) => {
     if (isPrivacyMode) return '••••••';
     return new Intl.NumberFormat('en-US', { 
@@ -292,19 +228,6 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
       minimumFractionDigits, 
       maximumFractionDigits: 0 
     }).format(val);
-  };
-
-  const formatPercent = (val: number) => {
-    if (isPrivacyMode) return '••%';
-    return `${val > 0 ? '+' : ''}${val.toFixed(2)}%`;
-  };
-
-  const getProfitLoss = (asset: Asset) => {
-    const totalCost = asset.avgPrice * asset.quantity;
-    const totalValue = asset.currentPrice * asset.quantity;
-    const pl = totalValue - totalCost;
-    const plPercent = totalCost > 0 ? (pl / totalCost) * 100 : 0;
-    return { pl, plPercent };
   };
 
   const getCategoryIcon = (category: string) => {
@@ -329,18 +252,6 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
 
   // --- Handlers ---
   
-  const handleOpenBuyNew = () => {
-    setTransactionAsset(null);
-    setBuyModalMode('buy');
-    setIsBuyModalOpen(true);
-  };
-
-  const handleOpenImport = () => {
-    setTransactionAsset(null);
-    setBuyModalMode('import');
-    setIsBuyModalOpen(true);
-  };
-
   const handleTransaction = (asset: Asset, mode: 'buy' | 'sell') => {
     setSelectedAsset(null); // Close detail modal
     setTransactionAsset(asset);
@@ -425,20 +336,6 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     onAssetUpdate(updatedAssets);
     onAccountUpdate(updatedAccounts);
   };
-
-  const filterLabels: Record<string, string> = {
-    'All': '全部',
-    'Stock': '股票',
-    'Crypto': '加密',
-    'Cash': '現金'
-  };
-
-  const renderAllocationChartFallback = () => (
-    <div className="w-32 h-32 relative shrink-0 flex items-center justify-center">
-      <div className="absolute inset-3 rounded-full border-[18px] border-stone-100"></div>
-      <div className="text-[10px] text-ink-400 font-serif">載入中</div>
-    </div>
-  );
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
@@ -617,191 +514,115 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
         )}
       </div>
 
-      {/* 3. Mid Section: Allocation & Top Movers */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
-        {/* Asset Allocation */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm flex flex-col">
-          <h3 className="text-sm font-bold font-serif text-ink-900 mb-4 flex items-center gap-2">
-             <Activity size={16} className="text-ink-400"/> 資產配置
-          </h3>
-          <div className="flex-1 flex flex-row items-center gap-4">
-            {shouldLoadAllocationChart ? (
-              <Suspense fallback={renderAllocationChartFallback()}>
-                <DashboardAllocationChart
-                  allocationData={allocationData}
-                  formatCurrency={formatCurrency}
-                />
-              </Suspense>
-            ) : (
-              renderAllocationChartFallback()
-            )}
-            
-            <div className="flex-1 space-y-2 overflow-y-auto max-h-32 custom-scrollbar pr-2">
-               {allocationData.map((item) => (
-                 <div key={item.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></div>
-                       <span className="text-ink-800 font-serif">{item.name}</span>
-                    </div>
-                    <span className="font-serif-num font-bold text-ink-900">
-                      {((item.value / summary.totalValue) * 100).toFixed(0)}%
-                    </span>
-                 </div>
-               ))}
-            </div>
+      {/* Section 5: 投資摘要 */}
+      {scopeFilteredAssets.length > 0 && (
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold font-serif text-ink-900 flex items-center gap-2">
+              <TrendingUp size={16} className="text-ink-400" />
+              投資摘要
+            </h3>
+            <button
+              onClick={() => setIsHoldingsExpanded(e => !e)}
+              className="text-xs text-morandi-blue font-serif hover:underline flex items-center gap-1"
+            >
+              持有 {investSummary.count} 檔
+              <ChevronRight
+                size={12}
+                className={`transition-transform ${isHoldingsExpanded ? 'rotate-90' : ''}`}
+              />
+            </button>
           </div>
-        </div>
 
-        {/* Top Movers */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm flex flex-col">
-           <div className="flex justify-between items-center mb-4">
-             <h3 className="text-sm font-bold font-serif text-ink-900 flex items-center gap-2">
-                <TrendingUp size={16} className="text-ink-400"/> 今日動態
-             </h3>
-             <span className="text-[10px] bg-stone-100 text-ink-400 px-2 py-0.5 rounded-full font-serif">Top 3</span>
-           </div>
-           
-           <div className="space-y-3">
-              {topMovers.map(asset => (
-                <div 
-                  key={asset.id} 
-                  onClick={() => setSelectedAsset(asset)}
-                  className="flex items-center justify-between cursor-pointer group"
-                >
-                   <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-stone-50 flex items-center justify-center text-[10px] font-bold text-ink-700 font-serif border border-stone-100 group-hover:border-morandi-blue/50 transition-colors">
+          {pricesLoading ? (
+            <div className="space-y-2">
+              <div className="h-8 bg-stone-50 rounded-xl animate-pulse" />
+              <div className="h-4 bg-stone-50 rounded-xl animate-pulse w-1/2" />
+            </div>
+          ) : (
+            <>
+              <div className="text-2xl font-bold font-serif-num text-ink-900 mb-1">
+                {isPrivacyMode ? '•••••' : formatCurrency(investSummary.totalValue)}
+              </div>
+              <div
+                className={`text-sm font-serif-num flex items-center gap-1 ${
+                  investSummary.pnl >= 0 ? 'text-morandi-sage' : 'text-morandi-rose'
+                }`}
+              >
+                {investSummary.pnl >= 0
+                  ? <TrendingUp size={14} />
+                  : <TrendingDown size={14} />}
+                {isPrivacyMode ? '••' : formatCurrency(Math.abs(investSummary.pnl))}
+                <span className="text-xs">
+                  ({investSummary.pnl >= 0 ? '+' : ''}
+                  {investSummary.pnlPct.toFixed(2)}%)
+                </span>
+                <span className="text-xs text-ink-400 font-serif ml-1">未實現損益</span>
+              </div>
+              {pricesFailed && (
+                <p className="text-[10px] text-amber-600 mt-1 font-serif">
+                  ⚠ 價格可能未即時
+                </p>
+              )}
+              {(investmentScope.us || investmentScope.crypto) && (
+                <div className="mt-1 flex items-center gap-1 text-[10px] text-ink-400 font-serif">
+                  <Info size={10} /> 以 1 USD ≈ {exchangeRate.toFixed(0)} TWD 計算
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Expandable holdings list */}
+          {isHoldingsExpanded && (
+            <div className="mt-4 border-t border-stone-100 pt-4 space-y-2">
+              {scopeFilteredAssets.map(asset => {
+                const livePrice = liveprices.get(asset.symbol) ?? asset.currentPrice;
+                const rate = asset.currency === 'USD' ? exchangeRate : 1;
+                const value = asset.quantity * livePrice * rate;
+                const cost = asset.quantity * asset.avgPrice * rate;
+                const pnl = value - cost;
+                return (
+                  <div
+                    key={asset.id}
+                    onClick={() => setSelectedAsset(asset)}
+                    className="flex items-center justify-between cursor-pointer hover:bg-stone-50 rounded-xl p-2 -mx-2 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center text-xs font-bold text-morandi-blue font-serif shrink-0">
                         {asset.symbol.substring(0, 2)}
                       </div>
                       <div>
-                         <div className="text-xs font-bold text-ink-900 font-serif group-hover:text-morandi-blue transition-colors">{asset.symbol}</div>
-                         <div className="text-[10px] text-ink-400 font-serif-num">
-                            {asset.currency === 'USD' ? '$' : 'NT$'}{asset.currentPrice}
-                         </div>
+                        <div className="text-xs font-bold text-ink-900 font-serif">
+                          {asset.symbol}
+                        </div>
+                        <div className="text-[10px] text-ink-400 font-serif-num">
+                          {isPrivacyMode ? '••' : formatCurrency(livePrice, asset.currency)}
+                        </div>
                       </div>
-                   </div>
-                   <div className={`text-xs font-bold font-serif-num px-2 py-1 rounded-md ${
-                     asset.change24h >= 0 
-                       ? 'text-morandi-sage bg-morandi-sageLight' 
-                       : 'text-morandi-rose bg-morandi-roseLight'
-                   }`}>
-                      {asset.change24h > 0 ? '+' : ''}{asset.change24h}%
-                   </div>
-                </div>
-              ))}
-              {topMovers.length === 0 && (
-                <div className="text-center py-4 text-xs text-ink-400 font-serif">
-                   暫無波動數據
-                </div>
-              )}
-           </div>
-        </div>
-      </div>
-
-      {/* 4. Holdings Section */}
-      <div className="bg-transparent space-y-4">
-        <div className="flex items-center justify-between sticky top-0 bg-paper/95 backdrop-blur-sm z-10 py-2">
-            <h3 className="text-lg font-bold font-serif text-ink-900">我的持股</h3>
-            <div className="flex gap-2">
-               {['All', 'Stock', 'Crypto'].map(f => (
-                 <button 
-                    key={f}
-                    onClick={() => setFilter(f as any)}
-                    className={`px-3 py-1 text-xs rounded-full font-serif transition-all ${filter === f ? 'bg-ink-800 text-white' : 'bg-stone-100 text-ink-400'}`}
-                 >
-                    {filterLabels[f] || f}
-                 </button>
-               ))}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold font-serif-num text-ink-900">
+                        {isPrivacyMode ? '••' : formatCurrency(value)}
+                      </div>
+                      <div
+                        className={`text-[10px] font-serif-num ${
+                          pnl >= 0 ? 'text-morandi-sage' : 'text-morandi-rose'
+                        }`}
+                      >
+                        {pnl >= 0 ? '+' : ''}
+                        {isPrivacyMode ? '••' : formatCurrency(pnl)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-ink-400" size={16} />
-          <input 
-            type="text" 
-            placeholder="搜尋代號或名稱..." 
-            className="w-full bg-white border border-stone-200 text-ink-900 pl-10 pr-4 py-3 rounded-xl text-sm focus:outline-none focus:border-morandi-blue focus:ring-1 focus:ring-morandi-blue/20 transition-all font-serif shadow-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {/* List */}
-        <div className="grid grid-cols-1 gap-4">
-          {displayAssets.length > 0 ? displayAssets.map(asset => {
-            const { pl, plPercent } = getProfitLoss(asset);
-            const isProfit = pl >= 0;
-            const isTW = asset.currency === 'TWD';
-            const isUS = asset.currency === 'USD';
-
-            return (
-              <div 
-                key={asset.id} 
-                onClick={() => setSelectedAsset(asset)}
-                className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm hover:shadow-soft transition-all group cursor-pointer active:scale-[0.98]"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center text-sm font-bold text-morandi-blue font-serif shrink-0">
-                        {asset.symbol.substring(0, 2)}
-                      </div>
-                      {/* Region Badge */}
-                      <div className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 text-[8px] font-bold rounded text-white font-serif ${isTW ? 'bg-morandi-sage' : 'bg-morandi-blue'}`}>
-                          {isTW ? 'TW' : 'US'}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-ink-900 font-serif leading-tight text-lg">{asset.symbol}</h4>
-                      <p className="text-xs text-ink-400 font-serif">{asset.name}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-serif-num text-base font-bold flex items-center justify-end gap-1 ${isProfit ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
-                      {isProfit ? <TrendingUp size={14}/> : <TrendingDown size={14}/>}
-                      {formatCurrency(pl, asset.currency)}
-                    </div>
-                    <div className={`text-xs font-medium ${isProfit ? 'text-green-700/60' : 'text-red-700/60'}`}>
-                      {plPercent.toFixed(2)}%
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions & Price */}
-                <div className="flex items-center justify-between pt-3 border-t border-stone-50 min-h-[36px]">
-                   <div className="text-xs text-ink-400 font-serif">
-                      現價 <span className="text-ink-900 font-serif-num font-bold ml-1">{formatCurrency(asset.currentPrice, asset.currency)}</span>
-                      <span className="mx-2 text-stone-300">|</span>
-                      持有 <span className="text-ink-900 font-serif-num font-bold ml-1">{asset.quantity}</span>
-                   </div>
-                   
-                   {/* Desktop Hover Actions - Hidden on mobile to keep list clean */}
-                   <div className="hidden md:flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleTransaction(asset, 'buy'); }}
-                        className="px-3 py-1.5 bg-morandi-sageLight text-morandi-sage text-xs font-bold rounded-lg hover:bg-morandi-sage hover:text-white transition-colors"
-                      >
-                        買入
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleTransaction(asset, 'sell'); }}
-                        className="px-3 py-1.5 bg-morandi-roseLight text-morandi-rose text-xs font-bold rounded-lg hover:bg-morandi-rose hover:text-white transition-colors"
-                      >
-                        賣出
-                      </button>
-                   </div>
-                </div>
-              </div>
-            );
-          }) : (
-             <div className="text-center py-10 opacity-50">
-               <p className="font-serif text-ink-400">沒有符合搜尋的持股</p>
-               <button onClick={handleOpenBuyNew} className="text-morandi-blue text-sm font-bold mt-2 hover:underline">新增第一筆持股</button>
-             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* Section 6: 訂閱摘要（預留）*/}
+      {/* Reserved for subscription tracking — to be implemented in a future spec */}
 
       {/* Detail Modal */}
       {selectedAsset && (
