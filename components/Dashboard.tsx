@@ -7,8 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import type { StockTransaction } from './BuyStockModal';
 import { useExchangeRates } from '../services/exchangeRateService';
 import { format, parseISO, isSameDay, subDays } from 'date-fns';
-import { getTransactions, getBudgets } from '../services';
-import { fetchLivePrices } from '../services/price.service';
+import { getTransactions, getBudgets, fetchLivePrices } from '../services';
 import type { Transaction } from '../services/transaction.service';
 import type { Budget } from '../services/budget.service';
 
@@ -102,7 +101,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     loadPrices();
     const interval = setInterval(loadPrices, 60_000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [assets]);
 
   // Filter Assets based on Scope FIRST
   const scopeFilteredAssets = useMemo(() => {
@@ -215,7 +214,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   }, [budgets, transactions]);
 
   const recentTransactions = useMemo(
-    () => transactions.slice(0, 3),
+    () => [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3),
     [transactions]
   );
 
