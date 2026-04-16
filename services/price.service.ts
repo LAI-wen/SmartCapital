@@ -26,6 +26,7 @@ async function fetchTWSE(symbols: string[]): Promise<Map<string, number>> {
   const res = await fetch(
     `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${query}`
   );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   for (const item of data.msgArray ?? []) {
     const price = parseFloat(item.z ?? item.y ?? '');
@@ -47,6 +48,7 @@ async function fetchCoinGecko(symbols: string[]): Promise<Map<string, number>> {
   const res = await fetch(
     `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
   );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   for (const symbol of symbols) {
     const id = COINGECKO_ID[symbol.toUpperCase()];
@@ -68,6 +70,7 @@ async function fetchFinnhub(symbols: string[]): Promise<Map<string, number>> {
       const res = await fetch(
         `https://finnhub.io/api/v1/quote?symbol=${s}&token=${key}`
       );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       return { symbol: s, price: data.c as number };
     })
@@ -78,6 +81,8 @@ async function fetchFinnhub(symbols: string[]): Promise<Map<string, number>> {
       setCache(r.value.symbol, r.value.price);
     }
   }
+  const anyRejected = settled.some(r => r.status === 'rejected');
+  if (anyRejected && result.size === 0) throw new Error('All Finnhub fetches failed');
   return result;
 }
 
