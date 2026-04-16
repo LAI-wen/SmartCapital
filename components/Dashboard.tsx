@@ -483,45 +483,49 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
         </div>
       </div>
 
-      {/* 2. Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-         <button
-           onClick={() => navigate('/ledger')}
-           className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-xl shadow-sm border border-stone-100 active:scale-95 transition-all hover:border-morandi-blue/30"
-         >
-            <div className="w-10 h-10 rounded-full bg-morandi-blueLight flex items-center justify-center text-morandi-blue">
-               <ReceiptText size={20} />
+      {/* Section 2: 本月收支摘要 */}
+      <button
+        onClick={() => navigate('/analytics')}
+        className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100 w-full text-left active:scale-[0.99] transition-all"
+      >
+        <h3 className="text-sm font-bold font-serif text-ink-900 mb-3 flex items-center justify-between">
+          本月收支摘要
+          <ChevronRight size={16} className="text-ink-400" />
+        </h3>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[
+            { label: '收入', value: monthlyStats.income, color: 'text-ink-900' },
+            { label: '支出', value: monthlyStats.expense, color: 'text-morandi-rose' },
+            {
+              label: '結餘',
+              value: monthlyStats.net,
+              color: monthlyStats.net >= 0 ? 'text-morandi-sage' : 'text-morandi-rose',
+            },
+          ].map(chip => (
+            <div key={chip.label} className="bg-stone-50 rounded-xl p-3 text-center">
+              <div className={`text-sm font-bold font-serif-num ${chip.color}`}>
+                {isPrivacyMode ? '••' : formatCurrency(chip.value)}
+              </div>
+              <div className="text-[10px] text-ink-400 font-serif mt-0.5">{chip.label}</div>
             </div>
-            <span className="text-xs font-bold text-ink-900 font-serif">記一筆</span>
-         </button>
-         <button
-           onClick={handleOpenBuyNew}
-           className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-xl shadow-sm border border-stone-100 active:scale-95 transition-all hover:border-morandi-blue/30"
-         >
-            <div className="w-10 h-10 rounded-full bg-morandi-sageLight flex items-center justify-center text-morandi-sage">
-               <Briefcase size={20} />
-            </div>
-            <span className="text-xs font-bold text-ink-900 font-serif">買股票</span>
-         </button>
-         <button
-           onClick={handleOpenImport}
-           className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-xl shadow-sm border border-stone-100 active:scale-95 transition-all hover:border-amber-600/30"
-         >
-            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
-               <Package size={20} />
-            </div>
-            <span className="text-xs font-bold text-ink-900 font-serif">導入持股</span>
-         </button>
-         <button
-           onClick={() => navigate('/strategy')}
-           className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-xl shadow-sm border border-stone-100 active:scale-95 transition-all hover:border-morandi-blue/30"
-         >
-            <div className="w-10 h-10 rounded-full bg-morandi-sand flex items-center justify-center text-ink-700">
-               <Activity size={20} />
-            </div>
-            <span className="text-xs font-bold text-ink-900 font-serif">策略</span>
-         </button>
-      </div>
+          ))}
+        </div>
+        {monthlyStats.topCategories.length > 0 && (
+          <div className="space-y-1.5">
+            {monthlyStats.topCategories.map(cat => (
+              <div key={cat.category} className="flex items-center justify-between text-xs">
+                <span className="text-ink-700 font-serif">{cat.category}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-ink-400 font-serif-num">{cat.pct.toFixed(0)}%</span>
+                  <span className="font-bold font-serif-num text-morandi-rose">
+                    {isPrivacyMode ? '••' : formatCurrency(cat.amount)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </button>
 
       {/* 3. Mid Section: Allocation & Top Movers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
