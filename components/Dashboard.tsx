@@ -35,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
 
   // Buy/Sell/Import Modal State
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
-  const [buyModalMode, setBuyModalMode] = useState<'buy' | 'sell' | 'import'>('buy');
+  const [buyModalMode, setBuyModalMode] = useState<'buy' | 'sell'>('buy');
   const [transactionAsset, setTransactionAsset] = useState<Asset | null>(null);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -221,12 +221,11 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   }, [scopeFilteredAssets, liveprices, exchangeRate]);
 
   const formatCurrency = (val: number, currency: string = 'TWD', minimumFractionDigits = 0) => {
-    if (isPrivacyMode) return '••••••';
-    return new Intl.NumberFormat('en-US', { 
-      style: 'currency', 
-      currency: currency, 
-      minimumFractionDigits, 
-      maximumFractionDigits: 0 
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits,
+      maximumFractionDigits: 0
     }).format(val);
   };
 
@@ -289,7 +288,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     }
 
     // 2. Handle Asset Movement
-    if (txn.type === 'buy' || txn.type === 'import') {
+    if (txn.type === 'buy') {
       if (existingIndex >= 0) {
         // Update existing
         const asset = updatedAssets[existingIndex];
@@ -555,7 +554,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
                 {isPrivacyMode ? '••' : formatCurrency(Math.abs(investSummary.pnl))}
                 <span className="text-xs">
                   ({investSummary.pnl >= 0 ? '+' : ''}
-                  {investSummary.pnlPct.toFixed(2)}%)
+                  {isPrivacyMode ? '••' : investSummary.pnlPct.toFixed(2)}%)
                 </span>
                 <span className="text-xs text-ink-400 font-serif ml-1">未實現損益</span>
               </div>
