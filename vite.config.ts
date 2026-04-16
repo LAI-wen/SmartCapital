@@ -33,13 +33,6 @@ export default defineConfig(({ mode }) => {
                 return 'icons';
               }
 
-              if (
-                id.includes('recharts') ||
-                id.includes('victory-vendor') ||
-                id.includes('/d3-')
-              ) {
-                return 'charts';
-              }
 
               if (id.includes('i18next') || id.includes('react-i18next')) {
                 return 'i18n';

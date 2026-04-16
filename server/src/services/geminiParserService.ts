@@ -12,6 +12,7 @@ const VALID_INCOME_CATEGORIES = ['薪資', '獎金', '投資收益', '兼職', '
 export interface GeminiParseResult {
   amount: number;
   category: string;
+  subcategory?: string;
   note: string;
   type: 'expense' | 'income';
 }
@@ -44,13 +45,19 @@ export async function parseWithGemini(
 訊息：「${rawText}」
 已確認金額：${amount}
 
-請判斷這是支出還是收入，並選擇最合適的分類。
+請判斷這是支出還是收入，並選擇最合適的分類與子分類。
 
 支出分類（選一個）：${VALID_CATEGORIES.join('、')}
+飲食子分類（選一個，若適用）：早餐、午餐、晚餐、下午茶、飲料、零食、宵夜
 收入分類（選一個）：${VALID_INCOME_CATEGORIES.join('、')}
 
+判斷規則：
+- 咖啡（美式、拿鐵、卡布等）、手搖飲 → 飲料 或 下午茶
+- 正餐（飯、麵、便當等）→ 早餐/午餐/晚餐（依時段）
+- 甜點、蛋糕 → 下午茶
+
 只回傳 JSON，格式如下，不要加其他文字：
-{"type":"expense","category":"飲食","note":"午餐"}`;
+{"type":"expense","category":"飲食","subcategory":"下午茶","note":"檸檬冰美式"}`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
@@ -65,9 +72,15 @@ export async function parseWithGemini(
     const validList = type === 'income' ? VALID_INCOME_CATEGORIES : VALID_CATEGORIES;
     const category = validList.includes(parsed.category) ? parsed.category : (type === 'income' ? '其他' : '飲食');
 
+    const VALID_SUBCATEGORIES = ['早餐', '午餐', '晚餐', '下午茶', '飲料', '零食', '宵夜'];
+    const subcategory = parsed.subcategory && VALID_SUBCATEGORIES.includes(parsed.subcategory)
+      ? parsed.subcategory
+      : undefined;
+
     return {
       amount,
       category,
+      subcategory,
       note: String(parsed.note || rawText).slice(0, 50),
       type,
     };

@@ -10,10 +10,10 @@ import { parseWithGemini, isGeminiEnabled } from './geminiParserService.js';
 const DEFAULT_KEYWORDS = {
   // 飲食相關
   飲食: ['吃', '喝', '午餐', '晚餐', '早餐', '便當', '餐廳', '食物', '粥', '湯', '飯', '麵', '滷', '燒', '烤', '炒', '豆花', '豆漿', '仙草', '愛玉', '饅頭', '包子', '水餃', '餃', '壽司', '拉麵', '披薩', '漢堡', '三明治', '沙拉', '關東煮'],
-  下午茶: ['下午茶', '咖啡', '甜點', '蛋糕', '星巴克', 'starbucks', '85度c', 'cama', '鬆餅', '馬卡龍', '布丁'],
+  下午茶: ['下午茶', '咖啡', '美式', '冰美式', '熱美式', '拿鐵', '冰拿鐵', '卡布奇諾', '卡布', '摩卡', '馥列白', '冷萃', '冰滴', '甜點', '蛋糕', '星巴克', 'starbucks', '85度c', 'cama', '路易莎', 'louisa', '伯朗', '鬆餅', '馬卡龍', '布丁', '提拉米蘇'],
   零食: ['零食', '餅乾', '糖果', '巧克力', '洋芋片', '點心'],
   宵夜: ['宵夜', '消夜', '夜市', '鹽酥雞'],
-  飲料: ['飲料', '手搖', '珍奶', '奶茶', '果汁', '可樂', '綠茶', '紅茶', '烏龍茶', '青茶'],
+  飲料: ['飲料', '手搖', '珍奶', '奶茶', '果汁', '可樂', '綠茶', '紅茶', '烏龍茶', '青茶', '鮮奶茶', '波霸', '椰果', '茶飲'],
 
   // 交通相關
   交通: ['車', '油', '停車', '公車', '捷運', 'mrt', '高鐵', '台鐵', '火車'],
@@ -142,6 +142,7 @@ export async function parseExpenseCommand(
       return {
         amount: absAmount,
         category: geminiResult.category,
+        subcategory: geminiResult.subcategory,
         note: geminiResult.note,
         type: geminiResult.type,
         confidence: 'medium',
