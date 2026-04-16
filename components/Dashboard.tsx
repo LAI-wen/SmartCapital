@@ -527,6 +527,45 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
         )}
       </button>
 
+      {/* Section 3: 預算警示 */}
+      {budgets.length > 0 && (
+        <button
+          onClick={() => navigate('/budget-settings')}
+          className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100 w-full text-left active:scale-[0.99] transition-all"
+        >
+          <h3 className="text-sm font-bold font-serif text-ink-900 mb-3 flex items-center justify-between">
+            預算警示
+            <ChevronRight size={16} className="text-ink-400" />
+          </h3>
+          {budgetAlerts.length === 0 ? (
+            <p className="text-xs text-morandi-sage font-serif">本月預算正常 ✓</p>
+          ) : (
+            <div className="space-y-3">
+              {budgetAlerts.map(b => (
+                <div key={b.id}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-serif text-ink-700">{b.category}</span>
+                    <span className="font-serif-num text-ink-500">
+                      {isPrivacyMode ? '••' : formatCurrency(b.spent)}{' '}
+                      /{' '}
+                      {isPrivacyMode ? '••' : formatCurrency(b.amount)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        b.pct >= 1 ? 'bg-morandi-rose' : 'bg-amber-400'
+                      }`}
+                      style={{ width: `${Math.min(b.pct * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </button>
+      )}
+
       {/* 3. Mid Section: Allocation & Top Movers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
