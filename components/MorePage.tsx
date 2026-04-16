@@ -51,6 +51,13 @@ const MorePage: React.FC<MorePageProps> = ({ onLogout, authMode }) => {
           desc: "管理資金帳戶和餘額",
           action: () => navigate('/account-management'),
           color: "bg-morandi-blueLight/30 text-morandi-blue"
+        },
+        {
+          label: "預算設定",
+          icon: <Wallet size={20} />,
+          desc: "設定各類別月預算上限",
+          action: () => navigate('/budget-settings'),
+          color: "bg-morandi-sageLight text-morandi-sage"
         }
       ]
     },

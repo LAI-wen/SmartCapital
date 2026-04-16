@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Transaction, TransactionType, Account } from '../types';
 import { TRANSACTION_CATEGORIES } from '../constants';
-import { getTransactions as fetchTransactions, createTransaction as apiCreateTransaction, deleteTransaction as apiDeleteTransaction, batchDeleteTransactions as apiBatchDeleteTransactions, getBudgets, setBudget, removeBudget, type Budget } from '../services';
+import { getTransactions as fetchTransactions, createTransaction as apiCreateTransaction, deleteTransaction as apiDeleteTransaction, batchDeleteTransactions as apiBatchDeleteTransactions, getBudgets, removeBudget, type Budget } from '../services';
 import {
   Plus, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase,
   TrendingUp, Gift, ChevronLeft, ChevronRight,
@@ -62,9 +62,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
 
   // 預算狀態
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
-  const [budgetCategory, setBudgetCategory] = useState('飲食');
-  const [budgetAmount, setBudgetAmountInput] = useState('');
 
   // 🔥 載入交易記錄從資料庫
   useEffect(() => {
@@ -471,20 +468,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
     }
   };
 
-  const handleSaveBudget = async () => {
-    const amt = parseFloat(budgetAmount);
-    if (!budgetCategory || isNaN(amt) || amt <= 0) return;
-    const saved = await setBudget(budgetCategory, amt);
-    if (saved) {
-      setBudgets(prev => {
-        const filtered = prev.filter(b => b.category !== budgetCategory);
-        return [...filtered, saved].sort((a, b) => a.category.localeCompare(b.category));
-      });
-    }
-    setBudgetAmountInput('');
-    setIsBudgetModalOpen(false);
-  };
-
   const handleRemoveBudget = async (category: string) => {
     await removeBudget(category);
     setBudgets(prev => prev.filter(b => b.category !== category));
@@ -715,10 +698,10 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
              <div className="flex items-center justify-between px-4 py-3 border-b border-stone-50">
                <h3 className="text-xs font-bold font-serif text-ink-400">本月預算</h3>
                <button
-                 onClick={() => setIsBudgetModalOpen(true)}
+                 onClick={() => navigate('/budget-settings')}
                  className="text-[10px] text-morandi-blue font-serif hover:underline"
                >
-                 + 設定
+                 前往設定
                </button>
              </div>
              <div className="divide-y divide-stone-50">
@@ -759,53 +742,11 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
 
          {budgets.length === 0 && (
            <button
-             onClick={() => setIsBudgetModalOpen(true)}
+             onClick={() => navigate('/budget-settings')}
              className="w-full py-3 rounded-2xl border border-dashed border-stone-200 text-xs text-ink-300 font-serif hover:border-morandi-blue hover:text-morandi-blue transition-colors"
            >
              + 設定月預算
            </button>
-         )}
-
-         {/* Budget Modal */}
-         {isBudgetModalOpen && (
-           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 backdrop-blur-sm" onClick={() => setIsBudgetModalOpen(false)}>
-             <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 pb-8 shadow-xl" onClick={e => e.stopPropagation()}>
-               <h3 className="text-base font-bold font-serif text-ink-900 mb-4">設定月預算</h3>
-               <div className="space-y-3">
-                 <div>
-                   <label className="text-xs text-ink-400 font-serif mb-1.5 block">分類</label>
-                   <div className="flex flex-wrap gap-2">
-                     {['飲食', '交通', '居住', '娛樂', '購物', '醫療', '其他', '總計'].map(cat => (
-                       <button
-                         key={cat}
-                         onClick={() => setBudgetCategory(cat)}
-                         className={`px-3 py-1.5 rounded-xl text-xs font-serif border transition-all ${budgetCategory === cat ? 'bg-ink-900 text-white border-ink-900' : 'bg-white text-ink-500 border-stone-200 hover:border-ink-400'}`}
-                       >
-                         {cat}
-                       </button>
-                     ))}
-                   </div>
-                 </div>
-                 <div>
-                   <label className="text-xs text-ink-400 font-serif mb-1.5 block">月預算金額（元）</label>
-                   <input
-                     type="number"
-                     placeholder="例：5000"
-                     value={budgetAmount}
-                     onChange={e => setBudgetAmountInput(e.target.value)}
-                     className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm font-serif-num focus:outline-none focus:border-morandi-blue"
-                     autoFocus
-                   />
-                 </div>
-                 <button
-                   onClick={handleSaveBudget}
-                   className="w-full bg-ink-900 text-white rounded-xl py-3 text-sm font-serif font-bold hover:bg-ink-700 transition-colors"
-                 >
-                   儲存
-                 </button>
-               </div>
-             </div>
-           </div>
          )}
 
          {/* Transaction List */}

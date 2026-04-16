@@ -21,6 +21,7 @@ const SettingsPage = lazy(() => import('./components/SettingsPage'));
 const HelpPage = lazy(() => import('./components/HelpPage'));
 const AccountManagementPage = lazy(() => import('./components/AccountManagementPage'));
 const PriceAlertsPage = lazy(() => import('./components/PriceAlertsPage'));
+const BudgetSettingsPage = lazy(() => import('./components/BudgetSettingsPage'));
 
 const PageLoader: React.FC = () => (
   <div className="flex min-h-[40vh] items-center justify-center">
@@ -285,6 +286,7 @@ const AppContent: React.FC = () => {
       case '/help': return '使用指南';
       case '/account-management': return '帳戶管理';
       case '/price-alerts': return '價格警示';
+      case '/budget-settings': return '預算設定';
       default: return '智投手帳';
     }
   };
@@ -469,6 +471,7 @@ const AppContent: React.FC = () => {
                     />
                   }
                 />
+                <Route path="/budget-settings" element={<BudgetSettingsPage />} />
               </Routes>
             </Suspense>
           </div>
