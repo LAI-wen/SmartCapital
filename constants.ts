@@ -1,5 +1,5 @@
 
-import { Asset, Transaction, Notification, Account } from './types';
+import { Asset, Transaction, Account } from './types';
 
 export const MOCK_EXCHANGE_RATE = 32.5; // 1 USD = 32.5 TWD
 
@@ -144,41 +144,6 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
     category: '居住',
     accountId: 'acc_2',
     note: '11月份房租'
-  }
-];
-
-export const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    title: '價格預警：TSLA',
-    message: 'Tesla 股價已突破 $240，達到您的設定目標。',
-    time: '10 分鐘前',
-    type: 'alert',
-    read: false
-  },
-  {
-    id: '2',
-    title: '配息入帳通知',
-    message: '0050 季度配息 $3,500 已存入您的現金帳戶。',
-    time: '2 小時前',
-    type: 'success',
-    read: false
-  },
-  {
-    id: '3',
-    title: '週報生成',
-    message: '您的上週資產分析報告已準備就緒，點擊查看。',
-    time: '昨天',
-    type: 'info',
-    read: true
-  },
-  {
-    id: '4',
-    title: '系統更新',
-    message: '策略實驗室新增「價值平均法」計算器，歡迎試用。',
-    time: '2 天前',
-    type: 'info',
-    read: true
   }
 ];
 

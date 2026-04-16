@@ -2,18 +2,24 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Check, Info, AlertTriangle } from 'lucide-react';
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, type Notification } from '../services/notification.service';
-import { getUserId } from '../services/user.service';
 
 const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
-      const data = await getNotifications(20);
-      setNotifications(data);
-      setIsLoading(false);
+      setIsError(false);
+      try {
+        const data = await getNotifications(20);
+        setNotifications(data);
+      } catch {
+        setIsError(true);
+      } finally {
+        setIsLoading(false);
+      }
     };
     load();
   }, []);
@@ -25,7 +31,7 @@ const NotificationsPage: React.FC = () => {
 
   const markAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    await markAllNotificationsAsRead(getUserId());
+    await markAllNotificationsAsRead();
   };
 
   const getIcon = (type: string) => {
@@ -51,6 +57,15 @@ const NotificationsPage: React.FC = () => {
           <div className="w-8 h-8 border-2 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-sm text-ink-400 font-serif">載入通知中...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 opacity-50">
+        <Bell size={48} className="text-stone-300 mb-4" />
+        <p className="font-serif text-ink-400">無法載入通知，請稍後再試</p>
       </div>
     );
   }

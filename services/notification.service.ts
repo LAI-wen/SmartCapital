@@ -33,6 +33,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<bo
 /**
  * 標記所有通知為已讀
  */
-export async function markAllNotificationsAsRead(userId: string): Promise<boolean> {
+export async function markAllNotificationsAsRead(): Promise<boolean> {
+  const userId = getUserId();
   return postBoolean(`/api/notifications/${userId}/read-all`);
 }
