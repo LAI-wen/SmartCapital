@@ -27,7 +27,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   const navigate = useNavigate();
 
   // Get real-time exchange rates
-  const { rates, loading: ratesLoading } = useExchangeRates('USD');
+  const { rates } = useExchangeRates('USD');
   const exchangeRate = rates.TWD || MOCK_EXCHANGE_RATE; // Fallback to mock if API fails
 
   // Modal State
@@ -103,57 +103,12 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     });
   }, [assets, investmentScope]);
 
-  // Calculate Totals based on Filtered Assets and Scope
-  const summary = useMemo(() => {
-    // 1. Calculate Investments (Assets)
-    let investValue = 0;
-    let investDayChange = 0;
-
-    scopeFilteredAssets.forEach(asset => {
-      // Normalize to TWD (Base Currency for Dashboard Total) or USD based on preference.
-      // Let's assume Base Currency is TWD for display if TW scope is active, or USD if only US.
-      // For simplicity in this demo, we normalize everything to TWD if TW is active, else USD.
-      // Actually, let's just stick to TWD as base for now since it's "SmartCapital TW".
-      
-      let valueTWD = 0;
-      let changeTWD = 0;
-      
-      const assetValue = asset.quantity * asset.currentPrice;
-      const prevPrice = asset.currentPrice / (1 + asset.change24h / 100);
-      const prevValue = asset.quantity * prevPrice;
-      const assetChange = assetValue - prevValue;
-
-      if (asset.currency === 'USD') {
-        valueTWD = assetValue * exchangeRate;
-        changeTWD = assetChange * exchangeRate;
-      } else {
-        valueTWD = assetValue;
-        changeTWD = assetChange;
-      }
-
-      investValue += valueTWD;
-      investDayChange += changeTWD;
-    });
-
-    // 2. Calculate Cash (Accounts)
-    let cashValueTWD = 0;
-    accounts.forEach(acc => {
-      // Filter accounts by scope too? Ideally yes, but cash is usually global.
-      // We will just sum all cash.
-      if (acc.currency === 'USD') cashValueTWD += acc.balance * exchangeRate;
-      else cashValueTWD += acc.balance;
-    });
-
-    const totalValue = investValue + cashValueTWD;
-
-    return {
-      totalValue, // In TWD
-      investValue, // In TWD
-      cashValueTWD,
-      investDayChange, // In TWD
-      dayChangePercent: investValue > 0 ? (investDayChange / investValue) * 100 : 0
-    };
-  }, [scopeFilteredAssets, accounts, investmentScope, exchangeRate]);
+  // Calculate Cash (Accounts)
+  const cashValueTWD = useMemo(() => {
+    return accounts.reduce((sum, acc) =>
+      acc.currency === 'USD' ? sum + acc.balance * exchangeRate : sum + acc.balance
+    , 0);
+  }, [accounts, exchangeRate]);
 
   const monthlyStats = useMemo(() => {
     const prefix = format(new Date(), 'yyyy-MM');
@@ -345,7 +300,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
           <div>
             <p className="text-xs text-ink-400 font-serif mb-1">現金 / 存款</p>
             <div className="text-3xl font-bold font-serif-num text-ink-900">
-              {isPrivacyMode ? '•••••' : formatCurrency(summary.cashValueTWD)}
+              {isPrivacyMode ? '•••••' : formatCurrency(cashValueTWD)}
             </div>
           </div>
           <div className="p-2 bg-stone-50 rounded-xl">
@@ -400,7 +355,7 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
           ].map(chip => (
             <div key={chip.label} className="bg-stone-50 rounded-xl p-3 text-center">
               <div className={`text-sm font-bold font-serif-num ${chip.color}`}>
-                {isPrivacyMode ? '••' : formatCurrency(chip.value)}
+                {isPrivacyMode ? '••' : formatCurrency(chip.label === '結餘' ? Math.abs(chip.value) : chip.value)}
               </div>
               <div className="text-[10px] text-ink-400 font-serif mt-0.5">{chip.label}</div>
             </div>
@@ -608,8 +563,8 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
                           pnl >= 0 ? 'text-morandi-sage' : 'text-morandi-rose'
                         }`}
                       >
-                        {pnl >= 0 ? '+' : ''}
-                        {isPrivacyMode ? '••' : formatCurrency(pnl)}
+                        {pnl >= 0 ? '+' : '-'}
+                        {isPrivacyMode ? '••' : formatCurrency(Math.abs(pnl))}
                       </div>
                     </div>
                   </div>
