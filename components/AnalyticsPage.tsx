@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
 import { COLORS } from '../constants';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, ChevronLeft, ChevronRight, CalendarDays, X as XIcon } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, ChevronLeft, ChevronRight, CalendarDays, X as XIcon, ArrowRight } from 'lucide-react';
 import { getTransactions, getAccounts, getAssets } from '../services';
 import { Transaction, Account, Asset, InvestmentScope } from '../types';
 import {
@@ -41,6 +42,7 @@ interface AnalyticsPageProps {
 type ViewMode = 'day' | 'week' | 'month' | 'year' | 'calendar';
 
 const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investmentScope }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'income_expense' | 'asset'>('income_expense');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -712,6 +714,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
                         const prev = prevPeriodCategoryMap[item.name] || 0;
                         const change = prev > 0 ? ((item.value - prev) / prev) * 100 : null;
                         const color = COLORS.chart[idx % COLORS.chart.length];
+                        const monthParam = format(currentDate, 'yyyy-MM');
                         return (
                           <div key={item.name}>
                             <div className="flex items-center justify-between text-sm mb-1">
@@ -727,6 +730,13 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
                                     {change > 0 ? '↑' : '↓'}{Math.abs(change).toFixed(0)}%
                                   </span>
                                 )}
+                                <button
+                                  onClick={() => navigate(`/ledger?category=${encodeURIComponent(item.name)}&month=${monthParam}`)}
+                                  className="p-1 hover:bg-stone-100 rounded text-ink-300 hover:text-morandi-blue transition-colors"
+                                  title={`在帳本中查看${item.name}`}
+                                >
+                                  <ArrowRight size={14} />
+                                </button>
                               </div>
                             </div>
                             <div className="h-1 bg-stone-100 rounded-full overflow-hidden">

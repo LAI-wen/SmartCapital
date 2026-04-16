@@ -1,8 +1,9 @@
 
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Transaction, TransactionType, Account } from '../types';
-import { MOCK_TRANSACTIONS, TRANSACTION_CATEGORIES } from '../constants';
+import { TRANSACTION_CATEGORIES } from '../constants';
 import { getTransactions as fetchTransactions, createTransaction as apiCreateTransaction, deleteTransaction as apiDeleteTransaction, batchDeleteTransactions as apiBatchDeleteTransactions, getBudgets, setBudget, removeBudget, type Budget } from '../services';
 import {
   Plus, Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase,
@@ -31,11 +32,15 @@ const getChineseWeekDay = (dateStr: string) => {
 };
 
 const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpdate }) => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
   // --- STATE ---
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   
   // Quick Add State
   const [quickAmount, setQuickAmount] = useState('');
@@ -83,9 +88,30 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
     getBudgets().then(setBudgets).catch(console.error);
   }, []);
 
+  // Consume Analytics handoff once, then clear the query string.
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    const monthParam = searchParams.get('month');
+
+    if (!categoryParam && !monthParam) return;
+
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+
+    if (monthParam) {
+      const [year, month] = monthParam.split('-').map(Number);
+      if (!Number.isNaN(year) && !Number.isNaN(month)) {
+        setCurrentDate(new Date(year, month - 1, 1));
+      }
+    }
+
+    navigate('/ledger', { replace: true });
+  }, [navigate, searchParams]);
+
   // --- DATA COMPUTATION ---
 
-  const filteredTransactions = useMemo(() => {
+  const periodTransactions = useMemo(() => {
     return transactions.filter(t => {
       const tDate = new Date(t.date);
       if (viewMode === 'month') {
@@ -93,8 +119,14 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
       } else {
         return isSameYear(tDate, currentDate);
       }
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    });
   }, [transactions, currentDate, viewMode]);
+
+  const filteredTransactions = useMemo(() => {
+    return periodTransactions
+      .filter(t => selectedCategory === 'All' || t.category === selectedCategory)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [periodTransactions, selectedCategory]);
 
   const summary = useMemo(() => {
     let income = 0;
@@ -542,6 +574,22 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
               <ChevronRight size={20} />
            </button>
         </div>
+
+        {selectedCategory !== 'All' && (
+          <div className="flex items-center justify-between px-4 py-2 bg-morandi-blueLight/20 border-b border-morandi-blue/10">
+            <div className="flex items-center gap-2 text-xs font-serif text-morandi-blue">
+              <Tag size={14} />
+              <span>分類篩選：{selectedCategory}</span>
+            </div>
+            <button
+              onClick={() => setSelectedCategory('All')}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-ink-500 hover:bg-white hover:text-ink-900 transition-colors"
+            >
+              <X size={14} />
+              <span>清除</span>
+            </button>
+          </div>
+        )}
 
         {/* 批次刪除工具欄 */}
         <div className="flex items-center justify-between px-4 py-2 bg-stone-50 border-b border-stone-100">
