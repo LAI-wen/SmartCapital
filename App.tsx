@@ -4,8 +4,8 @@ import { HashRouter, Routes, Route, NavLink, useLocation, useNavigate } from 're
 import { LayoutDashboard, ReceiptText, Bell, Menu, Settings, ChevronRight, TrendingUp, Calculator, HelpCircle, Wallet } from 'lucide-react';
 import WelcomePage from './components/WelcomePage';
 import OnboardingModal from './components/OnboardingModal';
-import { MOCK_ASSETS, MOCK_NOTIFICATIONS } from './constants';
-import { Notification, Asset, Account, InvestmentScope } from './types';
+import { MOCK_ASSETS } from './constants';
+import { Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets, createAccount, getUser } from './services/api';
 import { useLiff } from './contexts/LiffContext';
 import './i18n/config'; // Initialize i18n
@@ -60,8 +60,7 @@ const AppContent: React.FC = () => {
   });
 
   // Notification State
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = 0;
 
   // 🔥 檢查認證狀態並決定是否顯示歡迎頁
   useEffect(() => {
@@ -424,7 +423,7 @@ const AppContent: React.FC = () => {
                   }
                 />
                 <Route path="/strategy" element={<StrategyLabPage />} />
-                <Route path="/notifications" element={<NotificationsPage notifications={notifications} setNotifications={setNotifications} />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/more" element={<MorePage onLogout={handleLogout} authMode={authMode} />} />
                 <Route
                   path="/analytics"

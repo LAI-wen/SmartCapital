@@ -1,21 +1,31 @@
 
-import React from 'react';
-import { Notification } from '../types';
+import React, { useState, useEffect } from 'react';
 import { Bell, Check, Info, AlertTriangle } from 'lucide-react';
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, type Notification } from '../services/notification.service';
+import { getUserId } from '../services/user.service';
 
-interface NotificationsPageProps {
-  notifications: Notification[];
-  setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
-}
+const NotificationsPage: React.FC = () => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-const NotificationsPage: React.FC<NotificationsPageProps> = ({ notifications, setNotifications }) => {
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      const data = await getNotifications(20);
+      setNotifications(data);
+      setIsLoading(false);
+    };
+    load();
+  }, []);
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    await markNotificationAsRead(id);
   };
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    await markAllNotificationsAsRead(getUserId());
   };
 
   const getIcon = (type: string) => {
@@ -34,6 +44,17 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ notifications, se
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96 animate-fade-in">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm text-ink-400 font-serif">載入通知中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in pb-20">
       <div className="flex justify-between items-center mb-6">
@@ -41,8 +62,8 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ notifications, se
            您有 {notifications.filter(n => !n.read).length} 則未讀通知
          </div>
          {notifications.some(n => !n.read) && (
-           <button 
-             onClick={markAllRead} 
+           <button
+             onClick={markAllRead}
              className="text-xs font-bold text-morandi-blue hover:underline font-serif"
            >
              全部標為已讀
@@ -58,8 +79,8 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ notifications, se
            </div>
         ) : (
           notifications.map(n => (
-            <div 
-              key={n.id} 
+            <div
+              key={n.id}
               onClick={() => markAsRead(n.id)}
               className={`
                 relative p-4 rounded-xl border transition-all cursor-pointer
@@ -69,7 +90,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ notifications, se
               {!n.read && (
                 <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-morandi-rose"></div>
               )}
-              
+
               <div className="flex gap-4">
                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${getColor(n.type)}`}>
                     {getIcon(n.type)}
