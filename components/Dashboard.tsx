@@ -443,60 +443,43 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
       
-      {/* 1. Hero Card - Total Assets (Split View) */}
-      <div className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-soft border border-stone-100 group transition-all hover:shadow-lg">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-morandi-sand/50 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-        
-        <div className="relative z-10 flex flex-col gap-6">
-          {/* Top: Net Worth */}
-          <div className="flex flex-col md:flex-row justify-between md:items-end gap-2">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                 <h2 className="text-ink-400 font-serif text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                   <Wallet size={14} className="text-morandi-blue" /> 總淨資產 (TWD)
-                 </h2>
-              </div>
-              <div className="text-4xl md:text-5xl font-serif-num font-medium text-ink-900 tracking-tight flex items-baseline gap-3">
-                {formatCurrency(summary.totalValue)}
-                <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold font-serif-num ${summary.investDayChange >= 0 ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
-                       {summary.investDayChange >= 0 ? '+' : ''}{formatCurrency(summary.investDayChange)}
-                    </span>
-                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded-md ${summary.investDayChange >= 0 ? 'bg-morandi-sageLight text-morandi-sage' : 'bg-morandi-roseLight text-morandi-rose'}`}>
-                       {formatPercent(summary.dayChangePercent)}
-                    </span>
-                </div>
-              </div>
-              {/* Scope/Rate Warning */}
-              {(investmentScope.us || investmentScope.crypto) && (
-                <div className="mt-2 flex items-center gap-1 text-[10px] text-ink-400 font-serif">
-                   <Info size={10} /> 以 1 USD ≈ {exchangeRate.toFixed(2)} TWD 計算 {ratesLoading && '(載入中...)'}
-                </div>
-              )}
+      {/* Section 1: Hero Card */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <p className="text-xs text-ink-400 font-serif mb-1">現金 / 存款</p>
+            <div className="text-3xl font-bold font-serif-num text-ink-900">
+              {isPrivacyMode ? '•••••' : formatCurrency(summary.cashValueTWD)}
             </div>
           </div>
-
-          {/* Bottom: Split (Cash vs Invest) */}
-          <div className="grid grid-cols-2 gap-4 border-t border-stone-100 pt-4">
-             <div className="flex items-start gap-3">
-                <div className="p-2 bg-stone-50 rounded-lg text-ink-400">
-                   <Landmark size={18} />
-                </div>
-                <div>
-                   <div className="text-xs text-ink-400 font-serif mb-0.5">現金/存款</div>
-                   <div className="text-lg font-bold font-serif-num text-ink-900">{formatCurrency(summary.cashValueTWD)}</div>
-                </div>
-             </div>
-             <div className="flex items-start gap-3">
-                <div className="p-2 bg-stone-50 rounded-lg text-ink-400">
-                   <TrendingUp size={18} />
-                </div>
-                <div>
-                   <div className="text-xs text-ink-400 font-serif mb-0.5">投資部位</div>
-                   <div className="text-lg font-bold font-serif-num text-ink-900">{formatCurrency(summary.investValue)}</div>
-                </div>
-             </div>
+          <div className="p-2 bg-stone-50 rounded-xl">
+            <Wallet size={20} className="text-ink-400" />
           </div>
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          {monthlyStats.net >= 0
+            ? <TrendingUp size={14} className="text-morandi-sage" />
+            : <TrendingDown size={14} className="text-morandi-rose" />}
+          <span className={`text-sm font-bold font-serif-num ${
+            monthlyStats.net >= 0 ? 'text-morandi-sage' : 'text-morandi-rose'
+          }`}>
+            {isPrivacyMode ? '••' : formatCurrency(Math.abs(monthlyStats.net))}
+          </span>
+          <span className="text-xs text-ink-400 font-serif">本月結餘</span>
+        </div>
+        <div className="flex gap-4 mt-2">
+          <span className="text-xs text-ink-400 font-serif">
+            收入{' '}
+            <span className="text-ink-700 font-serif-num font-bold">
+              {isPrivacyMode ? '••' : formatCurrency(monthlyStats.income)}
+            </span>
+          </span>
+          <span className="text-xs text-ink-400 font-serif">
+            支出{' '}
+            <span className="text-ink-700 font-serif-num font-bold">
+              {isPrivacyMode ? '••' : formatCurrency(monthlyStats.expense)}
+            </span>
+          </span>
         </div>
       </div>
 
