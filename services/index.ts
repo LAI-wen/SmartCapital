@@ -107,5 +107,11 @@ export {
   removeBudget,
 } from './budget.service';
 
+// Price Service
+export {
+  type FetchPricesResult,
+  fetchLivePrices,
+} from './price.service';
+
 // Exchange Rate Service (existing)
 export * from './exchangeRateService';
