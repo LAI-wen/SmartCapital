@@ -2,10 +2,15 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Asset, Account, InvestmentScope } from '../types';
 import { MOCK_EXCHANGE_RATE } from '../constants';
-import { Wallet, TrendingUp, TrendingDown, Search, Activity, ReceiptText, Briefcase, ChevronRight, Landmark, Info, Package } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Search, Activity, ReceiptText, Briefcase, ChevronRight, Landmark, Info, Package, Coffee, ShoppingBag, Home, Bus, HeartPulse, Gift, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { StockTransaction } from './BuyStockModal';
 import { useExchangeRates } from '../services/exchangeRateService';
+import { format, parseISO, isSameDay, subDays } from 'date-fns';
+import { getTransactions, getBudgets } from '../services';
+import { fetchLivePrices } from '../services/price.service';
+import type { Transaction } from '../services/transaction.service';
+import type { Budget } from '../services/budget.service';
 
 const DashboardAllocationChart = lazy(() => import('./DashboardAllocationChart'));
 const StockDetailModal = lazy(() => import('./StockDetailModal'));
@@ -38,6 +43,13 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
   const [buyModalMode, setBuyModalMode] = useState<'buy' | 'sell' | 'import'>('buy');
   const [transactionAsset, setTransactionAsset] = useState<Asset | null>(null);
 
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [liveprices, setLiveprices] = useState<Map<string, number>>(new Map());
+  const [pricesLoading, setPricesLoading] = useState(true);
+  const [pricesFailed, setPricesFailed] = useState(false);
+  const [isHoldingsExpanded, setIsHoldingsExpanded] = useState(false);
+
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       setShouldLoadAllocationChart(true);
@@ -47,6 +59,50 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
       window.cancelAnimationFrame(frameId);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [txs, bdgs] = await Promise.all([
+          getTransactions(30),
+          getBudgets(),
+        ]);
+        if (!cancelled) {
+          setTransactions(txs);
+          setBudgets(bdgs);
+        }
+      } catch {
+        // sections dependent on this show empty/zero states
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!assets.length) {
+      setPricesLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const loadPrices = async () => {
+      setPricesLoading(true);
+      try {
+        const result = await fetchLivePrices(assets);
+        if (!cancelled) {
+          setLiveprices(result.prices);
+          setPricesFailed(result.anyFailed);
+        }
+      } catch {
+        if (!cancelled) setPricesFailed(true);
+      } finally {
+        if (!cancelled) setPricesLoading(false);
+      }
+    };
+    loadPrices();
+    const interval = setInterval(loadPrices, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filter Assets based on Scope FIRST
   const scopeFilteredAssets = useMemo(() => {
@@ -113,6 +169,71 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
       dayChangePercent: investValue > 0 ? (investDayChange / investValue) * 100 : 0
     };
   }, [scopeFilteredAssets, accounts, investmentScope, exchangeRate]);
+
+  const monthlyStats = useMemo(() => {
+    const prefix = format(new Date(), 'yyyy-MM');
+    const monthTxs = transactions.filter(t => t.date.startsWith(prefix));
+    const income = monthTxs
+      .filter(t => t.type === 'income')
+      .reduce((s, t) => s + t.amount, 0);
+    const expense = monthTxs
+      .filter(t => t.type === 'expense')
+      .reduce((s, t) => s + t.amount, 0);
+    const net = income - expense;
+
+    const catMap = new Map<string, number>();
+    for (const t of monthTxs.filter(t => t.type === 'expense')) {
+      catMap.set(t.category, (catMap.get(t.category) ?? 0) + t.amount);
+    }
+    const topCategories = [...catMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        pct: expense > 0 ? (amount / expense) * 100 : 0,
+      }));
+
+    return { income, expense, net, topCategories };
+  }, [transactions]);
+
+  const budgetAlerts = useMemo(() => {
+    const prefix = format(new Date(), 'yyyy-MM');
+    const monthExpenses = transactions.filter(
+      t => t.type === 'expense' && t.date.startsWith(prefix)
+    );
+    return budgets
+      .map(b => {
+        const spent = monthExpenses
+          .filter(t => t.category === b.category)
+          .reduce((s, t) => s + t.amount, 0);
+        return { ...b, spent, pct: b.amount > 0 ? spent / b.amount : 0 };
+      })
+      .filter(b => b.pct >= 0.80)
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 3);
+  }, [budgets, transactions]);
+
+  const recentTransactions = useMemo(
+    () => transactions.slice(0, 3),
+    [transactions]
+  );
+
+  const investSummary = useMemo(() => {
+    let totalValue = 0;
+    let totalCost = 0;
+    for (const asset of scopeFilteredAssets) {
+      const livePrice = liveprices.get(asset.symbol) ?? asset.currentPrice;
+      const value = asset.quantity * livePrice;
+      const cost = asset.quantity * asset.avgPrice;
+      const rate = asset.currency === 'USD' ? exchangeRate : 1;
+      totalValue += value * rate;
+      totalCost += cost * rate;
+    }
+    const pnl = totalValue - totalCost;
+    const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+    return { totalValue, pnl, pnlPct, count: scopeFilteredAssets.length };
+  }, [scopeFilteredAssets, liveprices, exchangeRate]);
 
   // Filtered List Logic (Search + Type Filter)
   const displayAssets = useMemo(() => {
@@ -185,6 +306,26 @@ const Dashboard: React.FC<DashboardProps> = ({ assets, accounts, onAssetUpdate, 
     const pl = totalValue - totalCost;
     const plPercent = totalCost > 0 ? (pl / totalCost) * 100 : 0;
     return { pl, plPercent };
+  };
+
+  const getCategoryIcon = (category: string) => {
+    if (category.includes('飲食')) return <Coffee size={16} />;
+    if (category.includes('購物')) return <ShoppingBag size={16} />;
+    if (category.includes('居住')) return <Home size={16} />;
+    if (category.includes('交通')) return <Bus size={16} />;
+    if (category.includes('醫')) return <HeartPulse size={16} />;
+    if (category.includes('薪')) return <Briefcase size={16} />;
+    if (category.includes('資')) return <TrendingUp size={16} />;
+    if (category.includes('娛樂')) return <Gift size={16} />;
+    return <Tag size={16} />;
+  };
+
+  const formatRelativeDate = (dateStr: string): string => {
+    const date = parseISO(dateStr);
+    const today = new Date();
+    if (isSameDay(date, today)) return '今天';
+    if (isSameDay(date, subDays(today, 1))) return '昨天';
+    return format(date, 'M/d');
   };
 
   // --- Handlers ---
