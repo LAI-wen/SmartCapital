@@ -99,14 +99,20 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
   const handlePrev = () => {
     if (viewMode === 'day') setCurrentDate(subDays(currentDate, 1));
     else if (viewMode === 'week') setCurrentDate(subWeeks(currentDate, 1));
-    else if (viewMode === 'month' || viewMode === 'calendar') setCurrentDate(subMonths(currentDate, 1));
+    else if (viewMode === 'month' || viewMode === 'calendar') {
+      setCurrentDate(subMonths(currentDate, 1));
+      if (viewMode === 'calendar') setSelectedDay(null);
+    }
     else if (viewMode === 'year') setCurrentDate(subYears(currentDate, 1));
   };
 
   const handleNext = () => {
     if (viewMode === 'day') setCurrentDate(addDays(currentDate, 1));
     else if (viewMode === 'week') setCurrentDate(addWeeks(currentDate, 1));
-    else if (viewMode === 'month' || viewMode === 'calendar') setCurrentDate(addMonths(currentDate, 1));
+    else if (viewMode === 'month' || viewMode === 'calendar') {
+      setCurrentDate(addMonths(currentDate, 1));
+      if (viewMode === 'calendar') setSelectedDay(null);
+    }
     else if (viewMode === 'year') setCurrentDate(addYears(currentDate, 1));
   };
 
@@ -121,6 +127,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
   const handleApplyDatePicker = () => {
     const newDate = new Date(pickerYear, pickerMonth - 1, 1);
     setCurrentDate(newDate);
+    if (viewMode === 'calendar') setSelectedDay(null);
     setIsDatePickerOpen(false);
   };
 
@@ -153,6 +160,13 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
       return isTimeMatch;
     });
   }, [transactions, currentDate, viewMode, selectedCategory]);
+
+  const selectedDayTransactions = useMemo(() => {
+    if (!selectedDay) return [];
+
+    const targetDay = parseISO(selectedDay);
+    return transactions.filter(t => isSameDay(parseISO(t.date), targetDay));
+  }, [transactions, selectedDay]);
 
   // Available categories from transactions
   const allCategories = useMemo(() => {
@@ -377,6 +391,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
           {days.map(day => {
             const isCurrentMonth = isSameMonth(day, monthStart);
             const isToday = isSameDay(day, new Date());
+            const isSelected = format(day, 'yyyy-MM-dd') === selectedDay;
 
             // Calculate stats for this day
             let dayIncome = 0;
@@ -398,7 +413,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
                 className={`
                   aspect-[4/5] md:aspect-square rounded-xl p-1 md:p-2 border transition-all cursor-pointer relative flex flex-col justify-between
                   ${isCurrentMonth ? 'bg-white hover:border-morandi-blue/50' : 'bg-stone-50/50 text-ink-300 border-transparent'}
-                  ${isToday ? 'ring-1 ring-morandi-blue ring-offset-2' : 'border-stone-50'}
+                  ${isSelected ? 'ring-2 ring-morandi-blue bg-morandi-blue/5' : isToday ? 'ring-1 ring-morandi-blue ring-offset-2' : 'border-stone-50'}
                 `}
               >
                 <div className={`text-xs font-serif-num font-bold text-center ${isToday ? 'text-morandi-blue' : isCurrentMonth ? 'text-ink-900' : 'text-ink-300'}`}>
@@ -477,7 +492,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
           ))}
           {/* Calendar Mode Button */}
           <button
-            onClick={() => { setViewMode('calendar'); setCurrentDate(new Date()); setSelectedCategory('All'); }}
+            onClick={() => { setViewMode('calendar'); setCurrentDate(new Date()); setSelectedCategory('All'); setSelectedDay(null); }}
             className={`flex-1 px-3 py-2 rounded-lg text-xs font-serif transition-all flex items-center justify-center gap-1 ${
               viewMode === 'calendar'
                 ? 'bg-white text-morandi-blue shadow-sm font-bold border border-stone-100'
@@ -532,46 +547,43 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
           {viewMode === 'calendar' ? (
             <>
               {renderCalendar()}
-              {selectedDay && (() => {
-                const dayTxs = transactions.filter(t => t.date.startsWith(selectedDay));
-                return (
-                  <div className="bg-white rounded-2xl border border-stone-100 shadow-paper p-4 animate-fade-in mt-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-bold font-serif text-ink-900 text-sm">
-                        {selectedDay.replace(/-/g, '/')} 的交易
-                      </h4>
-                      <button
-                        onClick={() => setSelectedDay(null)}
-                        className="p-1 hover:bg-stone-100 rounded-lg text-ink-400 transition-colors"
-                      >
-                        <XIcon size={16} />
-                      </button>
-                    </div>
-                    {dayTxs.length === 0 ? (
-                      <p className="text-sm text-ink-400 font-serif text-center py-4">這天沒有記錄</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {dayTxs.map(t => (
-                          <div key={t.id} className="flex items-center justify-between py-2 border-b border-stone-50 last:border-0">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs shrink-0 ${t.type === 'income' ? 'bg-morandi-sage' : 'bg-morandi-rose'}`}>
-                                {t.category.slice(0, 1)}
-                              </div>
-                              <div>
-                                <div className="text-sm font-serif text-ink-900">{t.category}{t.subcategory ? ` · ${t.subcategory}` : ''}</div>
-                                <div className="text-xs text-ink-400 font-serif">{t.note || '無備註'} · {t.date.slice(11, 16)}</div>
-                              </div>
+              {selectedDay && (
+                <div className="bg-white rounded-2xl border border-stone-100 shadow-paper p-4 animate-fade-in mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-bold font-serif text-ink-900 text-sm">
+                      {selectedDay.replace(/-/g, '/')} 的交易
+                    </h4>
+                    <button
+                      onClick={() => setSelectedDay(null)}
+                      className="p-1 hover:bg-stone-100 rounded-lg text-ink-400 transition-colors"
+                    >
+                      <XIcon size={16} />
+                    </button>
+                  </div>
+                  {selectedDayTransactions.length === 0 ? (
+                    <p className="text-sm text-ink-400 font-serif text-center py-4">這天沒有記錄</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedDayTransactions.map(t => (
+                        <div key={t.id} className="flex items-center justify-between py-2 border-b border-stone-50 last:border-0">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs shrink-0 ${t.type === 'income' ? 'bg-morandi-sage' : t.type === 'expense' ? 'bg-morandi-rose' : 'bg-stone-400'}`}>
+                              {t.category.slice(0, 1)}
                             </div>
-                            <div className={`font-serif-num font-bold text-sm ${t.type === 'income' ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
-                              {t.type === 'income' ? '+' : '-'}{isPrivacyMode ? '••••' : `$${t.amount.toLocaleString()}`}
+                            <div>
+                              <div className="text-sm font-serif text-ink-900">{t.category}{t.subcategory ? ` · ${t.subcategory}` : ''}</div>
+                              <div className="text-xs text-ink-400 font-serif">{t.note || '無備註'}{t.date.length > 10 ? ` · ${t.date.slice(11, 16)}` : ''}</div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+                          <div className={`font-serif-num font-bold text-sm ${t.type === 'income' ? 'text-morandi-sage' : t.type === 'expense' ? 'text-morandi-rose' : 'text-ink-400'}`}>
+                            {t.type === 'income' ? '+' : t.type === 'expense' ? '-' : ''}{isPrivacyMode ? '••••' : `$${t.amount.toLocaleString()}`}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <>
