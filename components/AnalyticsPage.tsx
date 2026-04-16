@@ -5,7 +5,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
 import { COLORS } from '../constants';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, ChevronLeft, ChevronRight, CalendarDays, X as XIcon } from 'lucide-react';
 import { getTransactions, getAccounts, getAssets } from '../services';
 import { Transaction, Account, Asset, InvestmentScope } from '../types';
 import {
@@ -70,6 +70,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
   const [pickerMonth, setPickerMonth] = useState(new Date().getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   // Load data from API
   useEffect(() => {
@@ -390,7 +391,10 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
             return (
               <div
                 key={day.toString()}
-                onClick={() => { setCurrentDate(day); setViewMode('day'); }}
+                onClick={() => {
+                  const dayStr = format(day, 'yyyy-MM-dd');
+                  setSelectedDay(prev => prev === dayStr ? null : dayStr);
+                }}
                 className={`
                   aspect-[4/5] md:aspect-square rounded-xl p-1 md:p-2 border transition-all cursor-pointer relative flex flex-col justify-between
                   ${isCurrentMonth ? 'bg-white hover:border-morandi-blue/50' : 'bg-stone-50/50 text-ink-300 border-transparent'}
@@ -461,7 +465,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
           {(['day', 'week', 'month', 'year'] as const).map(mode => (
             <button
               key={mode}
-              onClick={() => { setViewMode(mode); setCurrentDate(new Date()); }}
+              onClick={() => { setViewMode(mode); setCurrentDate(new Date()); setSelectedDay(null); }}
               className={`flex-1 px-3 py-2 rounded-lg text-xs font-serif transition-all ${
                 viewMode === mode
                   ? 'bg-white text-morandi-blue shadow-sm font-bold border border-stone-100'
@@ -526,7 +530,49 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
         <div className="space-y-6 animate-slide-up">
           {/* Calendar View */}
           {viewMode === 'calendar' ? (
-            renderCalendar()
+            <>
+              {renderCalendar()}
+              {selectedDay && (() => {
+                const dayTxs = transactions.filter(t => t.date.startsWith(selectedDay));
+                return (
+                  <div className="bg-white rounded-2xl border border-stone-100 shadow-paper p-4 animate-fade-in mt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold font-serif text-ink-900 text-sm">
+                        {selectedDay.replace(/-/g, '/')} 的交易
+                      </h4>
+                      <button
+                        onClick={() => setSelectedDay(null)}
+                        className="p-1 hover:bg-stone-100 rounded-lg text-ink-400 transition-colors"
+                      >
+                        <XIcon size={16} />
+                      </button>
+                    </div>
+                    {dayTxs.length === 0 ? (
+                      <p className="text-sm text-ink-400 font-serif text-center py-4">這天沒有記錄</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {dayTxs.map(t => (
+                          <div key={t.id} className="flex items-center justify-between py-2 border-b border-stone-50 last:border-0">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs shrink-0 ${t.type === 'income' ? 'bg-morandi-sage' : 'bg-morandi-rose'}`}>
+                                {t.category.slice(0, 1)}
+                              </div>
+                              <div>
+                                <div className="text-sm font-serif text-ink-900">{t.category}{t.subcategory ? ` · ${t.subcategory}` : ''}</div>
+                                <div className="text-xs text-ink-400 font-serif">{t.note || '無備註'} · {t.date.slice(11, 16)}</div>
+                              </div>
+                            </div>
+                            <div className={`font-serif-num font-bold text-sm ${t.type === 'income' ? 'text-morandi-sage' : 'text-morandi-rose'}`}>
+                              {t.type === 'income' ? '+' : '-'}{isPrivacyMode ? '••••' : `$${t.amount.toLocaleString()}`}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
           ) : (
             <>
               {/* Top Metrics Row */}
