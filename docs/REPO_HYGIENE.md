@@ -20,7 +20,7 @@
 
 這兩個資料夾目前都不是正式執行入口，也不應再作為主線修改位置。它們已自 git 解除追蹤，只保留在本地工作目錄作為歷史參考。
 
-其中 `ＮＥＷsmartcapital/` 已完成一次比對盤點，結果記錄於 [docs/NEWSMARTCAPITAL_AUDIT.md](/Users/wen/Documents/dev/smartcapital/docs/NEWSMARTCAPITAL_AUDIT.md)。目前判定它較接近舊版前端副本，而非另一條更完整的主線。
+其中 `ＮＥＷsmartcapital/` 已完成一次比對盤點，結果記錄於 [docs/NEWSMARTCAPITAL_AUDIT.md](docs/NEWSMARTCAPITAL_AUDIT.md)。目前判定它較接近舊版前端副本，而非另一條更完整的主線。
 
 ## 已套用的保護措施
 

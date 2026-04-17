@@ -185,8 +185,8 @@ curl -X DELETE "http://localhost:3000/api/transactions/tx123?lineUserId=WRONG_US
 
 ## 📚 相關文檔
 
-- [安全修復總結](/Users/wen/Documents/dev/smartcapital/SECURITY_FIX_SUMMARY.md)
-- [後端 API 控制器](/Users/wen/Documents/dev/smartcapital/server/src/controllers/apiController.ts)
+- [安全修復總結](SECURITY_FIX_SUMMARY.md)
+- [後端 API 控制器](server/src/controllers/apiController.ts)
 
 ## 🚀 部署清單
 

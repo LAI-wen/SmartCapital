@@ -17,7 +17,7 @@
 
 ### 1. `App.tsx` 顯示主線已整合更多正式能力
 
-主線 [App.tsx](/Users/wen/Documents/dev/smartcapital/App.tsx:9) 已接上：
+主線 [App.tsx](App.tsx:9) 已接上：
 
 - `services/api`
 - `contexts/LiffContext`
@@ -27,7 +27,7 @@
 - `PriceAlertsPage`
 - `OnboardingModal`
 
-相對地，[ＮＥＷsmartcapital/App.tsx](/Users/wen/Documents/dev/smartcapital/ＮＥＷsmartcapital/App.tsx:13) 仍以：
+相對地，[ＮＥＷsmartcapital/App.tsx](ＮＥＷsmartcapital/App.tsx:13) 仍以：
 
 - `MOCK_ASSETS`
 - `MOCK_NOTIFICATIONS`
@@ -37,29 +37,29 @@
 
 ### 2. `package.json` 依賴較少，反映功能面較舊
 
-主線 [package.json](/Users/wen/Documents/dev/smartcapital/package.json:13) 已包含：
+主線 [package.json](package.json:13) 已包含：
 
 - `@line/liff`
 - `i18next`
 - `react-i18next`
 
-而 [ＮＥＷsmartcapital/package.json](/Users/wen/Documents/dev/smartcapital/ＮＥＷsmartcapital/package.json:11) 沒有這些依賴，表示它不是目前整合 LIFF 與多語系的版本。
+而 [ＮＥＷsmartcapital/package.json](ＮＥＷsmartcapital/package.json:11) 沒有這些依賴，表示它不是目前整合 LIFF 與多語系的版本。
 
 ### 3. `vite.config.ts` 缺少目前主線的 bundle 優化
 
-主線 [vite.config.ts](/Users/wen/Documents/dev/smartcapital/vite.config.ts:12) 已加入 `manualChunks`，將 `framework`、`router`、`icons`、`i18n`、`date-utils`、`charts` 分組。
+主線 [vite.config.ts](vite.config.ts:12) 已加入 `manualChunks`，將 `framework`、`router`、`icons`、`i18n`、`date-utils`、`charts` 分組。
 
-[ＮＥＷsmartcapital/vite.config.ts](/Users/wen/Documents/dev/smartcapital/ＮＥＷsmartcapital/vite.config.ts:12) 沒有這些設定，顯示它停留在優化前版本。
+[ＮＥＷsmartcapital/vite.config.ts](ＮＥＷsmartcapital/vite.config.ts:12) 沒有這些設定，顯示它停留在優化前版本。
 
 ### 4. `tsconfig.json` 也沒有目前主線的驗證邊界
 
-主線 [tsconfig.json](/Users/wen/Documents/dev/smartcapital/tsconfig.json:1) 已加入：
+主線 [tsconfig.json](tsconfig.json:1) 已加入：
 
 - `vite/client` 型別
 - 明確的 `include`
 - 對 `backup_20251124/`、`server/`、`ＮＥＷsmartcapital/` 的 `exclude`
 
-[ＮＥＷsmartcapital/tsconfig.json](/Users/wen/Documents/dev/smartcapital/ＮＥＷsmartcapital/tsconfig.json:1) 仍是較早期版本，沒有這些主線維護設定。
+[ＮＥＷsmartcapital/tsconfig.json](ＮＥＷsmartcapital/tsconfig.json:1) 仍是較早期版本，沒有這些主線維護設定。
 
 ### 5. 元件集合比主線更少
 

@@ -275,7 +275,7 @@ export const createTransaction = async (lineUserId: string, transactionData: any
 ### Test the server:
 ```bash
 # Terminal 1: Start backend
-cd /Users/wen/Documents/smartcapital/server
+cd server/
 PORT=3002 npx tsx src/index.ts
 
 # Terminal 2: Run tests

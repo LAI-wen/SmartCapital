@@ -38,7 +38,7 @@ LINE Platform
 
 ```bash
 # 初始化 git（如果還沒有）
-cd /Users/wen/Documents/smartcapital
+cd /path/to/smartcapital
 git init
 git add .
 git commit -m "Initial commit: SmartCapital Bot + Web"
@@ -119,7 +119,7 @@ vercel login
 #### 3. 部署
 
 ```bash
-cd /Users/wen/Documents/smartcapital
+cd /path/to/smartcapital
 vercel
 ```
 

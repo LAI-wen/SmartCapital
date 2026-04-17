@@ -78,7 +78,7 @@ app.get('/api/transfers/:lineUserId', apiController.getTransfers);
 
 ```bash
 # Navigate to server directory
-cd /Users/wen/Documents/smartcapital/server
+cd server/
 
 # Option 1: Development mode (with auto-reload)
 PORT=3002 npx tsx watch src/index.ts

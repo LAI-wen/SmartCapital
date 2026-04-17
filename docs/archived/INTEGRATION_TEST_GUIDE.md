@@ -24,7 +24,7 @@
 
 #### 1.1 啟動後端
 ```bash
-cd /Users/wen/Documents/smartcapital/server
+cd server/
 PORT=3002 node dist/index.js
 ```
 
@@ -57,7 +57,7 @@ curl -X POST http://localhost:3002/api/accounts/Ue9339b8a1d6ad32bd10fe0a5e1d8f8b
 
 #### 2.1 啟動前端
 ```bash
-cd /Users/wen/Documents/smartcapital
+cd /path/to/smartcapital
 npm run dev
 ```
 
@@ -274,7 +274,7 @@ http://localhost:5173/#/?userId=Ue9339b8a1d6ad32bd10fe0a5e1d8f8b6
 lsof -i :3002
 
 # 重新啟動後端
-cd /Users/wen/Documents/smartcapital/server
+cd server/
 PORT=3002 node dist/index.js
 ```
 
@@ -286,7 +286,7 @@ PORT=3002 node dist/index.js
 **解決方案：**
 ```bash
 # 1. 啟動 ngrok
-cd /Users/wen/Documents/smartcapital/server
+cd server/
 ngrok http 3002
 
 # 2. 複製 ngrok URL（例如：https://xxxx.ngrok.io）

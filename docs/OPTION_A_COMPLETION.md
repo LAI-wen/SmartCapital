@@ -112,13 +112,13 @@ export async function updateUserInvestmentScope(
 
 1. **啟動後端服務**
    ```bash
-   cd /Users/wen/Documents/dev/smartcapital/server
+   cd server/
    PORT=3002 npx tsx watch src/index.ts
    ```
 
 2. **啟動前端服務**
    ```bash
-   cd /Users/wen/Documents/dev/smartcapital
+   cd /path/to/smartcapital
    npm run dev
    ```
 
@@ -150,7 +150,7 @@ export async function updateUserInvestmentScope(
 
 **執行指令:**
 ```bash
-cd /Users/wen/Documents/dev/smartcapital/server
+cd server/
 npx tsc --noEmit
 ```
 

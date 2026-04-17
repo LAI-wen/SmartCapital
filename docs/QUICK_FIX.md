@@ -37,7 +37,7 @@
 #### 如果使用 Vercel：
 ```bash
 # 方法 1：推送一個小改動觸發部署
-cd /Users/wen/Documents/dev/smartcapital
+cd /path/to/smartcapital
 git add DEPLOYMENT_CHECKLIST.md QUICK_FIX.md
 git commit -m "Add deployment guides"
 git push
@@ -52,7 +52,7 @@ git push
 #### 如果使用 Netlify：
 ```bash
 # 方法 1：推送觸發部署
-cd /Users/wen/Documents/dev/smartcapital
+cd /path/to/smartcapital
 git add DEPLOYMENT_CHECKLIST.md QUICK_FIX.md
 git commit -m "Add deployment guides"
 git push
@@ -67,7 +67,7 @@ git push
 #### 如果使用其他平台：
 推送代碼到 Git，平台會自動部署：
 ```bash
-cd /Users/wen/Documents/dev/smartcapital
+cd /path/to/smartcapital
 git add DEPLOYMENT_CHECKLIST.md QUICK_FIX.md
 git commit -m "Add deployment guides"
 git push
