@@ -4,6 +4,18 @@
 
 SmartCapital 是一個把「對話式記帳」與「投資追蹤分析」整合在一起的理財平台。系統由 Web 介面、LINE Bot、LIFF 登入流程與 Node.js 後端組成，目標是降低日常記帳摩擦，同時把資產、帳戶、警示與投資策略集中到同一套體驗中。
 
+## 截圖
+
+| Dashboard | 策略實驗室 |
+|-----------|-----------|
+| ![Dashboard](docs/screenshots/01-dashboard.png) | ![Strategy Lab](docs/screenshots/02-strategy.png) |
+
+| 數據分析 | 收支手帳 |
+|---------|---------|
+| ![Analytics](docs/screenshots/03-analytics.png) | ![Ledger](docs/screenshots/04-ledger.png) |
+
+---
+
 ## 專案定位
 
 多數個人理財工具只做其中一塊：
