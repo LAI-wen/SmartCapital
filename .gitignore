@@ -28,3 +28,9 @@ dist-ssr
 /backup_20251124/
 /ＮＥＷsmartcapital/
 .worktrees/
+
+# Local environment variables
+.env
+
+# Claude Code local settings
+.claude/
