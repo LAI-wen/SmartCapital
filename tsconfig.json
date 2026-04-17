@@ -12,7 +12,8 @@
     "skipLibCheck": true,
     "types": [
       "node",
-      "vite/client"
+      "vite/client",
+      "vitest/globals"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,
@@ -42,7 +43,8 @@
     "i18n/**/*.tsx",
     "src/**/*.ts",
     "src/**/*.tsx",
-    "vite.config.ts"
+    "vite.config.ts",
+    "vitest.config.ts"
   ],
   "exclude": [
     "backup_20251124",

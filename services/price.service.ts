@@ -137,3 +137,7 @@ export async function fetchLivePrices(
 
   return { prices, anyFailed };
 }
+
+export function clearPriceCache(): void {
+  priceCache.clear();
+}
