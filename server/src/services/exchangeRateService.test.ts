@@ -5,9 +5,18 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getExchangeRate, convertCurrency, getCurrencySymbol, clearCache } from './exchangeRateService.js';
+import axios from 'axios';
 
 // Mock axios
 vi.mock('axios');
+
+beforeEach(() => {
+  vi.mocked(axios.get).mockResolvedValue({
+    data: {
+      rates: { TWD: 31.5, USD: 1, EUR: 0.92, JPY: 150, GBP: 0.79 },
+    },
+  });
+});
 
 describe('getCurrencySymbol', () => {
   it('應該返回正確的台幣符號', () => {
