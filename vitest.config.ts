@@ -8,6 +8,6 @@ export default mergeConfig(viteConfig, defineConfig({
     env: {
       VITE_FINNHUB_API_KEY: 'test-key',
     },
-    exclude: ['server/**', 'node_modules/**'],
+    exclude: ['server/**', '**/node_modules/**', '.worktrees/**'],
   },
 }));
