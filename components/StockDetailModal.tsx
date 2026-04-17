@@ -16,6 +16,27 @@ interface StockDetailModalProps {
 }
 
 const StockDetailModal: React.FC<StockDetailModalProps> = ({ asset, isOpen, onClose, isPrivacyMode, onBuy, onSell }) => {
+  // Create smooth chart data with mocked dates
+  // Hook must be called unconditionally before any early return
+  const chartData = useMemo(() => {
+    if (!asset || !asset.history || asset.history.length === 0) {
+      return [];
+    }
+    const today = new Date();
+    return asset.history.map((val, idx) => {
+      // Assuming history is chronological (oldest to newest)
+      // We simulate dates backwards from today
+      const date = new Date(today);
+      date.setDate(today.getDate() - (asset.history.length - 1 - idx));
+
+      return {
+        dateStr: format(date, 'MM/dd'),
+        fullDate: format(date, 'yyyy-MM-dd'),
+        price: val
+      };
+    });
+  }, [asset]);
+
   if (!isOpen || !asset) return null;
 
   // --- Helpers ---
@@ -40,26 +61,6 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ asset, isOpen, onCl
   const { pl, plPercent, totalCost, totalValue } = getProfitLoss(asset);
   const isProfit = pl >= 0;
   const isTWStock = asset.symbol.endsWith('.TW');
-
-  // Create smooth chart data with mocked dates
-  const chartData = useMemo(() => {
-    if (!asset || !asset.history || asset.history.length === 0) {
-      return [];
-    }
-    const today = new Date();
-    return asset.history.map((val, idx) => {
-      // Assuming history is chronological (oldest to newest)
-      // We simulate dates backwards from today
-      const date = new Date(today);
-      date.setDate(today.getDate() - (asset.history.length - 1 - idx));
-
-      return {
-        dateStr: format(date, 'MM/dd'),
-        fullDate: format(date, 'yyyy-MM-dd'),
-        price: val
-      };
-    });
-  }, [asset]);
 
   return (
     <div 
