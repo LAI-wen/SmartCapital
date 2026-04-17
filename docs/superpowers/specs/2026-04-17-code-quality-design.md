@@ -112,6 +112,8 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
+    // inject VITE_ env for price.service.ts; if define doesn't propagate,
+    // fallback: add vi.stubEnv('VITE_FINNHUB_API_KEY', 'test-key') in beforeEach
     define: {
       'import.meta.env.VITE_FINNHUB_API_KEY': JSON.stringify('test-key'),
     },
