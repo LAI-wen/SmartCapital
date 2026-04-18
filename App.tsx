@@ -287,7 +287,7 @@ const AppContent: React.FC = () => {
       case '/account-management': return '帳戶管理';
       case '/price-alerts': return '價格警示';
       case '/budget-settings': return '預算設定';
-      default: return '智投手帳';
+      default: return 'MiniWallet';
     }
   };
 
@@ -305,9 +305,9 @@ const AppContent: React.FC = () => {
       {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-stone-200 z-30 shadow-soft">
         <div className="p-8 flex items-center gap-3">
-           <div className="w-10 h-10 bg-morandi-blue text-white rounded-lg flex items-center justify-center font-serif text-xl font-bold shadow-md">智</div>
+           <div className="w-10 h-10 bg-morandi-blue text-white rounded-lg flex items-center justify-center font-serif text-xl font-bold shadow-md">M</div>
            <h1 className="text-xl font-serif font-bold text-ink-900 tracking-wide">
-             智投手帳
+             MiniWallet
            </h1>
         </div>
         
@@ -356,7 +356,7 @@ const AppContent: React.FC = () => {
              className="flex items-center gap-3 p-4 rounded-xl bg-paper border border-stone-200 shadow-sm cursor-pointer hover:border-morandi-blue transition-colors"
             >
              <div className="w-10 h-10 rounded-full bg-morandi-clay flex items-center justify-center text-white font-serif font-bold">
-               {displayName ? displayName[0].toUpperCase() : '智'}
+               {displayName ? displayName[0].toUpperCase() : 'M'}
              </div>
              <div>
                <div className="text-sm font-bold font-serif text-ink-900">

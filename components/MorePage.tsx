@@ -147,7 +147,7 @@ const MorePage: React.FC<MorePageProps> = ({ onLogout, authMode }) => {
             <LogOut size={16} /> {authMode === 'guest' ? '退出訪客模式' : '登出帳號'}
          </button>
          <div className="text-center mt-4 text-[10px] text-stone-300 font-serif">
-            SmartCapital v1.0.3 (Beta)
+            MiniWallet v1.0.3 (Beta)
          </div>
        </div>
     </div>

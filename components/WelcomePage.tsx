@@ -29,8 +29,8 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
       {/* Left Column (Desktop - Brand) */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-morandi-blue text-white rounded-lg flex items-center justify-center font-serif text-xl font-bold shadow-md">智</div>
-          <span className="text-xl font-serif font-bold text-ink-900 tracking-wide">SmartCapital</span>
+          <div className="w-10 h-10 bg-morandi-blue text-white rounded-lg flex items-center justify-center font-serif text-xl font-bold shadow-md">M</div>
+          <span className="text-xl font-serif font-bold text-ink-900 tracking-wide">MiniWallet</span>
         </div>
 
         <div className="mb-20">
@@ -74,7 +74,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
         </div>
 
         <div className="text-sm text-ink-400 font-serif">
-          © 2024 SmartCapital Inc. All rights reserved.
+          © 2025 MiniWallet. All rights reserved.
         </div>
       </div>
 
@@ -84,9 +84,9 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
 
           {/* Mobile Header */}
           <div className="lg:hidden flex flex-col items-center justify-center mb-8">
-            <div className="w-16 h-16 bg-morandi-blue text-white rounded-2xl flex items-center justify-center font-serif text-3xl font-bold shadow-lg mb-4">智</div>
-            <span className="text-2xl font-serif font-bold text-ink-900 tracking-wide">智投手帳</span>
-            <p className="text-sm text-ink-400 mt-2 font-serif">SmartCapital</p>
+            <div className="w-16 h-16 bg-morandi-blue text-white rounded-2xl flex items-center justify-center font-serif text-3xl font-bold shadow-lg mb-4">M</div>
+            <span className="text-2xl font-serif font-bold text-ink-900 tracking-wide">MiniWallet</span>
+            <p className="text-sm text-ink-400 mt-2 font-serif">月月進步，逐步富足</p>
           </div>
 
           <div className="text-center mb-8 lg:mb-12">
