@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, CheckCircle, Smartphone, TrendingUp, Shield, Zap } from 'lucide-react';
+import { ArrowRight, CheckCircle, Smartphone, TrendingUp, Shield, Zap, ReceiptText } from 'lucide-react';
 
 interface WelcomePageProps {
   onLineLogin: () => void;
@@ -35,30 +35,30 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
 
         <div className="mb-20">
           <h1 className="text-6xl font-serif font-bold text-ink-900 mb-6 leading-tight">
-            讓資產管理<br />
-            <span className="text-morandi-blue italic">優雅</span> 且 <span className="text-morandi-sage italic">清晰</span>
+            掌握每月進度<br />
+            <span className="text-morandi-blue italic">存更多</span>、<span className="text-morandi-sage italic">投得穩</span>
           </h1>
           <p className="text-xl text-ink-500 font-serif leading-relaxed max-w-md">
-            不僅僅是記帳。我們結合凱利公式與現代投資組合理論，為您打造專業的個人財富儀表板。
+            從每日記帳到預算回顧，一步步把多出來的錢變成長期財富。
           </p>
 
           <div className="mt-10 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-morandi-blueLight flex items-center justify-center">
-                <TrendingUp size={20} className="text-morandi-blue" />
+                <ReceiptText size={20} className="text-morandi-blue" />
               </div>
               <div>
-                <div className="text-sm font-bold text-ink-900">多市場資產追蹤</div>
-                <div className="text-xs text-ink-400">台股、美股、加密貨幣一目了然</div>
+                <div className="text-sm font-bold text-ink-900">日日記帳，月月清楚</div>
+                <div className="text-xs text-ink-400">快速輸入、分類管理、預算追蹤</div>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-morandi-sageLight flex items-center justify-center">
-                <Zap size={20} className="text-morandi-sage" />
+                <TrendingUp size={20} className="text-morandi-sage" />
               </div>
               <div>
-                <div className="text-sm font-bold text-ink-900">進階策略實驗室</div>
-                <div className="text-xs text-ink-400">凱利公式、馬丁格爾計算工具</div>
+                <div className="text-sm font-bold text-ink-900">月度回顧，看見進步</div>
+                <div className="text-xs text-ink-400">收支趨勢、預算執行率、月結餘</div>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -92,7 +92,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
           <div className="text-center mb-8 lg:mb-12">
             <h2 className="text-3xl font-serif font-bold text-ink-900 mb-3">歡迎使用</h2>
             <p className="text-ink-500 text-base font-serif leading-relaxed">
-              透過 LINE 登入，輕鬆管理你的投資組合
+              透過 LINE 登入，開始你的理財旅程
             </p>
           </div>
 
@@ -142,15 +142,15 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
           <div className="lg:hidden mt-10 space-y-3 pt-6 border-t border-stone-200">
             <div className="flex items-center gap-2">
               <CheckCircle size={14} className="text-morandi-sage shrink-0" />
-              <span className="text-xs text-ink-600 font-serif">多市場資產追蹤</span>
+              <span className="text-xs text-ink-600 font-serif">日日記帳，月月清楚</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle size={14} className="text-morandi-sage shrink-0" />
-              <span className="text-xs text-ink-600 font-serif">進階策略實驗室</span>
+              <span className="text-xs text-ink-600 font-serif">月度回顧，看見進步</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle size={14} className="text-morandi-sage shrink-0" />
-              <span className="text-xs text-ink-600 font-serif">LINE Bot 即時通知</span>
+              <span className="text-xs text-ink-600 font-serif">LINE Bot 即時記帳通知</span>
             </div>
           </div>
 
