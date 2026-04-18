@@ -60,9 +60,6 @@ const AppContent: React.FC = () => {
     crypto: true // Default true
   });
 
-  // Notification State
-  const unreadCount = 0;
-
   // 🔥 檢查認證狀態並決定是否顯示歡迎頁
   useEffect(() => {
     // 🎯 優先檢查 localStorage，避免閃爍
