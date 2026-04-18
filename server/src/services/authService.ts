@@ -6,8 +6,11 @@
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 
-// JWT Secret - 生產環境應使用環境變數
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
+  process.exit(1);
+}
+const JWT_SECRET: string = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = '7d'; // Token 有效期 7 天
 const REFRESH_TOKEN_EXPIRES_IN = '30d'; // Refresh Token 有效期 30 天
 
