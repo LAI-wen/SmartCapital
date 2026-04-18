@@ -163,32 +163,12 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
             setError('後端認證失敗，請重試');
           }
         } else {
-          // ⚠️ 無法取得 ID Token（LIFF scope 設定問題）
-          // 使用降級方案：直接用 LINE User ID 進行訪客登入
-          console.warn('⚠️ 無法取得 LINE ID Token，使用降級方案（訪客模式）');
-          console.warn('💡 請檢查 LIFF App 設定中的 Scopes 是否包含 "openid"');
-
-          const authResult = await guestLogin(profile.userId, profile.displayName);
-
-          if (authResult) {
-            if (!isMounted) {
-              return;
-            }
-
-            setLineUserId(authResult.user.lineUserId);
-            setDisplayName(authResult.user.displayName);
-            setPictureUrl(profile.pictureUrl || null);
-            setIsLoggedIn(true);
-
-            localStorage.setItem('lineUserId', authResult.user.lineUserId);
-            localStorage.setItem('displayName', authResult.user.displayName);
-
-            startAutoRefresh();
-
-            console.log('✅ 降級登入成功（訪客模式），JWT Token 已獲取');
-          } else {
-            console.error('❌ 降級登入失敗');
-            setError('登入失敗，請重試');
+          // ID Token 取得失敗 — 安全失敗，不降級為訪客
+          // 真正的 LINE 用戶不應透過 guest path 取得 JWT
+          console.error('❌ 無法取得 LINE ID Token（請確認 LIFF Scopes 包含 openid）');
+          if (isMounted) {
+            setError('無法完成 LINE 身份驗證，請重新開啟應用程式或確認 LIFF 設定');
+            setIsLiffReady(true);
           }
         }
       } catch (err) {
