@@ -5,12 +5,13 @@ import CurrencyAmount from './CurrencyAmount';
 describe('CurrencyAmount', () => {
   it('renders symbol and amount when no originalCurrency', () => {
     render(<CurrencyAmount amount={50} currency="USD" />);
-    expect(screen.getByText('$50')).toBeTruthy();
+    screen.getByText('$50');
+    expect(screen.queryByText('→')).toBeNull();
   });
 
   it('renders symbol and amount when originalCurrency equals currency', () => {
     render(<CurrencyAmount amount={50} currency="TWD" originalCurrency="TWD" />);
-    expect(screen.getByText('NT$50')).toBeTruthy();
+    screen.getByText('NT$50');
   });
 
   it('shows original, arrow, converted, and rate when showOriginal=true', () => {
@@ -24,10 +25,10 @@ describe('CurrencyAmount', () => {
         showOriginal={true}
       />
     );
-    expect(screen.getByText('$10')).toBeTruthy();
-    expect(screen.getByText('→')).toBeTruthy();
-    expect(screen.getByText('NT$315')).toBeTruthy();
-    expect(screen.getByText('(@31.50)')).toBeTruthy();
+    screen.getByText('$10');
+    screen.getByText('→');
+    screen.getByText('NT$315');
+    screen.getByText('(@31.50)');
   });
 
   it('shows only converted amount when showOriginal=false', () => {
@@ -41,6 +42,6 @@ describe('CurrencyAmount', () => {
       />
     );
     expect(screen.queryByText('→')).toBeNull();
-    expect(screen.getByText('NT$315')).toBeTruthy();
+    screen.getByText('NT$315');
   });
 });
