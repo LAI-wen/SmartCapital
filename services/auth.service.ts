@@ -236,14 +236,11 @@ export async function autoRefreshToken(): Promise<void> {
 
 /**
  * 初始化自動 Token 刷新
- * 每分鐘檢查一次
+ * 每分鐘檢查一次，回傳 interval ID 供呼叫端清理
  */
-export function startAutoRefresh(): void {
-  // 立即檢查一次
+export function startAutoRefresh(): ReturnType<typeof setInterval> {
   autoRefreshToken();
-
-  // 每分鐘檢查一次
-  setInterval(() => {
+  return setInterval(() => {
     autoRefreshToken();
-  }, 60 * 1000); // 1 分鐘
+  }, 60 * 1000);
 }

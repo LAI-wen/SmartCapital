@@ -35,6 +35,7 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
 
   useEffect(() => {
     let isMounted = true;
+    let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
     const initializeLiff = async () => {
       const liffId = import.meta.env.VITE_LIFF_ID;
@@ -60,7 +61,7 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
           guestLogin(storedUserId, localStorage.getItem('displayName') || '訪客用戶').then((authResult) => {
             if (authResult && isMounted) {
               console.log('✅ 訪客 Token 已獲取');
-              startAutoRefresh();
+              refreshInterval = startAutoRefresh();
             }
           });
           return;
@@ -87,7 +88,7 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
             localStorage.setItem('displayName', authResult.user.displayName);
 
             // 啟動自動 Token 刷新
-            startAutoRefresh();
+            refreshInterval = startAutoRefresh();
 
             console.log('✅ 訪客登入成功，JWT Token 已獲取');
           } else {
@@ -155,7 +156,7 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
             localStorage.setItem('displayName', authResult.user.displayName);
 
             // 啟動自動 Token 刷新
-            startAutoRefresh();
+            refreshInterval = startAutoRefresh();
 
             console.log('✅ LINE 登入成功，JWT Token 已獲取');
           } else {
@@ -184,6 +185,7 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
 
     return () => {
       isMounted = false;
+      if (refreshInterval) clearInterval(refreshInterval);
     };
   }, []);
 

@@ -1178,10 +1178,10 @@ export async function convertCurrencyAPI(req: Request, res: Response) {
     const to = req.query.to as string;
     const amount = parseFloat(req.query.amount as string);
 
-    if (!from || !to || isNaN(amount)) {
+    if (!from || !to || isNaN(amount) || amount === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameters: from, to, amount'
+        error: 'Missing required parameters: from, to, amount (amount must be non-zero)'
       });
     }
 
