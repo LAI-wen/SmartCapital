@@ -97,4 +97,11 @@ describe('convertCurrency', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')));
     expect(await convertCurrency(100, 'USD', 'TWD')).toBe(100);
   });
+
+  it('returns original amount when API returns success: false', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      json: async () => ({ success: false, error: 'rate unavailable' }),
+    }));
+    expect(await convertCurrency(100, 'USD', 'TWD')).toBe(100);
+  });
 });
