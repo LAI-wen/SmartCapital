@@ -20,9 +20,9 @@ export default {
   },
 
   nav: {
-    dashboard: '總覽',
+    dashboard: '主頁',
     ledger: '記帳',
-    analytics: '分析',
+    analytics: '回顧',
     strategy: '策略',
     notifications: '通知',
     settings: '設定',
@@ -119,7 +119,7 @@ export default {
   },
 
   strategy: {
-    title: '策略實驗室',
+    title: '財富目標試算',
     compound: '複利計算',
     kelly: '凱利公式',
     martingale: '馬丁格爾',

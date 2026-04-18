@@ -20,9 +20,9 @@ export default {
   },
 
   nav: {
-    dashboard: 'Dashboard',
+    dashboard: 'Home',
     ledger: 'Ledger',
-    analytics: 'Analytics',
+    analytics: 'Review',
     strategy: 'Strategy',
     notifications: 'Notifications',
     settings: 'Settings',
@@ -119,7 +119,7 @@ export default {
   },
 
   strategy: {
-    title: 'Strategy Lab',
+    title: 'Wealth Goal Simulator',
     compound: 'Compound Interest',
     kelly: 'Kelly Criterion',
     martingale: 'Martingale',

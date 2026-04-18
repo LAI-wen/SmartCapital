@@ -1,7 +1,7 @@
 
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ReceiptText, Bell, Menu, Settings, ChevronRight, TrendingUp, Calculator, HelpCircle, Wallet } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Menu, Settings, ChevronRight, TrendingUp, Calculator, HelpCircle, Wallet } from 'lucide-react';
 import WelcomePage from './components/WelcomePage';
 import OnboardingModal from './components/OnboardingModal';
 import { MOCK_ASSETS } from './constants';
@@ -276,12 +276,12 @@ const AppContent: React.FC = () => {
   // Helper to determine page title
   const getPageTitle = (pathname: string) => {
     switch (pathname) {
-      case '/': return '資產主頁';
-      case '/strategy': return '策略實驗室';
+      case '/': return '主頁';
+      case '/strategy': return '財富目標試算';
       case '/ledger': return '收支手帳';
       case '/notifications': return '通知中心';
       case '/more': return '功能選單';
-      case '/analytics': return '數據分析';
+      case '/analytics': return '本月回顧';
       case '/settings': return '系統設定';
       case '/help': return '使用指南';
       case '/account-management': return '帳戶管理';
@@ -321,25 +321,20 @@ const AppContent: React.FC = () => {
             <span className="font-medium tracking-wide">記帳 (Ledger)</span>
           </NavLink>
           <NavLink to="/analytics" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
-             <TrendingUp size={18} />
-             <span className="font-medium tracking-wide">分析 (Analytics)</span>
-          </NavLink>
-          <NavLink to="/strategy" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
-             <Calculator size={18} />
-             <span className="font-medium tracking-wide">策略 (Strategy)</span>
-          </NavLink>
-          <NavLink to="/notifications" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
-            <Bell size={18} />
-            <span className="font-medium tracking-wide">通知 (Alerts)</span>
-            {unreadCount > 0 && <span className="ml-auto bg-morandi-rose text-white text-xs px-2 py-0.5 rounded-full">{unreadCount}</span>}
+            <TrendingUp size={18} />
+            <span className="font-medium tracking-wide">回顧 (Review)</span>
           </NavLink>
 
           <div className="pt-4 mt-4 border-t border-stone-100">
-             <NavLink to="/account-management" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
+            <NavLink to="/strategy" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
+              <Calculator size={18} />
+              <span className="font-medium tracking-wide">財富試算</span>
+            </NavLink>
+            <NavLink to="/account-management" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
               <Wallet size={18} />
               <span className="font-medium tracking-wide">帳戶 (Accounts)</span>
             </NavLink>
-             <NavLink to="/settings" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
+            <NavLink to="/settings" className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-serif ${isActive ? 'bg-morandi-blue text-white shadow-md' : 'text-ink-400 hover:bg-morandi-blueLight hover:text-morandi-blue'}`}>
               <Settings size={18} />
               <span className="font-medium tracking-wide">設定 (Settings)</span>
             </NavLink>
@@ -495,18 +490,15 @@ const AppContent: React.FC = () => {
               </>
             )}
           </NavLink>
-          <NavLink to="/notifications" className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full gap-1 ${isActive ? 'text-morandi-blue' : 'text-ink-300'} relative`}>
+          <NavLink to="/analytics" className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full gap-1 ${isActive ? 'text-morandi-blue' : 'text-ink-300'}`}>
             {({ isActive }) => (
               <>
-                <div className="relative">
-                  <Bell size={24} strokeWidth={isActive ? 2.5 : 2} />
-                  {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-morandi-rose rounded-full border-2 border-white"></span>}
-                </div>
-                <span className="text-[10px] font-medium font-serif">{t('nav.notifications')}</span>
+                <TrendingUp size={24} strokeWidth={isActive ? 2.5 : 2} />
+                <span className="text-[10px] font-medium font-serif">{t('nav.analytics')}</span>
               </>
             )}
           </NavLink>
-           <NavLink to="/more" className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full gap-1 ${isActive ? 'text-morandi-blue' : 'text-ink-300'}`}>
+          <NavLink to="/more" className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full gap-1 ${isActive ? 'text-morandi-blue' : 'text-ink-300'}`}>
             {({ isActive }) => (
               <>
                 <Menu size={24} strokeWidth={isActive ? 2.5 : 2} />
