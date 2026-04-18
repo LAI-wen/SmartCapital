@@ -43,11 +43,14 @@ describe('formatCurrencyAmount', () => {
 });
 
 describe('getExchangeRate', () => {
+  const TWD_RATE = 31.5;
+  const JPY_RATE = 150;
+
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       json: async () => ({
         success: true,
-        data: { rates: { TWD: 31.5, JPY: 150 } },
+        data: { rates: { TWD: TWD_RATE, JPY: JPY_RATE } },
       }),
     }));
   });
@@ -60,15 +63,15 @@ describe('getExchangeRate', () => {
   });
 
   it('returns rate for USD to TWD', async () => {
-    expect(await getExchangeRate('USD', 'TWD')).toBe(31.5);
+    expect(await getExchangeRate('USD', 'TWD')).toBe(TWD_RATE);
   });
 
   it('returns reciprocal for TWD to USD', async () => {
-    expect(await getExchangeRate('TWD', 'USD')).toBeCloseTo(1 / 31.5);
+    expect(await getExchangeRate('TWD', 'USD')).toBeCloseTo(1 / TWD_RATE);
   });
 
   it('returns cross rate for TWD to JPY via USD', async () => {
-    expect(await getExchangeRate('TWD', 'JPY')).toBeCloseTo(150 / 31.5);
+    expect(await getExchangeRate('TWD', 'JPY')).toBeCloseTo(JPY_RATE / TWD_RATE);
   });
 });
 
