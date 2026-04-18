@@ -10,6 +10,7 @@ export default [
       'server/**',
       'backup_20251124/**',
       '.worktrees/**',
+      'ＮＥＷsmartcapital/**',
     ],
   },
   {
