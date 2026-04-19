@@ -352,7 +352,7 @@ const AppContent: React.FC = () => {
              </div>
              <div>
                <div className="text-sm font-bold font-serif text-ink-900">
-                 {displayName || 'SmartCapital'}
+                 {displayName || 'MiniWallet'}
                </div>
                <div className="text-xs text-ink-400">
                  {isLoggedIn ? 'LINE 用戶' : '訪客模式'}
@@ -438,7 +438,7 @@ const AppContent: React.FC = () => {
                       setInvestmentScope={setInvestmentScope}
                       onLogout={handleLogout}
                       authMode={authMode}
-                      displayName={displayName || 'SmartCapital'}
+                      displayName={displayName || 'MiniWallet'}
                     />
                   } 
                 />
