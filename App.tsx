@@ -4,6 +4,8 @@ import { HashRouter, Routes, Route, NavLink, useLocation, useNavigate } from 're
 import { LayoutDashboard, ReceiptText, Menu, Settings, ChevronRight, TrendingUp, Calculator, HelpCircle, Wallet } from 'lucide-react';
 import WelcomePage from './components/WelcomePage';
 import OnboardingModal from './components/OnboardingModal';
+import ErrorToast, { showApiError } from './components/ErrorToast';
+import { ApiError } from './services/core/http';
 import { Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets, createAccount, getUser } from './services/api';
 import { useLiff } from './contexts/LiffContext';
@@ -58,6 +60,17 @@ const AppContent: React.FC = () => {
     us: true,    // Default true, user can toggle in Settings
     crypto: true // Default true
   });
+
+  useEffect(() => {
+    const handler = (event: PromiseRejectionEvent) => {
+      if (event.reason instanceof ApiError) {
+        event.preventDefault();
+        showApiError(event.reason.status, event.reason.message);
+      }
+    };
+    window.addEventListener('unhandledrejection', handler);
+    return () => window.removeEventListener('unhandledrejection', handler);
+  }, []);
 
   // 🔥 檢查認證狀態並決定是否顯示歡迎頁
   useEffect(() => {
@@ -270,6 +283,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
+    <>
     <div className="flex h-screen bg-paper text-ink-900 overflow-hidden font-sans selection:bg-morandi-clay selection:text-white">
 
       {/* 🎉 Onboarding Modal */}
@@ -485,6 +499,8 @@ const AppContent: React.FC = () => {
         </nav>
       </main>
     </div>
+    <ErrorToast />
+    </>
   );
 };
 
