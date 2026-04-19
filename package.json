@@ -25,6 +25,7 @@
     "recharts": "^3.4.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.2.2",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.14.0",
     "@typescript-eslint/eslint-plugin": "^8.58.2",
@@ -33,6 +34,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^5.2.0",
     "happy-dom": "^20.9.0",
+    "tailwindcss": "^4.2.2",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vitest": "^4.1.4"

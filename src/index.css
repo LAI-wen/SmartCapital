@@ -1,3 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-family-sans: Inter, sans-serif;
+  --font-family-serif: "Noto Serif TC", "Lora", serif;
+  --font-family-mono: "Lora", monospace;
+
+  --color-paper: #F9F7F2;
+  --color-ink-900: #2C3E50;
+  --color-ink-800: #44403C;
+  --color-ink-400: #78716C;
+  --color-ink-100: #F5F5F4;
+  --color-morandi-blue: #64748B;
+  --color-morandi-blueLight: #E2E8F0;
+  --color-morandi-sage: #84A98C;
+  --color-morandi-sageLight: #E8F3EB;
+  --color-morandi-rose: #D68C92;
+  --color-morandi-roseLight: #FBEBEB;
+  --color-morandi-sand: #E6E2D6;
+  --color-morandi-clay: #C2B280;
+
+  --shadow-soft: 0 4px 20px -2px rgba(68, 64, 60, 0.08);
+  --shadow-paper: 2px 4px 12px rgba(0,0,0,0.03);
+}
+
 /* Global Styles */
 
 /* Prevent iOS Safari from zooming on input focus */
