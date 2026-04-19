@@ -6,9 +6,11 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
 import { COLORS } from '../constants';
-import { TrendingUp, TrendingDown, Calendar, ChevronLeft, ChevronRight, CalendarDays, X as XIcon, ArrowRight } from 'lucide-react';
+import { TrendingUp, Calendar, ChevronLeft, ChevronRight, CalendarDays, ArrowRight } from 'lucide-react';
 import { getTransactions, getAccounts, getAssets } from '../services';
 import { Transaction, Account, Asset, InvestmentScope } from '../types';
+import AnalyticsSummaryBar from './analytics/AnalyticsSummaryBar';
+import CalendarView from './analytics/CalendarView';
 import {
   parseISO,
   isSameDay,
@@ -30,8 +32,7 @@ import {
   subWeeks,
   subMonths,
   subYears,
-  eachDayOfInterval,
-  getDate
+
 } from 'date-fns';
 
 interface AnalyticsPageProps {
@@ -161,13 +162,6 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
       return isTimeMatch;
     });
   }, [transactions, currentDate, viewMode, selectedCategory]);
-
-  const selectedDayTransactions = useMemo(() => {
-    if (!selectedDay) return [];
-
-    const targetDay = parseISO(selectedDay);
-    return transactions.filter(t => isSameDay(parseISO(t.date), targetDay));
-  }, [transactions, selectedDay]);
 
   // Available categories from transactions
   const allCategories = useMemo(() => {
@@ -366,84 +360,6 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
   };
 
-  // Calendar renderer
-  const renderCalendar = () => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const startDate = startOfWeek(monthStart);
-    const endDate = endOfWeek(monthEnd);
-    const days = eachDayOfInterval({ start: startDate, end: endDate });
-
-    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    return (
-      <div className="bg-white rounded-2xl shadow-paper border border-stone-100 p-2 animate-fade-in">
-        {/* Week Headers */}
-        <div className="grid grid-cols-7 mb-2">
-          {weekDays.map(d => (
-            <div key={d} className="text-center text-[10px] text-ink-400 font-serif font-bold uppercase tracking-wider py-2">
-              {d}
-            </div>
-          ))}
-        </div>
-
-        {/* Days Grid */}
-        <div className="grid grid-cols-7 gap-1">
-          {days.map(day => {
-            const isCurrentMonth = isSameMonth(day, monthStart);
-            const isToday = isSameDay(day, new Date());
-            const isSelected = format(day, 'yyyy-MM-dd') === selectedDay;
-
-            // Calculate stats for this day
-            let dayIncome = 0;
-            let dayExpense = 0;
-            transactions.forEach(t => {
-              if (isSameDay(parseISO(t.date), day)) {
-                if (t.type === 'income') dayIncome += t.amount;
-                else dayExpense += t.amount;
-              }
-            });
-
-            return (
-              <div
-                key={day.toString()}
-                onClick={() => {
-                  const dayStr = format(day, 'yyyy-MM-dd');
-                  setSelectedDay(prev => prev === dayStr ? null : dayStr);
-                }}
-                className={`
-                  aspect-[4/5] md:aspect-square rounded-xl p-1 md:p-2 border transition-all cursor-pointer relative flex flex-col justify-between
-                  ${isCurrentMonth ? 'bg-white hover:border-morandi-blue/50' : 'bg-stone-50/50 text-ink-300 border-transparent'}
-                  ${isSelected ? 'ring-2 ring-morandi-blue bg-morandi-blue/5' : isToday ? 'ring-1 ring-morandi-blue ring-offset-2' : 'border-stone-50'}
-                `}
-              >
-                <div className={`text-xs font-serif-num font-bold text-center ${isToday ? 'text-morandi-blue' : isCurrentMonth ? 'text-ink-900' : 'text-ink-300'}`}>
-                  {getDate(day)}
-                </div>
-
-                {/* Dots / Indicators */}
-                <div className="flex flex-col gap-0.5 items-center justify-end h-full pb-1">
-                  {dayIncome > 0 && (
-                     <div className="flex items-center gap-0.5">
-                       <div className="w-1.5 h-1.5 rounded-full bg-morandi-sage"></div>
-                       <span className="text-[8px] font-serif-num text-morandi-sage hidden md:block">+{dayIncome >= 1000 ? (dayIncome/1000).toFixed(1) + 'k' : dayIncome}</span>
-                     </div>
-                  )}
-                  {dayExpense > 0 && (
-                     <div className="flex items-center gap-0.5">
-                       <div className="w-1.5 h-1.5 rounded-full bg-morandi-rose"></div>
-                       <span className="text-[8px] font-serif-num text-morandi-rose hidden md:block">-{dayExpense >= 1000 ? (dayExpense/1000).toFixed(1) + 'k' : dayExpense}</span>
-                     </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96 animate-fade-in">
@@ -546,46 +462,15 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
         <div className="space-y-6 animate-slide-up">
           {/* Calendar View */}
           {viewMode === 'calendar' ? (
-            <>
-              {renderCalendar()}
-              {selectedDay && (
-                <div className="bg-white rounded-2xl border border-stone-100 shadow-paper p-4 animate-fade-in mt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold font-serif text-ink-900 text-sm">
-                      {selectedDay.replace(/-/g, '/')} 的交易
-                    </h4>
-                    <button
-                      onClick={() => setSelectedDay(null)}
-                      className="p-1 hover:bg-stone-100 rounded-lg text-ink-400 transition-colors"
-                    >
-                      <XIcon size={16} />
-                    </button>
-                  </div>
-                  {selectedDayTransactions.length === 0 ? (
-                    <p className="text-sm text-ink-400 font-serif text-center py-4">這天沒有記錄</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {selectedDayTransactions.map(t => (
-                        <div key={t.id} className="flex items-center justify-between py-2 border-b border-stone-50 last:border-0">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs shrink-0 ${t.type === 'income' ? 'bg-morandi-sage' : t.type === 'expense' ? 'bg-morandi-rose' : 'bg-stone-400'}`}>
-                              {t.category.slice(0, 1)}
-                            </div>
-                            <div>
-                              <div className="text-sm font-serif text-ink-900">{t.category}{t.subcategory ? ` · ${t.subcategory}` : ''}</div>
-                              <div className="text-xs text-ink-400 font-serif">{t.note || '無備註'}{t.date.length > 10 ? ` · ${t.date.slice(11, 16)}` : ''}</div>
-                            </div>
-                          </div>
-                          <div className={`font-serif-num font-bold text-sm ${t.type === 'income' ? 'text-morandi-sage' : t.type === 'expense' ? 'text-morandi-rose' : 'text-ink-400'}`}>
-                            {t.type === 'income' ? '+' : t.type === 'expense' ? '-' : ''}{isPrivacyMode ? '••••' : `$${t.amount.toLocaleString()}`}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
+            <CalendarView
+              currentDate={currentDate}
+              transactions={transactions}
+              selectedDay={selectedDay}
+              isPrivacyMode={isPrivacyMode}
+              formatCurrency={formatCurrency}
+              onSelectDay={setSelectedDay}
+              onNavigateToLedger={(category, month) => navigate(`/ledger?category=${category}&month=${month}`)}
+            />
           ) : (
             <>
               {/* Top Metrics Row */}
@@ -622,32 +507,16 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
               </div>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-morandi-sageLight/40 p-5 rounded-2xl border border-morandi-sage/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 bg-morandi-sage text-white rounded-lg"><TrendingUp size={16} /></div>
-                    <span className="text-xs font-bold font-serif text-morandi-sage">
-                      {viewMode === 'day' ? '本日' : viewMode === 'week' ? '本週' : viewMode === 'month' ? '本月' : viewMode === 'year' ? '本年' : '本月'}收入
-                    </span>
-                  </div>
-                  <div className="text-2xl font-serif-num font-bold text-ink-900">{formatCurrency(currentPeriodStats.currentIncome)}</div>
-                  <div className="text-xs text-ink-400 mt-1 font-serif">
-                    較上期 {currentPeriodStats.incomeChange >= 0 ? '+' : ''}{currentPeriodStats.incomeChange.toFixed(1)}%
-                  </div>
-                </div>
-                <div className="bg-morandi-roseLight/40 p-5 rounded-2xl border border-morandi-rose/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 bg-morandi-rose text-white rounded-lg"><TrendingDown size={16} /></div>
-                    <span className="text-xs font-bold font-serif text-morandi-rose">
-                      {viewMode === 'day' ? '本日' : viewMode === 'week' ? '本週' : viewMode === 'month' ? '本月' : viewMode === 'year' ? '本年' : '本月'}支出
-                    </span>
-                  </div>
-                  <div className="text-2xl font-serif-num font-bold text-ink-900">{formatCurrency(currentPeriodStats.currentExpense)}</div>
-                  <div className="text-xs text-ink-400 mt-1 font-serif">
-                    較上期 {currentPeriodStats.expenseChange >= 0 ? '+' : ''}{currentPeriodStats.expenseChange.toFixed(1)}%
-                  </div>
-                </div>
-              </div>
+              <AnalyticsSummaryBar
+                income={currentPeriodStats.currentIncome}
+                expense={currentPeriodStats.currentExpense}
+                savingsRate={savingsRate}
+                incomeChange={currentPeriodStats.incomeChange}
+                expenseChange={currentPeriodStats.expenseChange}
+                viewMode={viewMode}
+                formatCurrency={formatCurrency}
+                isPrivacyMode={isPrivacyMode}
+              />
 
               {/* Bar Chart */}
               <div className="bg-white p-6 rounded-2xl border border-stone-100 shadow-paper">
