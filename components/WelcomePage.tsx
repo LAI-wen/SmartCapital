@@ -133,7 +133,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
 
           <div className="mt-6 text-center">
             <p className="text-xs text-ink-400 font-serif leading-relaxed">
-              訪客模式使用示範資料，不會儲存您的操作
+              以訪客身份登入，資料不與 LINE 帳號綁定
             </p>
           </div>
 
