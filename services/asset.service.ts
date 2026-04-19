@@ -41,7 +41,6 @@ export async function upsertAsset(
   currency?: string
 ): Promise<Asset | null> {
   const userId = getUserId();
-  console.log('📊 Upserting asset for user:', userId, symbol, quantity, '@', avgPrice);
 
   const result = await post<Asset>(`/api/assets/${userId}/upsert`, {
     symbol,
@@ -57,7 +56,6 @@ export async function upsertAsset(
     return null;
   }
 
-  console.log('✅ Asset upserted:', result);
   return result;
 }
 
@@ -74,7 +72,6 @@ export async function importAsset(
   currency: string
 ): Promise<Asset | null> {
   const userId = getUserId();
-  console.log('📦 Importing existing asset for user:', userId, symbol, quantity, '@', avgPrice);
 
   const result = await post<Asset>(`/api/assets/${userId}/import`, {
     symbol,
@@ -90,7 +87,6 @@ export async function importAsset(
     return null;
   }
 
-  console.log('✅ Asset imported (no account deduction):', result);
   return result;
 }
 
@@ -99,7 +95,6 @@ export async function importAsset(
  */
 export async function reduceAsset(symbol: string, quantity: number): Promise<Asset | null> {
   const userId = getUserId();
-  console.log('📉 Reducing asset for user:', userId, symbol, quantity);
 
   const result = await post<Asset>(`/api/assets/${userId}/reduce`, {
     symbol,
@@ -111,6 +106,5 @@ export async function reduceAsset(symbol: string, quantity: number): Promise<Ass
     return null;
   }
 
-  console.log('✅ Asset reduced:', result);
   return result;
 }

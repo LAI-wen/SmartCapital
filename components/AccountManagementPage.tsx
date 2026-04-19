@@ -42,7 +42,6 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
     try {
       const accs = await getAccounts();
       setAccounts(accs);
-      console.log('✅ AccountManagement: 已載入', accs.length, '個帳戶');
     } catch (error) {
       console.error('❌ AccountManagement: 載入失敗:', error);
     } finally {
@@ -67,7 +66,6 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
       });
 
       if (newAccount) {
-        console.log('✅ 帳戶創建成功:', newAccount);
         await loadAccounts();
         setIsCreating(false);
         setNewAccountName('');
@@ -96,7 +94,6 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
     try {
       const success = await updateAccountBalance(accountId, Math.abs(difference), operation);
       if (success) {
-        console.log('✅ 餘額更新成功');
         await loadAccounts();
         setEditingId(null);
         onAccountsUpdate?.();
@@ -116,7 +113,6 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
     try {
       const success = await updateAccount(accountId, { name: editName.trim() });
       if (success) {
-        console.log('✅ 帳戶名稱更新成功');
         await loadAccounts();
         setEditingNameId(null);
         onAccountsUpdate?.();
@@ -139,7 +135,6 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
     try {
       const success = await updateAccount(accountId, { isDefault: true });
       if (success) {
-        console.log('✅ 預設帳戶更新成功');
         await loadAccounts();
         onAccountsUpdate?.();
       }
@@ -169,7 +164,6 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
     try {
       const success = await deleteAccount(accountId);
       if (success) {
-        console.log('✅ 帳戶刪除成功');
         await loadAccounts();
         onAccountsUpdate?.();
       }
@@ -223,7 +217,6 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
       });
 
       if (transfer) {
-        console.log('✅ 轉帳成功:', transfer);
         await loadAccounts();
         setIsTransferring(false);
         setTransferFromId('');

@@ -55,13 +55,11 @@ export function getUserId(): string {
   // 優先從 localStorage 讀取（LIFF 登入後會儲存）
   const storedUserId = localStorage.getItem('lineUserId');
   if (storedUserId) {
-    console.log('🔍 [getUserId] 從 localStorage 取得:', storedUserId);
     return storedUserId;
   }
 
   // 生成新的訪客 Mock ID 並儲存
   const newMockId = generateMockUserId();
-  console.log('🆕 [getUserId] 生成新的訪客 ID:', newMockId);
   localStorage.setItem('lineUserId', newMockId);
   localStorage.setItem('displayName', '訪客用戶');
   return newMockId;

@@ -42,7 +42,6 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
 
       // 如果沒有 LIFF ID，則跳過 LIFF 初始化（訪客模式）
       if (!liffId) {
-        console.log('🔧 No LIFF_ID found, running in guest mode');
         if (isMounted) {
           setIsLiffReady(true);
         }
@@ -50,7 +49,6 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
         // 檢查 localStorage 中的 userId
         const storedUserId = localStorage.getItem('lineUserId');
         if (storedUserId) {
-          console.log('✅ 從 localStorage 載入 userId:', storedUserId);
           if (isMounted) {
             setLineUserId(storedUserId);
             setDisplayName(localStorage.getItem('displayName') || '訪客用戶');
@@ -60,7 +58,6 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
           // 🔐 使用已存在的訪客 ID 向後端登入並獲取 JWT
           guestLogin(storedUserId, localStorage.getItem('displayName') || '訪客用戶').then((authResult) => {
             if (authResult && isMounted) {
-              console.log('✅ 訪客 Token 已獲取');
               refreshInterval = startAutoRefresh();
             }
           });
@@ -76,7 +73,6 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
         };
 
         const mockUserId = generateMockUserId();
-        console.log('🆕 生成新的訪客 ID:', mockUserId);
 
         // 🔐 向後端註冊並獲取 JWT Token
         guestLogin(mockUserId, '訪客用戶').then((authResult) => {
@@ -89,8 +85,6 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
 
             // 啟動自動 Token 刷新
             refreshInterval = startAutoRefresh();
-
-            console.log('✅ 訪客登入成功，JWT Token 已獲取');
           } else {
             console.error('❌ 訪客登入失敗');
           }
@@ -115,13 +109,6 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
         // ✅ 已登入，從 LIFF 獲取最新的用戶資料
         const profile = await liff.getProfile();
         const idToken = liff.getIDToken(); // 🔑 取得 ID Token
-
-        console.log('🔍 LIFF 登入資訊:', {
-          userId: profile.userId,
-          displayName: profile.displayName,
-          pictureUrl: profile.pictureUrl,
-          hasIdToken: !!idToken
-        });
 
         // 🔍 檢查是否與 localStorage 中的用戶不同
         const storedUserId = localStorage.getItem('lineUserId');
@@ -157,8 +144,6 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
 
             // 啟動自動 Token 刷新
             refreshInterval = startAutoRefresh();
-
-            console.log('✅ LINE 登入成功，JWT Token 已獲取');
           } else {
             console.error('❌ 後端登入失敗');
             setError('後端認證失敗，請重試');

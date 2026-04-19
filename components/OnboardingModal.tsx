@@ -34,7 +34,6 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onComplete, onSkip })
       });
 
       if (newAccount) {
-        console.log('✅ 首個帳戶創建成功');
         onComplete(newAccount);
       } else {
         alert('創建帳戶失敗，請重試');

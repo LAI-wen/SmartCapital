@@ -69,7 +69,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
       setIsLoadingTransactions(true);
       try {
         const txs = await fetchTransactions(200); // 載入最近 200 筆
-        console.log('✅ 已從資料庫載入交易:', txs.length, '筆');
         setTransactions(txs);
       } catch (error) {
         console.error('❌ 載入交易失敗:', error);
@@ -229,7 +228,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
         );
 
         if (newTx) {
-          console.log('✅ 快速記帳成功:', newTx);
           setTransactions([newTx, ...transactions]);
           // 🔥 通知父組件刷新帳戶餘額
           onAccountsUpdate?.();
@@ -258,12 +256,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
       const defaultAccount = accounts.find(acc => acc.isDefault) || accounts[0];
       const accountId = defaultAccount?.id || '';
 
-      console.log('📝 openModal (新增模式):', {
-        accountsCount: accounts.length,
-        defaultAccount: defaultAccount?.name,
-        accountId: accountId
-      });
-
       setEditingId(null);
       setFormType('expense');
       setFormAmount('');
@@ -279,7 +271,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
     try {
       const txs = await fetchTransactions(200);
       setTransactions(txs);
-      console.log('✅ 交易列表已刷新:', txs.length, '筆');
     } catch (error) {
       console.error('❌ 刷新交易失敗:', error);
     }
@@ -291,14 +282,9 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
 
     // 確保有選擇帳戶
     if (!formAccountId || formAccountId === '') {
-      console.log('❌ 驗證失敗: formAccountId =', formAccountId, '| accounts length =', accounts.length);
-      console.log('📋 可用帳戶:', accounts.map(a => ({id: a.id, name: a.name})));
       alert('請選擇帳戶');
       return;
     }
-
-    console.log('✅ 驗證通過: accountId =', formAccountId);
-    console.log('📊 交易詳情:', { type: formType, amount: amountVal, category: formCategory, accountId: formAccountId });
 
     try {
       if (editingId) {
@@ -314,7 +300,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
         );
 
         if (newTx) {
-          console.log('✅ 交易更新成功');
           setIsModalOpen(false);
           // 刷新列表以取得最新資料
           await reloadTransactions();
@@ -333,7 +318,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
         );
 
         if (newTx) {
-          console.log('✅ 交易新增成功');
           setIsModalOpen(false);
           // 刷新列表以取得最新資料
           await reloadTransactions();
@@ -378,7 +362,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
       const skipBalanceUpdate = !updateBalance;
       const success = await apiDeleteTransaction(editingId, skipBalanceUpdate);
       if (success) {
-        console.log(`✅ 交易刪除成功 ${skipBalanceUpdate ? '(不連動資金池)' : '(已連動資金池)'}`);
         setIsModalOpen(false);
         // 刷新列表以取得最新資料
         await reloadTransactions();
@@ -435,14 +418,9 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
       const idsArray: string[] = Array.from(selectedIds);
       const skipBalanceUpdate = !updateBalance;
 
-      console.log(`🗑️ 開始批次刪除 ${skipBalanceUpdate ? '(不連動資金池)' : '(連動資金池)'}:`, idsArray);
       const result = await apiBatchDeleteTransactions(idsArray, skipBalanceUpdate);
 
-      console.log('📦 批次刪除結果:', result);
-
       if (result) {
-        console.log(`✅ 批次刪除成功: ${result.deletedCount}/${result.totalRequested} 筆`);
-
         if (result.errors && result.errors.length > 0) {
           alert(`部分刪除失敗：${result.deletedCount}/${result.totalRequested} 筆成功`);
         } else {
@@ -891,7 +869,6 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
                        <select
                          value={formAccountId || ''}
                          onChange={e => {
-                           console.log('🔄 帳戶選擇變更:', e.target.value);
                            setFormAccountId(e.target.value);
                          }}
                          className="w-full bg-white border border-stone-200 pl-10 pr-4 py-3 rounded-xl text-sm font-bold text-ink-900 focus:outline-none focus:border-morandi-blue appearance-none"

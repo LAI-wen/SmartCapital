@@ -96,15 +96,9 @@ const AppContent: React.FC = () => {
 
       // 🎯 載入用戶設定（投資範圍）
       try {
-        console.log('🔍 [App] 開始載入用戶設定');
         const user = await getUser();
         if (user) {
           setInvestmentScope({
-            tw: user.enableTWStock,
-            us: user.enableUSStock,
-            crypto: user.enableCrypto
-          });
-          console.log('✅ 已載入投資範圍設定:', {
             tw: user.enableTWStock,
             us: user.enableUSStock,
             crypto: user.enableCrypto
@@ -117,14 +111,11 @@ const AppContent: React.FC = () => {
       // 載入帳戶
       setIsLoadingAccounts(true);
       try {
-        console.log('🔍 [App] 開始載入帳戶，當前 lineUserId:', lineUserId);
         const fetchedAccounts = await getAccounts();
         setAccounts(fetchedAccounts);
-        console.log('✅ 已載入帳戶:', fetchedAccounts.length, '個帳戶', fetchedAccounts);
 
         // 🎯 首次登入自動創建預設現金帳戶
         if (fetchedAccounts.length === 0 && !localStorage.getItem('defaultAccountCreated')) {
-          console.log('🎉 首次登入，自動創建預設現金帳戶');
           try {
             const defaultAccount = await createAccount({
               name: '現金',
@@ -136,7 +127,6 @@ const AppContent: React.FC = () => {
             });
 
             if (defaultAccount) {
-              console.log('✅ 預設現金帳戶創建成功:', defaultAccount);
               setAccounts([defaultAccount]);
               localStorage.setItem('defaultAccountCreated', 'true');
             }
@@ -155,9 +145,6 @@ const AppContent: React.FC = () => {
       try {
         const fetchedAssets = await fetchAssets();
         setAssets(fetchedAssets);
-        console.log('✅ 已載入資產:', fetchedAssets.length, '個資產');
-        console.log('👤 當前用戶 ID:', lineUserId || 'Mock User');
-        console.log('🎭 認證模式:', authMode);
       } catch (error) {
         console.error('❌ 載入資產失敗:', error);
       } finally {
@@ -170,7 +157,6 @@ const AppContent: React.FC = () => {
 
   // 處理登入相關的函數
   const handleLineLogin = () => {
-    console.log('🔐 LINE 登入流程啟動');
     // LIFF 會自動觸發登入，不需額外處理
     localStorage.setItem('authMode', 'authenticated');
     setAuthMode('authenticated');
@@ -178,14 +164,12 @@ const AppContent: React.FC = () => {
   };
 
   const handleGuestMode = () => {
-    console.log('🎭 進入訪客模式');
     localStorage.setItem('authMode', 'guest');
     setAuthMode('guest');
     setShowWelcome(false);
   };
 
   const handleLogout = () => {
-    console.log('👋 登出');
     localStorage.removeItem('authMode');
     localStorage.removeItem('lineUserId');
     localStorage.removeItem('displayName');
@@ -200,14 +184,12 @@ const AppContent: React.FC = () => {
   };
 
   const handleOnboardingComplete = (newAccount: Account) => {
-    console.log('🎉 Onboarding 完成，新帳戶:', newAccount);
     localStorage.setItem('onboardingCompleted', 'true');
     setAccounts([newAccount]);
     setShowOnboarding(false);
   };
 
   const handleOnboardingSkip = () => {
-    console.log('⏭️ 跳過 Onboarding');
     localStorage.setItem('onboardingCompleted', 'true');
     setShowOnboarding(false);
   };
@@ -408,10 +390,8 @@ const AppContent: React.FC = () => {
                       accounts={accounts}
                       isPrivacyMode={isPrivacyMode}
                       onAccountsUpdate={async () => {
-                        console.log('🔄 Ledger 觸發帳戶刷新...');
                         const fetchedAccounts = await getAccounts();
                         setAccounts(fetchedAccounts);
-                        console.log('✅ App: 帳戶已刷新，共', fetchedAccounts.length, '個帳戶');
                       }}
                     />
                   }

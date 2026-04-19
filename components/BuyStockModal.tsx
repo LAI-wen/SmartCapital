@@ -66,8 +66,6 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
   // Reset state when opening
   useEffect(() => {
     if (isOpen) {
-      console.log('📂 Opening BuyStockModal with', accounts.length, 'accounts');
-
       if (existingAsset) {
         setSelectedStock({
           symbol: existingAsset.symbol,
@@ -101,7 +99,6 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
       try {
         const results = await searchStocks(searchTerm);
         setSearchResults(results);
-        console.log('🔍 搜尋結果:', results);
       } catch (error) {
         console.error('搜尋失敗:', error);
         setSearchResults([]);
@@ -235,16 +232,6 @@ const BuyStockModal: React.FC<BuyStockModalProps> = ({ isOpen, onClose, mode, ex
   // Buying Power Check (導入模式不檢查餘額)
   const buyingPower = selectedAccount ? selectedAccount.balance : 0;
   const isInsufficientFunds = !isImport && isBuy && selectedAccount && finalCost > buyingPower;
-
-  // Debug logging
-  console.log('🔍 BuyStockModal Debug:', {
-    accountsCount: accounts.length,
-    selectedAccountId,
-    selectedAccount,
-    buyingPower,
-    finalCost,
-    isInsufficientFunds
-  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-ink-900/40 backdrop-blur-sm animate-fade-in">

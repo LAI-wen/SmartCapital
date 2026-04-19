@@ -53,7 +53,6 @@ export async function lineLogin(
 
     if (response) {
       saveTokens(response.accessToken, response.refreshToken, response.expiresIn);
-      console.log('✅ LINE 登入成功:', lineUserId);
     }
 
     return response;
@@ -80,7 +79,6 @@ export async function guestLogin(
 
     if (response) {
       saveTokens(response.accessToken, response.refreshToken, response.expiresIn);
-      console.log('✅ 訪客登入成功:', mockUserId);
     }
 
     return response;
@@ -98,7 +96,6 @@ export async function refreshAccessToken(): Promise<boolean> {
     const refreshToken = getRefreshToken();
 
     if (!refreshToken) {
-      console.log('⚠️ 無 Refresh Token');
       return false;
     }
 
@@ -112,7 +109,6 @@ export async function refreshAccessToken(): Promise<boolean> {
       localStorage.setItem(ACCESS_TOKEN_KEY, response.accessToken);
       const expiryTime = Date.now() + response.expiresIn * 1000;
       localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-      console.log('✅ Token 刷新成功');
       return true;
     }
 
@@ -149,7 +145,6 @@ export async function logout(): Promise<void> {
   try {
     await post('/api/auth/logout', {});
     clearTokens();
-    console.log('✅ 登出成功');
   } catch (error) {
     console.error('❌ 登出失敗:', error);
     // 即使後端失敗也清除本地 Token
@@ -229,7 +224,6 @@ export async function autoRefreshToken(): Promise<void> {
 
   // 如果在過期前 5 分鐘內，自動刷新
   if (timeUntilExpiry < fiveMinutes && timeUntilExpiry > 0) {
-    console.log('⏰ Token 即將過期，自動刷新...');
     await refreshAccessToken();
   }
 }

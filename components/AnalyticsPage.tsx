@@ -87,7 +87,6 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
         setTransactions(txs);
         setAccounts(accs);
         setAssets(assts);
-        console.log('✅ Analytics: 已載入', txs.length, '筆交易');
       } catch (error) {
         console.error('❌ Analytics: 載入數據失敗:', error);
       } finally {

@@ -55,7 +55,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     // 保存到後端
     try {
       await updateInvestmentScope(newScope.tw, newScope.us, newScope.crypto);
-      console.log('✅ 投資範圍設定已保存');
     } catch (error) {
       console.error('❌ 保存投資範圍設定失敗:', error);
       // 如果失敗，回復原狀態

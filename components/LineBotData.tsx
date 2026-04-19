@@ -25,7 +25,6 @@ function getUserId(): string {
   };
 
   const newMockId = generateMockUserId();
-  console.log('🆕 生成新的訪客 ID:', newMockId);
   localStorage.setItem('lineUserId', newMockId);
   localStorage.setItem('displayName', '訪客用戶');
   return newMockId;

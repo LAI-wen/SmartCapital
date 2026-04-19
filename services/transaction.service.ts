@@ -43,7 +43,6 @@ export async function createTransaction(
   accountId?: string
 ): Promise<Transaction | null> {
   const userId = getUserId();
-  console.log('📝 Creating transaction for user:', userId, 'with accountId:', accountId);
 
   const result = await post<Transaction>(`/api/transactions/${userId}`, {
     type,
@@ -53,10 +52,6 @@ export async function createTransaction(
     note,
     accountId,
   });
-
-  if (result) {
-    console.log('✅ Transaction created:', result);
-  }
 
   return result;
 }
@@ -84,7 +79,6 @@ export async function batchDeleteTransactions(transactionIds: string[], skipBala
   });
 
   if (result) {
-    console.log(`✅ 批次刪除成功: ${result.deletedCount}/${result.totalRequested} 筆`);
     if (result.errors && result.errors.length > 0) {
       console.warn('⚠️ 部分刪除失敗:', result.errors);
     }

@@ -16,7 +16,6 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
   };
 
   const handleGuestMode = () => {
-    console.log('🎭 進入訪客模式');
     onGuestMode();
   };
 
