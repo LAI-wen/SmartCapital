@@ -219,8 +219,8 @@ const StrategyLab: React.FC = () => {
     <div className="pb-24 md:pb-0 max-w-5xl mx-auto bg-graph-paper min-h-screen">
       <div className="mb-6 flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-bold font-serif text-ink-900 mb-2">策略實驗室 (Strategy Lab)</h2>
-          <p className="text-ink-400 text-sm font-serif">選擇適合你的投資劇本，讓數字說話。</p>
+          <h2 className="text-2xl font-bold font-serif text-ink-900 mb-2">財富目標試算</h2>
+          <p className="text-ink-400 text-sm font-serif">試算你的定期投入，看見財富成長的可能。</p>
         </div>
         {!showGuide && (
           <button onClick={() => setShowGuide(true)} className="text-morandi-blue text-sm font-serif underline">
@@ -231,7 +231,7 @@ const StrategyLab: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex overflow-x-auto pb-4 mb-2 gap-3 no-scrollbar">
-        <TabButton id="Compound" label="複利試算" icon={Sprout} />
+        <TabButton id="Compound" label="財富試算 ✦" icon={Sprout} />
         <TabButton id="VA" label="價值平均" icon={Scale} />
         <TabButton id="Grid" label="網格交易" icon={Grid3X3} />
         <TabButton id="Pyramid" label="金字塔加碼" icon={Layers} />
@@ -244,10 +244,10 @@ const StrategyLab: React.FC = () => {
         {/* === COMPOUND INTEREST (For Fund Investors) === */}
         {activeTab === 'Compound' && (
           <div className="space-y-6 animate-fade-in">
-             <GuideCard 
-                title="複利試算 (Compound Interest)"
+             <GuideCard
+                title="複利試算 — 財富成長的核心工具"
                 concept="這是台股存股族與基金投資人最強大的武器。時間越長，複利的效果越驚人。這也是為什麼常說『越早開始越好』。"
-                bestFor="定期定額買 0050、0056 或全球股票基金的長期投資人。"
+                bestFor="定期定額買 0050、0056 或全球股票基金，或任何想估算未來資產規模的人。"
                 risk="需有耐心，前幾年的效果不明顯，且需確保持續投入不中斷。"
              />
 
