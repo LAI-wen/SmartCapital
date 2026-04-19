@@ -16,6 +16,7 @@ export {
   getUser,
   getPortfolio,
   getSettings,
+  updateInvestmentScope,
 } from './user.service';
 
 // Asset Service

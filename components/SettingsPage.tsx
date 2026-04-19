@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { InvestmentScope } from '../types';
 import { useTranslation } from 'react-i18next';
-import { updateInvestmentScope } from '../services/api';
+import { updateInvestmentScope } from '../services';
 
 interface SettingsPageProps {
   isPrivacyMode: boolean;

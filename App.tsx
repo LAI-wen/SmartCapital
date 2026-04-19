@@ -7,7 +7,7 @@ import OnboardingModal from './components/OnboardingModal';
 import ErrorToast, { showApiError } from './components/ErrorToast';
 import { ApiError } from './services/core/http';
 import { Asset, Account, InvestmentScope } from './types';
-import { getAccounts, getAssets as fetchAssets, createAccount, getUser } from './services/api';
+import { getAccounts, getAssets as fetchAssets, createAccount, getUser } from './services';
 import { isAuthenticated, autoRefreshToken } from './services/auth.service';
 import { useLiff } from './contexts/LiffContext';
 import './i18n/config'; // Initialize i18n
