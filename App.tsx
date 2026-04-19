@@ -8,6 +8,7 @@ import ErrorToast, { showApiError } from './components/ErrorToast';
 import { ApiError } from './services/core/http';
 import { Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets, createAccount, getUser } from './services/api';
+import { isAuthenticated, autoRefreshToken } from './services/auth.service';
 import { useLiff } from './contexts/LiffContext';
 import './i18n/config'; // Initialize i18n
 import { useTranslation } from 'react-i18next';
@@ -72,26 +73,45 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('unhandledrejection', handler);
   }, []);
 
-  // 🔥 檢查認證狀態並決定是否顯示歡迎頁
+  // 檢查認證狀態並決定是否顯示歡迎頁
   useEffect(() => {
-    // 🎯 優先檢查 localStorage，避免閃爍
-    const hasAuthenticated = localStorage.getItem('authMode');
-    const hasLineUserId = localStorage.getItem('lineUserId');
+    const storedAuthMode = localStorage.getItem('authMode') as 'guest' | 'authenticated' | null;
 
-    // 如果有認證記錄或 LINE User ID，立即隱藏歡迎頁
-    if (hasAuthenticated || hasLineUserId) {
+    if (storedAuthMode === 'guest') {
+      setAuthMode('guest');
       setShowWelcome(false);
-      setAuthMode((hasAuthenticated as 'guest' | 'authenticated') || 'authenticated');
+      return;
     }
 
-    // 等待 LIFF 初始化完成後，再次確認狀態
-    if (!isLiffReady) return;
+    if (storedAuthMode === 'authenticated') {
+      if (isAuthenticated()) {
+        // Token 有效，直接進入
+        setAuthMode('authenticated');
+        setShowWelcome(false);
+        return;
+      }
+      // Token 過期，等 LIFF ready 後嘗試 refresh
+      if (!isLiffReady) return;
+      autoRefreshToken().then(() => {
+        if (isAuthenticated()) {
+          setAuthMode('authenticated');
+          setShowWelcome(false);
+        } else {
+          // Refresh 失敗，清除過期狀態，回到歡迎頁
+          ['authMode', 'lineUserId', 'displayName'].forEach(k => localStorage.removeItem(k));
+          setAuthMode('guest');
+          setShowWelcome(true);
+        }
+      });
+      return;
+    }
 
-    if (isLoggedIn || hasAuthenticated === 'guest') {
+    // 沒有任何 auth 記錄，依賴 LIFF 狀態
+    if (!isLiffReady) return;
+    if (isLoggedIn) {
+      setAuthMode('authenticated');
       setShowWelcome(false);
-      setAuthMode((hasAuthenticated as 'guest' | 'authenticated') || 'authenticated');
-    } else if (!hasLineUserId) {
-      // 只有在沒有任何認證記錄時才顯示歡迎頁
+    } else {
       setShowWelcome(true);
     }
   }, [isLiffReady, isLoggedIn]);
