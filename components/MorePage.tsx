@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Calculator, Settings, Shield, ChevronRight,
-  MessageCircle, FileText, PieChart, HelpCircle,
+  Sprout, Settings, Shield, ChevronRight,
+  MessageCircle, FileText, AlertTriangle, HelpCircle,
   LogOut, Wallet, Bell, PiggyBank
 } from 'lucide-react';
 
@@ -16,33 +16,38 @@ const MorePage: React.FC<MorePageProps> = ({ onLogout, authMode }) => {
 
   const menuGroups = [
     {
-      title: "策略工具",
+      title: "財務工具",
       items: [
         {
-          label: "策略實驗室",
-          icon: <Calculator size={20} />,
-          desc: "凱利公式、馬丁格爾、網格交易",
+          label: "財富目標試算",
+          icon: <Sprout size={20} />,
+          desc: "定期投入複利成長、財富路徑預測",
           action: () => navigate('/strategy'),
-          color: "bg-morandi-blueLight text-morandi-blue"
-        },
-        {
-          label: "數據分析",
-          icon: <PieChart size={20} />,
-          desc: "資產報告、收支趨勢",
-          action: () => navigate('/analytics'),
           color: "bg-morandi-sageLight text-morandi-sage"
+        }
+      ]
+    },
+    {
+      title: "提醒中心",
+      items: [
+        {
+          label: "通知中心",
+          icon: <Bell size={20} />,
+          desc: "系統通知與財務提醒",
+          action: () => navigate('/notifications'),
+          color: "bg-yellow-100 text-yellow-700"
         },
         {
           label: "價格警示",
-          icon: <Bell size={20} />,
-          desc: "設定股票漲跌提醒、停利停損",
+          icon: <AlertTriangle size={20} />,
+          desc: "股票漲跌提醒、停利停損",
           action: () => navigate('/price-alerts'),
           color: "bg-yellow-100 text-yellow-700"
         }
       ]
     },
     {
-      title: "帳戶管理",
+      title: "帳戶設定",
       items: [
         {
           label: "我的帳戶",
@@ -57,11 +62,18 @@ const MorePage: React.FC<MorePageProps> = ({ onLogout, authMode }) => {
           desc: "設定各類別月預算上限",
           action: () => navigate('/budget-settings'),
           color: "bg-morandi-sageLight text-morandi-sage"
+        },
+        {
+          label: "LINE Bot 綁定",
+          icon: <MessageCircle size={20} />,
+          desc: "快速記帳通知",
+          action: () => navigate('/settings'),
+          color: "bg-[#06C755]/10 text-[#06C755]"
         }
       ]
     },
     {
-      title: "系統設定",
+      title: "系統與幫助",
       items: [
         {
           label: "偏好設定",
@@ -78,28 +90,16 @@ const MorePage: React.FC<MorePageProps> = ({ onLogout, authMode }) => {
           color: "bg-stone-100 text-ink-500"
         },
         {
-          label: "LINE Bot 綁定",
-          icon: <MessageCircle size={20} />,
-          desc: "快速記帳通知",
-          action: () => navigate('/settings'),
-          color: "bg-[#06C755]/10 text-[#06C755]"
-        }
-      ]
-    },
-    {
-      title: "幫助",
-      items: [
-        { 
-          label: "使用指南", 
-          icon: <FileText size={20} />, 
-          desc: "新手教學影片", 
+          label: "使用指南",
+          icon: <FileText size={20} />,
+          desc: "新手教學影片",
           action: () => navigate('/help'),
           color: "bg-stone-100 text-ink-500"
         },
-        { 
-          label: "聯絡客服", 
-          icon: <HelpCircle size={20} />, 
-          desc: "回報問題", 
+        {
+          label: "聯絡客服",
+          icon: <HelpCircle size={20} />,
+          desc: "回報問題",
           action: () => navigate('/help'),
           color: "bg-stone-100 text-ink-500"
         }
