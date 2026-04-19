@@ -24,6 +24,7 @@ const BudgetSettingsPage: React.FC = () => {
     };
 
     loadBudgets();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSelectCategory = (category: string) => {

@@ -49,7 +49,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ assets, isPrivacyMode }) => {
           {['All', 'Stock', 'Crypto', 'Cash'].map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f as any)}
+              onClick={() => setFilter(f as 'All' | 'Stock' | 'Crypto' | 'Cash')}
               className={`px-5 py-2 rounded-lg text-sm font-serif transition-all whitespace-nowrap ${
                 filter === f 
                   ? 'bg-morandi-blue text-white shadow-md' 

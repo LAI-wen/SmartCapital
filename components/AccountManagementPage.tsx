@@ -3,7 +3,7 @@ import { Account } from '../types';
 import { getAccounts, createAccount, updateAccountBalance, deleteAccount, updateAccount, createTransfer } from '../services';
 import {
   Wallet, Building2, Landmark, Coins, Plus, Edit3,
-  Trash2, DollarSign, Check, X, AlertCircle, ArrowRightLeft
+  Trash2, Check, X, AlertCircle, ArrowRightLeft
 } from 'lucide-react';
 
 interface AccountManagementPageProps {
@@ -453,7 +453,7 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
                 ].map(type => (
                   <button
                     key={type.value}
-                    onClick={() => setNewAccountType(type.value as any)}
+                    onClick={() => setNewAccountType(type.value as 'CASH' | 'BANK' | 'BROKERAGE' | 'EXCHANGE')}
                     className={`flex items-center justify-center gap-2 py-3 rounded-xl border transition ${
                       newAccountType === type.value
                         ? 'bg-ink-50 border-ink-900 text-ink-900 shadow-sm'
@@ -474,7 +474,7 @@ const AccountManagementPage: React.FC<AccountManagementPageProps> = ({ onAccount
                 {['TWD', 'USD'].map(curr => (
                   <button
                     key={curr}
-                    onClick={() => setNewAccountCurrency(curr as any)}
+                    onClick={() => setNewAccountCurrency(curr as 'TWD' | 'USD')}
                     className={`py-3 rounded-xl border transition text-sm font-bold ${
                       newAccountCurrency === curr
                         ? 'bg-ink-50 border-ink-900 text-ink-900'

@@ -4,7 +4,6 @@ import { HashRouter, Routes, Route, NavLink, useLocation, useNavigate } from 're
 import { LayoutDashboard, ReceiptText, Menu, Settings, ChevronRight, TrendingUp, Calculator, HelpCircle, Wallet } from 'lucide-react';
 import WelcomePage from './components/WelcomePage';
 import OnboardingModal from './components/OnboardingModal';
-import { MOCK_ASSETS } from './constants';
 import { Asset, Account, InvestmentScope } from './types';
 import { getAccounts, getAssets as fetchAssets, createAccount, getUser } from './services/api';
 import { useLiff } from './contexts/LiffContext';
@@ -69,7 +68,7 @@ const AppContent: React.FC = () => {
     // 如果有認證記錄或 LINE User ID，立即隱藏歡迎頁
     if (hasAuthenticated || hasLineUserId) {
       setShowWelcome(false);
-      setAuthMode((hasAuthenticated as any) || 'authenticated');
+      setAuthMode((hasAuthenticated as 'guest' | 'authenticated') || 'authenticated');
     }
 
     // 等待 LIFF 初始化完成後，再次確認狀態
@@ -77,7 +76,7 @@ const AppContent: React.FC = () => {
 
     if (isLoggedIn || hasAuthenticated === 'guest') {
       setShowWelcome(false);
-      setAuthMode((hasAuthenticated as any) || 'authenticated');
+      setAuthMode((hasAuthenticated as 'guest' | 'authenticated') || 'authenticated');
     } else if (!hasLineUserId) {
       // 只有在沒有任何認證記錄時才顯示歡迎頁
       setShowWelcome(true);

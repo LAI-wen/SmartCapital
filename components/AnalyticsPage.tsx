@@ -6,7 +6,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
 import { COLORS } from '../constants';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, ChevronLeft, ChevronRight, CalendarDays, X as XIcon, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Calendar, ChevronLeft, ChevronRight, CalendarDays, X as XIcon, ArrowRight } from 'lucide-react';
 import { getTransactions, getAccounts, getAssets } from '../services';
 import { Transaction, Account, Asset, InvestmentScope } from '../types';
 import {
@@ -183,8 +183,6 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
     for (let i = 5; i >= 0; i--) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthName = monthDate.toLocaleDateString('zh-TW', { month: 'short' });
-      const startOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-      const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
 
       const monthTxs = transactions.filter(tx => {
         const [y, m] = tx.date.split('T')[0].split('-').map(Number);

@@ -148,7 +148,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onComplete, onSkip })
                   ].map(type => (
                     <button
                       key={type.value}
-                      onClick={() => setAccountType(type.value as any)}
+                      onClick={() => setAccountType(type.value as 'CASH' | 'BANK' | 'BROKERAGE' | 'EXCHANGE')}
                       className={`flex items-center justify-center gap-2 py-3 rounded-xl border transition ${
                         accountType === type.value
                           ? 'bg-ink-50 border-ink-900 text-ink-900 shadow-sm'
@@ -169,7 +169,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onComplete, onSkip })
                   {['TWD', 'USD'].map(curr => (
                     <button
                       key={curr}
-                      onClick={() => setCurrency(curr as any)}
+                      onClick={() => setCurrency(curr as 'TWD' | 'USD')}
                       className={`py-3 rounded-xl border transition text-sm font-bold ${
                         currency === curr
                           ? 'bg-ink-50 border-ink-900 text-ink-900'

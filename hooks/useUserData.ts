@@ -67,6 +67,7 @@ export const useUserData = (): UserData => {
       // LIFF 已就緒但未登入，使用 Mock 資料
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineUserId, isLoggedIn, isLiffReady]);
 
   return {

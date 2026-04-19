@@ -23,7 +23,6 @@ const CurrencyAmount: React.FC<CurrencyAmountProps> = ({
   originalCurrency,
   originalAmount,
   exchangeRate,
-  displayCurrency,
   showOriginal = true,
   className = ''
 }) => {

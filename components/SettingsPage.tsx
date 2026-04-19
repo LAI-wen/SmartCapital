@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  ChevronRight, Globe, Lock, Bell, Moon, Smartphone,
-  MessageCircle, LogOut, ShieldCheck
+  ChevronRight, Globe, Lock, Bell,
+  LogOut, ShieldCheck
 } from 'lucide-react';
 import { InvestmentScope } from '../types';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +25,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   setInvestmentScope,
   onLogout,
   authMode,
-  displayName
 }) => {
   const { t, i18n } = useTranslation();
   const [language, setLanguage] = useState(i18n.language || 'zh-TW');
@@ -71,9 +70,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     </div>
   );
 
-  const SettingItem = ({ 
-    icon: Icon, label, value, onClick, isToggle = false, toggleValue = false, onToggle 
-  }: any) => (
+  const SettingItem = ({
+    icon: Icon, label, value, onClick, isToggle = false, toggleValue = false, onToggle
+  }: { icon: React.ElementType; label: string; value?: string; onClick?: () => void; isToggle?: boolean; toggleValue?: boolean; onToggle?: () => void }) => (
     <div 
       onClick={!isToggle ? onClick : undefined}
       className="flex items-center justify-between p-4 border-b border-stone-50 last:border-0 cursor-pointer hover:bg-stone-50 transition-colors"
@@ -85,7 +84,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
        
        {isToggle ? (
          <div 
-           onClick={(e) => { e.stopPropagation(); onToggle && onToggle(); }}
+           onClick={(e) => { e.stopPropagation(); if (onToggle) onToggle(); }}
            className={`w-11 h-6 rounded-full relative transition-colors duration-200 ${toggleValue ? 'bg-morandi-blue' : 'bg-stone-200'}`}
          >
            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${toggleValue ? 'left-6' : 'left-1'}`}></div>

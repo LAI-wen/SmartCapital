@@ -58,7 +58,7 @@ const StockDetailModal: React.FC<StockDetailModalProps> = ({ asset, isOpen, onCl
     return { pl, plPercent, totalCost, totalValue };
   };
 
-  const { pl, plPercent, totalCost, totalValue } = getProfitLoss(asset);
+  const { pl, plPercent, totalValue } = getProfitLoss(asset);
   const isProfit = pl >= 0;
   const isTWStock = asset.symbol.endsWith('.TW');
 

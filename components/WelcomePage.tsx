@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, CheckCircle, Smartphone, TrendingUp, Shield, Zap, ReceiptText } from 'lucide-react';
+import { ArrowRight, CheckCircle, Smartphone, TrendingUp, Shield, ReceiptText } from 'lucide-react';
 
 interface WelcomePageProps {
   onLineLogin: () => void;

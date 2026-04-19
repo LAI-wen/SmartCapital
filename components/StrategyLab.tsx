@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Calculator, AlertTriangle, Info, RotateCcw, 
-  Layers, Grid3X3, Scale, TrendingUp, DollarSign, BookOpen, AlertCircle, Sprout
+import {
+  Calculator, AlertTriangle, RotateCcw,
+  Layers, Grid3X3, Scale, TrendingUp, BookOpen, AlertCircle, Sprout
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -35,7 +35,7 @@ const StrategyLab: React.FC = () => {
   const [baseSize, setBaseSize] = useState(1000);
   const [priceGap, setPriceGap] = useState(5); // %
   const [sizeMultiplier, setSizeMultiplier] = useState(0.5);
-  const [maxAdds, setMaxAdds] = useState(3);
+  const [maxAdds] = useState(3);
   
   // --- STATE: Grid Trading ---
   const [gridLower, setGridLower] = useState(90);
@@ -138,7 +138,6 @@ const StrategyLab: React.FC = () => {
     const range = gridUpper - gridLower;
     const step = range / gridCount;
     const grids = [];
-    const amountPerGrid = gridInvest / gridCount;
 
     for (let i = 0; i <= gridCount; i++) {
       grids.push({
@@ -155,7 +154,7 @@ const StrategyLab: React.FC = () => {
       stepValue: step,
       grids 
     };
-  }, [gridLower, gridUpper, gridCount, gridInvest]);
+  }, [gridLower, gridUpper, gridCount]);
 
   // VA Calculation
   const vaData = useMemo(() => {
@@ -170,7 +169,7 @@ const StrategyLab: React.FC = () => {
 
   // --- UI COMPONENTS ---
 
-  const TabButton = ({ id, label, icon: Icon }: { id: StrategyType, label: string, icon: any }) => (
+  const TabButton = ({ id, label, icon: Icon }: { id: StrategyType, label: string, icon: React.ElementType }) => (
     <button
       onClick={() => setActiveTab(id)}
       className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-serif transition-all whitespace-nowrap shadow-sm border flex-shrink-0
