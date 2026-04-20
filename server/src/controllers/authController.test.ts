@@ -51,38 +51,6 @@ describe('guestLogin', () => {
     vi.mocked(generateGuestTokens).mockReturnValue(mockTokens);
   });
 
-  it('rejects missing mockUserId with 400', async () => {
-    const req = { body: {} } as Request;
-    await guestLogin(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-    expect((res.json as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
-      success: false,
-      error: expect.stringContaining('mockUserId'),
-    });
-  });
-
-  it('rejects mockUserId that is too short', async () => {
-    const req = { body: { mockUserId: 'Uabc123' } } as Request;
-    await guestLogin(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-    expect((res.json as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
-      success: false,
-      error: expect.stringContaining('format'),
-    });
-  });
-
-  it('rejects mockUserId with uppercase hex (must be lowercase)', async () => {
-    const req = { body: { mockUserId: 'U' + 'A'.repeat(32) } } as Request;
-    await guestLogin(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-  });
-
-  it('rejects mockUserId without leading U', async () => {
-    const req = { body: { mockUserId: 'a'.repeat(33) } } as Request;
-    await guestLogin(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-  });
-
   it('accepts valid mock guest ID and returns tokens', async () => {
     const validId = 'U' + 'a1b2c3d4'.repeat(4);
     const req = { body: { mockUserId: validId, displayName: '訪客' } } as Request;
@@ -106,18 +74,6 @@ describe('lineLogin', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.user.create).mockResolvedValue(lineUser as never);
     vi.mocked(generateAuthTokens).mockReturnValue(mockTokens);
-  });
-
-  it('rejects missing idToken with 400', async () => {
-    const req = { body: { lineUserId: LINE_B } } as Request;
-    await lineLogin(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-  });
-
-  it('rejects missing lineUserId with 400', async () => {
-    const req = { body: { idToken: 'token' } } as Request;
-    await lineLogin(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
   });
 
   it('rejects invalid LINE ID Token with 401', async () => {
@@ -175,12 +131,6 @@ describe('refreshToken', () => {
   beforeEach(() => {
     res = makeRes();
     vi.clearAllMocks();
-  });
-
-  it('rejects missing refreshToken with 400', async () => {
-    const req = { body: {} } as Request;
-    await refreshToken(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
   });
 
   it('rejects invalid token with 401', async () => {

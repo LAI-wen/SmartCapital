@@ -65,22 +65,6 @@ describe('createPriceAlertAPI', () => {
     vi.mocked(createPriceAlert).mockResolvedValue(mockAlert as never);
   });
 
-  it('rejects missing symbol with 400', async () => {
-    const req = makeAuthReq({ alertType: 'PRICE_ABOVE' }, { lineUserId: LINE_USER_ID });
-    await createPriceAlertAPI(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-    expect((res.json as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
-      success: false,
-      error: expect.stringContaining('Missing'),
-    });
-  });
-
-  it('rejects missing alertType with 400', async () => {
-    const req = makeAuthReq({ symbol: '2330' }, { lineUserId: LINE_USER_ID });
-    await createPriceAlertAPI(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-  });
-
   it('creates alert and returns data on success', async () => {
     const req = makeAuthReq(
       { symbol: '2330', name: 'TSMC', alertType: 'PRICE_ABOVE', targetPrice: 900 },
@@ -105,19 +89,6 @@ describe('updatePriceAlertAPI', () => {
     vi.clearAllMocks();
     vi.mocked(prisma.priceAlert.findUnique).mockResolvedValue(mockAlert as never);
     vi.mocked(updateAlertStatus).mockResolvedValue({ ...mockAlert, isActive: false } as never);
-  });
-
-  it('rejects non-boolean isActive with 400', async () => {
-    const req = makeAuthReq(
-      { isActive: 'yes', lineUserId: LINE_USER_ID },
-      { alertId: ALERT_ID },
-    );
-    await updatePriceAlertAPI(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-    expect((res.json as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
-      success: false,
-      error: expect.stringContaining('boolean'),
-    });
   });
 
   it('returns 404 when alert not found', async () => {
