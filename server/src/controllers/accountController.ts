@@ -42,21 +42,6 @@ export async function createNewAccount(req: Request, res: Response) {
     const { lineUserId } = req.params;
     const { name, type, currency, balance, isDefault, isSub } = req.body;
 
-    if (!name || !type || !currency) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: name, type, currency'
-      });
-    }
-
-    if (!['CASH', 'BANK', 'BROKERAGE', 'EXCHANGE'].includes(type)) {
-      return res.status(400).json({ success: false, error: 'Invalid account type' });
-    }
-
-    if (!['TWD', 'USD'].includes(currency)) {
-      return res.status(400).json({ success: false, error: 'Invalid currency' });
-    }
-
     const user = await getOrCreateUser(lineUserId);
     const account = await createAccount(
       user.id, name, type, currency,
@@ -157,20 +142,6 @@ export async function updateBalance(req: Request, res: Response) {
     const { amount, operation, lineUserId } = req.body;
     const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
 
-    if (typeof amount !== 'number' || !operation) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: amount, operation'
-      });
-    }
-
-    if (operation !== 'add' && operation !== 'subtract') {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid operation. Must be "add" or "subtract"'
-      });
-    }
-
     if (!authenticatedLineUserId) return;
 
     const existingAccount = await prisma.account.findUnique({
@@ -203,17 +174,6 @@ export async function createNewTransfer(req: Request, res: Response) {
   try {
     const { lineUserId } = req.params;
     const { fromAccountId, toAccountId, amount, exchangeRate, fee, note } = req.body;
-
-    if (!fromAccountId || !toAccountId || !amount) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: fromAccountId, toAccountId, amount'
-      });
-    }
-
-    if (amount <= 0) {
-      return res.status(400).json({ success: false, error: 'Amount must be positive' });
-    }
 
     const user = await getOrCreateUser(lineUserId);
     const transfer = await createTransfer(

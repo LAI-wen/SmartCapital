@@ -11,6 +11,13 @@ import { disconnectDatabase } from './services/databaseService.js';
 import * as apiController from './controllers/apiController.js';
 import * as authController from './controllers/authController.js';
 import { authenticateToken, requireOwnership } from './middleware/authMiddleware.js';
+import { validate } from './middleware/validate.js';
+import { createTransactionSchema, batchDeleteTransactionsSchema } from './schemas/transaction.schema.js';
+import { createAccountSchema, updateAccountInfoSchema, updateBalanceSchema, createTransferSchema } from './schemas/account.schema.js';
+import { createPriceAlertSchema, updatePriceAlertSchema } from './schemas/alert.schema.js';
+import { setBudgetSchema } from './schemas/budget.schema.js';
+import { lineLoginSchema, guestLoginSchema, refreshTokenSchema } from './schemas/auth.schema.js';
+import { updateUserSettingsSchema, upsertAssetSchema, reduceAssetSchema, importAssetSchema } from './schemas/user.schema.js';
 import { startScheduler } from './services/schedulerService.js';
 
 function normalizeOrigin(origin: string): string | null {
@@ -113,9 +120,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // 🔐 認證端點（無需 Token）
-app.post('/api/auth/line-login', authController.lineLogin);
-app.post('/api/auth/guest-login', authController.guestLogin);
-app.post('/api/auth/refresh', authController.refreshToken);
+app.post('/api/auth/line-login', validate(lineLoginSchema), authController.lineLogin);
+app.post('/api/auth/guest-login', validate(guestLoginSchema), authController.guestLogin);
+app.post('/api/auth/refresh', validate(refreshTokenSchema), authController.refreshToken);
 app.get('/api/auth/verify', authController.verifyTokenEndpoint);
 app.post('/api/auth/logout', authController.logout);
 
@@ -123,21 +130,21 @@ app.post('/api/auth/logout', authController.logout);
 
 // 用戶資料 API
 app.get('/api/user/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.getUser);
-app.patch('/api/user/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.updateUserSettings);
+app.patch('/api/user/:lineUserId', authenticateToken, requireLineUserOwnership, validate(updateUserSettingsSchema), apiController.updateUserSettings);
 app.get('/api/portfolio/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.getPortfolio);
 app.get('/api/settings/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.getSettings);
 
 // 資產管理 API
 app.get('/api/assets/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.getAssets);
-app.post('/api/assets/:lineUserId/upsert', authenticateToken, requireLineUserOwnership, apiController.upsertAssetAPI);
-app.post('/api/assets/:lineUserId/reduce', authenticateToken, requireLineUserOwnership, apiController.reduceAssetAPI);
-app.post('/api/assets/:lineUserId/import', authenticateToken, requireLineUserOwnership, apiController.importAssetAPI);
+app.post('/api/assets/:lineUserId/upsert', authenticateToken, requireLineUserOwnership, validate(upsertAssetSchema), apiController.upsertAssetAPI);
+app.post('/api/assets/:lineUserId/reduce', authenticateToken, requireLineUserOwnership, validate(reduceAssetSchema), apiController.reduceAssetAPI);
+app.post('/api/assets/:lineUserId/import', authenticateToken, requireLineUserOwnership, validate(importAssetSchema), apiController.importAssetAPI);
 
 // 交易記錄 API
 // ⚠️ 重要：批次刪除路由必須在 :lineUserId 路由之前，否則會被誤匹配
-app.post('/api/transactions/batch-delete', authenticateToken, apiController.batchDeleteTransactions);
+app.post('/api/transactions/batch-delete', authenticateToken, validate(batchDeleteTransactionsSchema), apiController.batchDeleteTransactions);
 app.get('/api/transactions/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.getTransactions);
-app.post('/api/transactions/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.createTransaction);
+app.post('/api/transactions/:lineUserId', authenticateToken, requireLineUserOwnership, validate(createTransactionSchema), apiController.createTransaction);
 app.delete('/api/transactions/:transactionId', authenticateToken, apiController.deleteTransaction);
 
 // 通知 API
@@ -147,25 +154,25 @@ app.post('/api/notifications/:lineUserId/read-all', authenticateToken, requireLi
 
 // 帳戶管理 API
 app.get('/api/accounts/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.getAccounts);
-app.post('/api/accounts/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.createNewAccount);
-app.patch('/api/accounts/:accountId', authenticateToken, apiController.updateAccountInfo);
-app.post('/api/accounts/:accountId/balance', authenticateToken, apiController.updateBalance);
+app.post('/api/accounts/:lineUserId', authenticateToken, requireLineUserOwnership, validate(createAccountSchema), apiController.createNewAccount);
+app.patch('/api/accounts/:accountId', authenticateToken, validate(updateAccountInfoSchema), apiController.updateAccountInfo);
+app.post('/api/accounts/:accountId/balance', authenticateToken, validate(updateBalanceSchema), apiController.updateBalance);
 app.delete('/api/accounts/:accountId', authenticateToken, apiController.removeAccount);
 
 // 轉帳 API
-app.post('/api/transfers/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.createNewTransfer);
+app.post('/api/transfers/:lineUserId', authenticateToken, requireLineUserOwnership, validate(createTransferSchema), apiController.createNewTransfer);
 app.get('/api/transfers/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.getTransfers);
 
 // 預算 API
 app.get('/api/budgets/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.getBudgets);
-app.put('/api/budgets/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.setBudget);
+app.put('/api/budgets/:lineUserId', authenticateToken, requireLineUserOwnership, validate(setBudgetSchema), apiController.setBudget);
 app.delete('/api/budgets/:lineUserId/:category', authenticateToken, requireLineUserOwnership, apiController.removeBudget);
 
 // 價格警示 API
 app.get('/api/price-alerts/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.getPriceAlerts);
-app.post('/api/price-alerts/:lineUserId', authenticateToken, requireLineUserOwnership, apiController.createPriceAlertAPI);
+app.post('/api/price-alerts/:lineUserId', authenticateToken, requireLineUserOwnership, validate(createPriceAlertSchema), apiController.createPriceAlertAPI);
 app.post('/api/price-alerts/:lineUserId/create-defaults', authenticateToken, requireLineUserOwnership, apiController.createDefaultAlertsAPI);
-app.patch('/api/price-alerts/:alertId', authenticateToken, apiController.updatePriceAlertAPI);
+app.patch('/api/price-alerts/:alertId', authenticateToken, validate(updatePriceAlertSchema), apiController.updatePriceAlertAPI);
 app.delete('/api/price-alerts/:alertId', authenticateToken, apiController.deletePriceAlertAPI);
 
 // 📖 公開 API 端點（無需認證）

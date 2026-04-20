@@ -47,41 +47,6 @@ describe('createNewTransfer', () => {
     vi.mocked(createTransfer).mockResolvedValue(mockTransfer as never);
   });
 
-  it('rejects missing fromAccountId with 400', async () => {
-    const req = makeAuthReq(
-      { toAccountId: TO_ACCOUNT_ID, amount: 500 },
-      { lineUserId: LINE_USER_ID },
-    );
-    await createNewTransfer(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-    expect((res.json as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
-      success: false,
-      error: expect.stringContaining('Missing'),
-    });
-  });
-
-  it('rejects missing toAccountId with 400', async () => {
-    const req = makeAuthReq(
-      { fromAccountId: FROM_ACCOUNT_ID, amount: 500 },
-      { lineUserId: LINE_USER_ID },
-    );
-    await createNewTransfer(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-  });
-
-  it('rejects negative amount with 400', async () => {
-    const req = makeAuthReq(
-      { fromAccountId: FROM_ACCOUNT_ID, toAccountId: TO_ACCOUNT_ID, amount: -100 },
-      { lineUserId: LINE_USER_ID },
-    );
-    await createNewTransfer(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-    expect((res.json as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
-      success: false,
-      error: expect.stringContaining('positive'),
-    });
-  });
-
   it('returns 400 when service throws insufficient balance error', async () => {
     vi.mocked(createTransfer).mockRejectedValue(
       new Error('轉出帳戶餘額不足 (需要 1500，僅有 500)'),

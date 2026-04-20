@@ -38,21 +38,6 @@ export async function createTransaction(req: Request, res: Response) {
     const { lineUserId } = req.params;
     const { type, amount, category, note, accountId, originalCurrency, exchangeRate, date } = req.body;
 
-    if (!type || !amount || !category) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: type, amount, category'
-      });
-    }
-
-    if (!['income', 'expense'].includes(type)) {
-      return res.status(400).json({ success: false, error: 'Invalid transaction type' });
-    }
-
-    if (amount <= 0) {
-      return res.status(400).json({ success: false, error: 'Amount must be positive' });
-    }
-
     const user = await getOrCreateUser(lineUserId);
     const transaction = await dbCreateTransaction(
       user.id, type, amount, category, note,
@@ -84,13 +69,6 @@ export async function batchDeleteTransactions(req: Request, res: Response) {
     const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
 
     if (!authenticatedLineUserId) return;
-
-    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'transactionIds must be a non-empty array'
-      });
-    }
 
     const shouldSkipBalanceUpdate = skipBalanceUpdate === true;
 

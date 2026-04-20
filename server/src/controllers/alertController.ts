@@ -26,13 +26,6 @@ export async function createPriceAlertAPI(req: Request, res: Response) {
     const { lineUserId } = req.params;
     const { symbol, name, alertType, threshold, targetPrice, direction, referencePrice } = req.body;
 
-    if (!symbol || !alertType) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: symbol, alertType'
-      });
-    }
-
     const user = await getOrCreateUser(lineUserId);
     const alert = await createPriceAlert(user.id, {
       symbol, name, alertType, threshold, targetPrice, direction, referencePrice
@@ -51,10 +44,6 @@ export async function updatePriceAlertAPI(req: Request, res: Response) {
     const { alertId } = req.params;
     const { isActive, lineUserId } = req.body;
     const authenticatedLineUserId = ensureAuthenticatedUser(req, res, lineUserId);
-
-    if (typeof isActive !== 'boolean') {
-      return res.status(400).json({ success: false, error: 'isActive must be a boolean' });
-    }
 
     if (!authenticatedLineUserId) return;
 

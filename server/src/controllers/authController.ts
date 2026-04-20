@@ -21,13 +21,6 @@ export async function lineLogin(req: Request, res: Response) {
   try {
     const { idToken, lineUserId, displayName, pictureUrl } = req.body;
 
-    if (!idToken || !lineUserId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: idToken and lineUserId'
-      });
-    }
-
     // 驗證 LINE ID Token
     const verified = await verifyLineIdToken(idToken);
 
@@ -105,21 +98,6 @@ export async function guestLogin(req: Request, res: Response) {
   try {
     const { mockUserId, displayName } = req.body;
 
-    if (!mockUserId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required field: mockUserId'
-      });
-    }
-
-    // 驗證 Mock User ID 格式（U + 32 hex）
-    if (!/^U[0-9a-f]{32}$/.test(mockUserId)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid mockUserId format'
-      });
-    }
-
     // 確保訪客用戶存在於資料庫
     let user = await prisma.user.findUnique({
       where: { lineUserId: mockUserId }
@@ -169,13 +147,6 @@ export async function guestLogin(req: Request, res: Response) {
 export async function refreshToken(req: Request, res: Response) {
   try {
     const { refreshToken: token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required field: refreshToken'
-      });
-    }
 
     // 驗證 Refresh Token
     const payload = verifyToken(token);

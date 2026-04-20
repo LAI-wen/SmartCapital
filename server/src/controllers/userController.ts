@@ -149,13 +149,6 @@ export async function upsertAssetAPI(req: Request, res: Response) {
     const { lineUserId } = req.params;
     const { symbol, name, type, quantity, avgPrice, currency } = req.body;
 
-    if (!symbol || !name || !type || quantity === undefined || avgPrice === undefined) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: symbol, name, type, quantity, avgPrice'
-      });
-    }
-
     const user = await getOrCreateUser(lineUserId);
     const asset = await upsertAsset(user.id, symbol, name, type, quantity, avgPrice, currency);
 
@@ -171,13 +164,6 @@ export async function reduceAssetAPI(req: Request, res: Response) {
     const { lineUserId } = req.params;
     const { symbol, quantity } = req.body;
 
-    if (!symbol || quantity === undefined || quantity <= 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: symbol, quantity (must be > 0)'
-      });
-    }
-
     const user = await getOrCreateUser(lineUserId);
     const asset = await reduceAsset(user.id, symbol, quantity);
 
@@ -192,20 +178,6 @@ export async function importAssetAPI(req: Request, res: Response) {
   try {
     const { lineUserId } = req.params;
     const { symbol, name, type, quantity, avgPrice, currency } = req.body;
-
-    if (!symbol || !name || !type || quantity === undefined || avgPrice === undefined || !currency) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: symbol, name, type, quantity, avgPrice, currency'
-      });
-    }
-
-    if (quantity <= 0 || avgPrice <= 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Quantity and avgPrice must be positive numbers'
-      });
-    }
 
     const user = await getOrCreateUser(lineUserId);
     const asset = await importAsset(user.id, symbol, name, type, quantity, avgPrice, currency);

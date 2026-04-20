@@ -57,42 +57,6 @@ describe('createTransaction', () => {
     } as never);
   });
 
-  it('rejects missing category with 400', async () => {
-    const req = makeAuthReq({ type: 'expense', amount: 100 }, { lineUserId: LINE_USER_ID });
-    await createTransaction(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-    expect((res.json as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
-      success: false,
-      error: expect.stringContaining('Missing'),
-    });
-  });
-
-  it('rejects invalid transaction type with 400', async () => {
-    const req = makeAuthReq(
-      { type: 'transfer', amount: 100, category: '餐飲' },
-      { lineUserId: LINE_USER_ID },
-    );
-    await createTransaction(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-    expect((res.json as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
-      success: false,
-      error: expect.stringContaining('Invalid transaction type'),
-    });
-  });
-
-  it('rejects zero or negative amount with 400', async () => {
-    const req = makeAuthReq(
-      { type: 'expense', amount: -50, category: '餐飲' },
-      { lineUserId: LINE_USER_ID },
-    );
-    await createTransaction(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-    expect((res.json as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
-      success: false,
-      error: expect.stringContaining('positive'),
-    });
-  });
-
   it('creates transaction and returns data on success', async () => {
     const req = makeAuthReq(
       { type: 'expense', amount: 100, category: '餐飲', accountId: 'acct-1' },
@@ -207,18 +171,6 @@ describe('batchDeleteTransactions', () => {
     vi.mocked(prisma.$transaction).mockImplementation(
       async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx),
     );
-  });
-
-  it('returns 400 for empty transactionIds array', async () => {
-    const req = makeAuthReq({ transactionIds: [], lineUserId: LINE_USER_ID });
-    await batchDeleteTransactions(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
-  });
-
-  it('returns 400 for non-array transactionIds', async () => {
-    const req = makeAuthReq({ transactionIds: 'txn-1', lineUserId: LINE_USER_ID });
-    await batchDeleteTransactions(req, res);
-    expect((res.status as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(400);
   });
 
   it('returns 404 when no transactions found', async () => {

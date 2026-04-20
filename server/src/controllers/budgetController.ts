@@ -23,13 +23,6 @@ export async function setBudget(req: Request, res: Response) {
     const { lineUserId } = req.params;
     const { category, amount } = req.body;
 
-    if (!category || typeof amount !== 'number' || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'category and amount are required'
-      });
-    }
-
     const user = await getOrCreateUser(lineUserId);
     const budget = await upsertBudget(user.id, category, amount);
     res.json({ success: true, data: budget });
