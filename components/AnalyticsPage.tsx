@@ -54,7 +54,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
     monthlyData, totalNetWorth, assetTrendData,
     expenseCategoryData, totalExpense, currentPeriodStats,
     prevPeriodCategoryMap, selectedDayTransactions,
-    dailyAvgExpense, savingsRate, peakSpendDay,
+    dailyAvgExpense, savingsRate, peakSpendDay, dayTotalsMap,
   } = useAnalyticsData({ transactions, accounts, assets, investmentScope, viewMode, currentDate, selectedCategory, selectedDay });
 
   const handlePrev = () => {
@@ -138,7 +138,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ isPrivacyMode, investment
       {activeTab === 'income_expense' && (
         <div className="space-y-6 animate-slide-up">
           {viewMode === 'calendar' ? (
-            <CalendarView currentDate={currentDate} transactions={transactions} selectedDay={selectedDay} selectedDayTransactions={selectedDayTransactions} isPrivacyMode={isPrivacyMode} formatCurrency={formatCurrency} onSelectDay={setSelectedDay} onNavigateToLedger={(category, month) => navigate(`/ledger?category=${category}&month=${month}`)} />
+            <CalendarView currentDate={currentDate} dayTotalsMap={dayTotalsMap} selectedDay={selectedDay} selectedDayTransactions={selectedDayTransactions} isPrivacyMode={isPrivacyMode} formatCurrency={formatCurrency} onSelectDay={setSelectedDay} onNavigateToLedger={(category, month) => navigate(`/ledger?category=${category}&month=${month}`)} />
           ) : (
             <>
               {/* Top Metrics Row */}

@@ -16,7 +16,7 @@ import {
 
 interface CalendarViewProps {
   currentDate: Date;
-  transactions: Transaction[];
+  dayTotalsMap: Record<string, { income: number; expense: number }>;
   selectedDay: string | null;
   selectedDayTransactions: Transaction[];
   isPrivacyMode: boolean;
@@ -27,7 +27,7 @@ interface CalendarViewProps {
 
 const CalendarView: React.FC<CalendarViewProps> = ({
   currentDate,
-  transactions,
+  dayTotalsMap,
   selectedDay,
   selectedDayTransactions,
   isPrivacyMode,
@@ -60,24 +60,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           {days.map(day => {
             const isCurrentMonth = isSameMonth(day, monthStart);
             const isToday = isSameDay(day, new Date());
-            const isSelected = format(day, 'yyyy-MM-dd') === selectedDay;
+            const dateKey = format(day, 'yyyy-MM-dd');
+            const isSelected = dateKey === selectedDay;
 
-            // Calculate stats for this day
-            let dayIncome = 0;
-            let dayExpense = 0;
-            transactions.forEach(t => {
-              if (isSameDay(parseISO(t.date), day)) {
-                if (t.type === 'income') dayIncome += t.amount;
-                else dayExpense += t.amount;
-              }
-            });
+            // Look up pre-computed day totals
+            const dayTotals = dayTotalsMap[dateKey];
+            const dayIncome = dayTotals?.income ?? 0;
+            const dayExpense = dayTotals?.expense ?? 0;
 
             return (
               <div
                 key={day.toString()}
                 onClick={() => {
-                  const dayStr = format(day, 'yyyy-MM-dd');
-                  onSelectDay(selectedDay === dayStr ? null : dayStr);
+                  onSelectDay(selectedDay === dateKey ? null : dateKey);
                 }}
                 className={`
                   aspect-[4/5] md:aspect-square rounded-xl p-1 md:p-2 border transition-all cursor-pointer relative flex flex-col justify-between

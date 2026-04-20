@@ -108,22 +108,12 @@ export const useAnalyticsData = ({
   const totalExpense = useMemo(() =>
     expenseCategoryData.reduce((s, c) => s + c.value, 0), [expenseCategoryData]);
 
-  const getPrevRange = (): [Date, Date] => {
-    if (viewMode === 'day') return [subDays(currentDate, 1), subDays(currentDate, 1)];
-    if (viewMode === 'week') {
-      const p = subWeeks(currentDate, 1);
-      return [startOfWeek(p, { weekStartsOn: 1 }), endOfWeek(p, { weekStartsOn: 1 })];
-    }
-    if (viewMode === 'month') {
-      const p = subMonths(currentDate, 1);
-      return [startOfMonth(p), endOfMonth(p)];
-    }
-    const p = subYears(currentDate, 1);
-    return [startOfYear(p), endOfYear(p)];
-  };
-
   const currentPeriodStats = useMemo(() => {
-    const [prevStart, prevEnd] = getPrevRange();
+    let prevStart: Date, prevEnd: Date;
+    if (viewMode === 'day') { prevStart = subDays(currentDate, 1); prevEnd = subDays(currentDate, 1); }
+    else if (viewMode === 'week') { const p = subWeeks(currentDate, 1); prevStart = startOfWeek(p, { weekStartsOn: 1 }); prevEnd = endOfWeek(p, { weekStartsOn: 1 }); }
+    else if (viewMode === 'month') { const p = subMonths(currentDate, 1); prevStart = startOfMonth(p); prevEnd = endOfMonth(p); }
+    else { const p = subYears(currentDate, 1); prevStart = startOfYear(p); prevEnd = endOfYear(p); }
     const prevTxs = transactions.filter(tx => { const d = parseISO(tx.date); return d >= prevStart && d <= prevEnd; });
     const currentIncome = filteredTransactions.filter(tx => tx.type === 'income').reduce((s, tx) => s + tx.amount, 0);
     const currentExpense = filteredTransactions.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
@@ -134,22 +124,35 @@ export const useAnalyticsData = ({
       incomeChange: lastIncome > 0 ? ((currentIncome - lastIncome) / lastIncome) * 100 : 0,
       expenseChange: lastExpense > 0 ? ((currentExpense - lastExpense) / lastExpense) * 100 : 0,
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredTransactions, transactions, currentDate, viewMode]);
 
   const prevPeriodCategoryMap = useMemo(() => {
-    const [prevStart, prevEnd] = getPrevRange();
+    let prevStart: Date, prevEnd: Date;
+    if (viewMode === 'day') { prevStart = subDays(currentDate, 1); prevEnd = subDays(currentDate, 1); }
+    else if (viewMode === 'week') { const p = subWeeks(currentDate, 1); prevStart = startOfWeek(p, { weekStartsOn: 1 }); prevEnd = endOfWeek(p, { weekStartsOn: 1 }); }
+    else if (viewMode === 'month') { const p = subMonths(currentDate, 1); prevStart = startOfMonth(p); prevEnd = endOfMonth(p); }
+    else { const p = subYears(currentDate, 1); prevStart = startOfYear(p); prevEnd = endOfYear(p); }
     const map: Record<string, number> = {};
     transactions.filter(tx => { const d = parseISO(tx.date); return tx.type === 'expense' && d >= prevStart && d <= prevEnd; })
       .forEach(tx => { map[tx.category] = (map[tx.category] || 0) + tx.amount; });
     return map;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactions, currentDate, viewMode]);
 
   const selectedDayTransactions = useMemo(() => {
     if (!selectedDay) return [];
     return transactions.filter(t => t.date.split('T')[0] === selectedDay);
   }, [transactions, selectedDay]);
+
+  const dayTotalsMap = useMemo(() => {
+    const map: Record<string, { income: number; expense: number }> = {};
+    transactions.forEach(t => {
+      const key = t.date.split('T')[0];
+      if (!map[key]) map[key] = { income: 0, expense: 0 };
+      if (t.type === 'income') map[key].income += t.amount;
+      else if (t.type === 'expense') map[key].expense += t.amount;
+    });
+    return map;
+  }, [transactions]);
 
   const dailyAvgExpense = useMemo(() => {
     const days = viewMode === 'day' ? 1 : viewMode === 'week' ? 7
@@ -179,6 +182,6 @@ export const useAnalyticsData = ({
     monthlyData, totalNetWorth, assetTrendData,
     expenseCategoryData, totalExpense, currentPeriodStats,
     prevPeriodCategoryMap, selectedDayTransactions,
-    dailyAvgExpense, savingsRate, peakSpendDay,
+    dailyAvgExpense, savingsRate, peakSpendDay, dayTotalsMap,
   };
 };
