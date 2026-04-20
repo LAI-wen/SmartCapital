@@ -6,23 +6,19 @@ type ViewMode = 'day' | 'week' | 'month' | 'year' | 'calendar';
 interface AnalyticsSummaryBarProps {
   income: number;
   expense: number;
-  savingsRate: number | null;
   incomeChange: number;
   expenseChange: number;
   viewMode: ViewMode;
   formatCurrency: (val: number) => string;
-  isPrivacyMode: boolean;
 }
 
 const AnalyticsSummaryBar: React.FC<AnalyticsSummaryBarProps> = ({
   income,
   expense,
-  savingsRate: _savingsRate,
   incomeChange,
   expenseChange,
   viewMode,
   formatCurrency,
-  isPrivacyMode: _isPrivacyMode,
 }) => {
   const periodLabel = viewMode === 'day' ? '本日' : viewMode === 'week' ? '本週' : viewMode === 'month' ? '本月' : viewMode === 'year' ? '本年' : '本月';
 

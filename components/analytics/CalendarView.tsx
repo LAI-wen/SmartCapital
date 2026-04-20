@@ -2,7 +2,6 @@ import React from 'react';
 import { Transaction } from '../../types';
 import { X as XIcon } from 'lucide-react';
 import {
-  parseISO,
   isSameDay,
   isSameMonth,
   startOfMonth,
@@ -12,12 +11,14 @@ import {
   eachDayOfInterval,
   format,
   getDate,
+  parseISO,
 } from 'date-fns';
 
 interface CalendarViewProps {
   currentDate: Date;
   transactions: Transaction[];
   selectedDay: string | null;
+  selectedDayTransactions: Transaction[];
   isPrivacyMode: boolean;
   formatCurrency: (val: number) => string;
   onSelectDay: (day: string | null) => void;
@@ -28,10 +29,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   currentDate,
   transactions,
   selectedDay,
+  selectedDayTransactions,
   isPrivacyMode,
-  formatCurrency: _formatCurrency,
+  formatCurrency,
   onSelectDay,
-  onNavigateToLedger: _onNavigateToLedger,
+  onNavigateToLedger,
 }) => {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -40,12 +42,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const selectedDayTransactions = React.useMemo(() => {
-    if (!selectedDay) return [];
-    const targetDay = parseISO(selectedDay);
-    return transactions.filter(t => isSameDay(parseISO(t.date), targetDay));
-  }, [transactions, selectedDay]);
 
   return (
     <>
@@ -142,8 +138,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                       <div className="text-xs text-ink-400 font-serif">{t.note || '無備註'}{t.date.length > 10 ? ` · ${t.date.slice(11, 16)}` : ''}</div>
                     </div>
                   </div>
-                  <div className={`font-serif-num font-bold text-sm ${t.type === 'income' ? 'text-morandi-sage' : t.type === 'expense' ? 'text-morandi-rose' : 'text-ink-400'}`}>
-                    {t.type === 'income' ? '+' : t.type === 'expense' ? '-' : ''}{isPrivacyMode ? '••••' : `$${t.amount.toLocaleString()}`}
+                  <div
+                    className={`font-serif-num font-bold text-sm ${t.type === 'income' ? 'text-morandi-sage' : t.type === 'expense' ? 'text-morandi-rose' : 'text-ink-400'} cursor-pointer hover:underline`}
+                    onClick={() => onNavigateToLedger(t.category, format(parseISO(t.date), 'yyyy-MM'))}
+                  >
+                    {t.type === 'income' ? '+' : t.type === 'expense' ? '-' : ''}{isPrivacyMode ? '••••' : formatCurrency(t.amount)}
                   </div>
                 </div>
               ))}

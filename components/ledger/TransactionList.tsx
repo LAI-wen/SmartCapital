@@ -1,23 +1,8 @@
 import React from 'react';
 import { Transaction } from '../../types';
-import {
-  Coffee, ShoppingBag, Home, Bus, HeartPulse, Briefcase,
-  TrendingUp, Gift, Tag, Calendar as CalendarIcon,
-  CheckSquare, Square
-} from 'lucide-react';
+import { Calendar as CalendarIcon, CheckSquare, Square } from 'lucide-react';
 import { format } from 'date-fns';
-
-const getCategoryIcon = (category: string) => {
-  if (category.includes('飲食')) return <Coffee size={18} />;
-  if (category.includes('購物')) return <ShoppingBag size={18} />;
-  if (category.includes('居住')) return <Home size={18} />;
-  if (category.includes('交通')) return <Bus size={18} />;
-  if (category.includes('醫')) return <HeartPulse size={18} />;
-  if (category.includes('薪')) return <Briefcase size={18} />;
-  if (category.includes('資')) return <TrendingUp size={18} />;
-  if (category.includes('娛樂')) return <Gift size={18} />;
-  return <Tag size={18} />;
-};
+import { getCategoryIcon } from './categoryIcon';
 
 const getChineseWeekDay = (dateStr: string) => {
   const date = new Date(dateStr);
@@ -30,7 +15,6 @@ interface TransactionListProps {
   isSelectMode: boolean;
   selectedIds: Set<string>;
   accounts: { id: string; name: string }[];
-  isPrivacyMode: boolean;
   formatCurrency: (val: number) => string;
   onOpenModal: (t: Transaction) => void;
   onToggleSelect: (id: string) => void;
@@ -41,7 +25,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
   isSelectMode,
   selectedIds,
   accounts,
-  isPrivacyMode: _isPrivacyMode,
   formatCurrency,
   onOpenModal,
   onToggleSelect,
