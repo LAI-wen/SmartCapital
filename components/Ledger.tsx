@@ -15,12 +15,13 @@ import { useLedgerActions } from '../hooks/useLedgerActions';
 interface LedgerProps {
   isPrivacyMode: boolean;
   accounts: Account[];
+  isSessionReady: boolean;
   onAccountsUpdate?: () => void;
 }
 
 type ViewMode = 'month' | 'year';
 
-const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpdate }) => {
+const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, isSessionReady, onAccountsUpdate }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -35,6 +36,12 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
 
   useEffect(() => {
     const loadTransactions = async () => {
+      if (!isSessionReady) {
+        setTransactions([]);
+        setIsLoadingTransactions(false);
+        return;
+      }
+
       setIsLoadingTransactions(true);
       try {
         setTransactions(await fetchTransactions(200));
@@ -45,11 +52,16 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
       }
     };
     loadTransactions();
-  }, []);
+  }, [isSessionReady]);
 
   useEffect(() => {
+    if (!isSessionReady) {
+      setBudgets([]);
+      return;
+    }
+
     getBudgets().then(setBudgets).catch(console.error);
-  }, []);
+  }, [isSessionReady]);
 
   useEffect(() => {
     const categoryParam = searchParams.get('category');
@@ -131,6 +143,20 @@ const Ledger: React.FC<LedgerProps> = ({ isPrivacyMode, accounts, onAccountsUpda
     await removeBudget(category);
     setBudgets(prev => prev.filter(b => b.category !== category));
   };
+
+  if (!isSessionReady) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center max-w-sm px-6">
+          <div className="text-5xl mb-4">🧾</div>
+          <h2 className="text-xl font-bold text-ink-900 mb-2">記帳資料暫時不可用</h2>
+          <p className="text-ink-400 font-serif leading-relaxed">
+            請先完成 LINE 登入或進入訪客模式，之後就能查看與新增交易記錄。
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoadingTransactions) {
     return (

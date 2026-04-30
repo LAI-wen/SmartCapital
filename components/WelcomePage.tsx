@@ -3,20 +3,26 @@ import { ArrowRight, CheckCircle, Smartphone, TrendingUp, Shield, ReceiptText } 
 
 interface WelcomePageProps {
   onLineLogin: () => void;
-  onGuestMode: () => void;
+  onGuestMode: () => void | Promise<void>;
+  errorMessage?: string | null;
+  isGuestModeLoading?: boolean;
 }
 
-const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) => {
-  const [isLoading, setIsLoading] = useState(false);
+const WelcomePage: React.FC<WelcomePageProps> = ({
+  onLineLogin,
+  onGuestMode,
+  errorMessage,
+  isGuestModeLoading = false,
+}) => {
+  const [isLineLoginLoading, setIsLineLoginLoading] = useState(false);
 
   const handleLineLogin = () => {
-    setIsLoading(true);
-    // LIFF 會自動處理登入流程
+    setIsLineLoginLoading(true);
     onLineLogin();
   };
 
-  const handleGuestMode = () => {
-    onGuestMode();
+  const handleGuestMode = async () => {
+    await onGuestMode();
   };
 
   return (
@@ -95,18 +101,25 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
             </p>
           </div>
 
+          {errorMessage && (
+            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+              <div className="text-sm font-bold text-amber-900 mb-1">LINE 登入目前沒有成功</div>
+              <p className="text-xs leading-relaxed text-amber-800">{errorMessage}</p>
+            </div>
+          )}
+
           {/* LINE Login Button */}
           <button
             onClick={handleLineLogin}
-            disabled={isLoading}
+            disabled={isLineLoginLoading || isGuestModeLoading}
             className="w-full bg-[#06C755] hover:bg-[#05B04A] text-white font-bold py-4 rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3 mb-4 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {isLoading ? (
+            {isLineLoginLoading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             ) : (
               <>
                 <Smartphone size={20} />
-                使用 LINE 登入
+                {errorMessage ? '重新嘗試 LINE 登入' : '使用 LINE 登入'}
                 <ArrowRight size={18} />
               </>
             )}
@@ -126,9 +139,10 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onLineLogin, onGuestMode }) =
           {/* Guest Mode Button */}
           <button
             onClick={handleGuestMode}
-            className="w-full bg-white border-2 border-stone-200 hover:border-morandi-blue text-ink-900 font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-stone-50"
+            disabled={isLineLoginLoading || isGuestModeLoading}
+            className="w-full bg-white border-2 border-stone-200 hover:border-morandi-blue text-ink-900 font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-stone-50 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            先體驗訪客模式
+            {isGuestModeLoading ? '正在進入訪客模式...' : '先體驗訪客模式'}
           </button>
 
           <div className="mt-6 text-center">

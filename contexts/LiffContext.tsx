@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { lineLogin, guestLogin, startAutoRefresh } from '../services/auth.service';
+import { ensureGuestUserId, getStoredUserId } from '../services/user.service';
 
 interface LiffContextType {
   isLoggedIn: boolean;
@@ -36,59 +37,66 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
   useEffect(() => {
     let isMounted = true;
     let refreshInterval: ReturnType<typeof setInterval> | null = null;
+    const guestDisplayName = '訪客用戶';
+
+    const storeIdentity = (userId: string, name: string, authMode: 'guest' | 'authenticated') => {
+      localStorage.setItem('lineUserId', userId);
+      localStorage.setItem('displayName', name);
+      localStorage.setItem('authMode', authMode);
+    };
+
+    const applyIdentity = (
+      userId: string,
+      name: string,
+      authMode: 'guest' | 'authenticated',
+      nextPictureUrl: string | null = null
+    ) => {
+      if (!isMounted) return;
+      setLineUserId(userId);
+      setDisplayName(name);
+      setPictureUrl(nextPictureUrl);
+      setIsLoggedIn(true);
+      setError(null);
+      storeIdentity(userId, name, authMode);
+    };
+
+    const restartAutoRefresh = () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+      refreshInterval = startAutoRefresh();
+    };
+
+    const initializeGuestSession = async (userId: string, name: string) => {
+      const authResult = await guestLogin(userId, name);
+      if (authResult) {
+        applyIdentity(authResult.user.lineUserId, authResult.user.displayName, 'guest');
+        restartAutoRefresh();
+        return true;
+      }
+
+      console.error('❌ 訪客登入失敗');
+      if (isMounted) {
+        setIsLoggedIn(false);
+        setLineUserId(null);
+        setDisplayName(null);
+        setPictureUrl(null);
+        setError('訪客模式初始化失敗，請稍後再試');
+      }
+      return false;
+    };
 
     const initializeLiff = async () => {
       const liffId = import.meta.env.VITE_LIFF_ID;
 
       // 如果沒有 LIFF ID，則跳過 LIFF 初始化（訪客模式）
       if (!liffId) {
+        const guestUserId = getStoredUserId() ?? ensureGuestUserId();
+        const guestName = localStorage.getItem('displayName') || guestDisplayName;
+        await initializeGuestSession(guestUserId, guestName);
         if (isMounted) {
           setIsLiffReady(true);
         }
-
-        // 檢查 localStorage 中的 userId
-        const storedUserId = localStorage.getItem('lineUserId');
-        if (storedUserId) {
-          if (isMounted) {
-            setLineUserId(storedUserId);
-            setDisplayName(localStorage.getItem('displayName') || '訪客用戶');
-            setIsLoggedIn(true);
-          }
-
-          // 🔐 使用已存在的訪客 ID 向後端登入並獲取 JWT
-          guestLogin(storedUserId, localStorage.getItem('displayName') || '訪客用戶').then((authResult) => {
-            if (authResult && isMounted) {
-              refreshInterval = startAutoRefresh();
-            }
-          });
-          return;
-        }
-
-        // 生成新的訪客 Mock ID
-        const generateMockUserId = () => {
-          const randomHex = Array.from({ length: 32 }, () =>
-            Math.floor(Math.random() * 16).toString(16)
-          ).join('');
-          return `U${randomHex}`;
-        };
-
-        const mockUserId = generateMockUserId();
-
-        // 🔐 向後端註冊並獲取 JWT Token
-        guestLogin(mockUserId, '訪客用戶').then((authResult) => {
-          if (authResult && isMounted) {
-            setLineUserId(authResult.user.lineUserId);
-            setDisplayName(authResult.user.displayName);
-            setIsLoggedIn(true);
-            localStorage.setItem('lineUserId', authResult.user.lineUserId);
-            localStorage.setItem('displayName', authResult.user.displayName);
-
-            // 啟動自動 Token 刷新
-            refreshInterval = startAutoRefresh();
-          } else {
-            console.error('❌ 訪客登入失敗');
-          }
-        });
         return;
       }
 
@@ -96,9 +104,6 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
         const { default: liff } = await import('@line/liff');
 
         await liff.init({ liffId });
-        if (isMounted) {
-          setIsLiffReady(true);
-        }
 
         if (!liff.isLoggedIn()) {
           // 如果未登入，執行 LINE 登入
@@ -133,34 +138,48 @@ export const LiffProvider: React.FC<LiffProviderProps> = ({ children }) => {
             }
 
             // 登入成功，設置用戶資訊
-            setLineUserId(authResult.user.lineUserId);
-            setDisplayName(authResult.user.displayName);
-            setPictureUrl(authResult.user.pictureUrl || null);
-            setIsLoggedIn(true);
-
-            // 儲存到 localStorage
-            localStorage.setItem('lineUserId', authResult.user.lineUserId);
-            localStorage.setItem('displayName', authResult.user.displayName);
+            applyIdentity(
+              authResult.user.lineUserId,
+              authResult.user.displayName,
+              'authenticated',
+              authResult.user.pictureUrl || null
+            );
 
             // 啟動自動 Token 刷新
-            refreshInterval = startAutoRefresh();
+            restartAutoRefresh();
           } else {
             console.error('❌ 後端登入失敗');
-            setError('後端認證失敗，請重試');
+            if (isMounted) {
+              setIsLoggedIn(false);
+              setLineUserId(null);
+              setDisplayName(null);
+              setPictureUrl(null);
+              setError('後端認證失敗，請重試');
+            }
           }
         } else {
           // ID Token 取得失敗 — 安全失敗，不降級為訪客
           // 真正的 LINE 用戶不應透過 guest path 取得 JWT
           console.error('❌ 無法取得 LINE ID Token（請確認 LIFF Scopes 包含 openid）');
           if (isMounted) {
+            setIsLoggedIn(false);
+            setLineUserId(null);
+            setDisplayName(null);
+            setPictureUrl(null);
             setError('無法完成 LINE 身份驗證，請重新開啟應用程式或確認 LIFF 設定');
-            setIsLiffReady(true);
           }
         }
       } catch (err) {
         console.error('❌ LIFF 初始化失敗', err);
         if (isMounted) {
+          setIsLoggedIn(false);
+          setLineUserId(null);
+          setDisplayName(null);
+          setPictureUrl(null);
           setError(err instanceof Error ? err.message : 'LIFF 初始化失敗');
+        }
+      } finally {
+        if (isMounted) {
           setIsLiffReady(true);
         }
       }

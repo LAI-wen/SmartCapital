@@ -46,19 +46,29 @@ export function setUserId(userId: string): void {
   localStorage.setItem('lineUserId', userId);
 }
 
+export function getStoredUserId(): string | null {
+  return localStorage.getItem('lineUserId');
+}
+
 /**
  * 取得當前用戶 ID
- * 優先級：localStorage > 生成新的 Mock ID
- * ⚠️ 已移除 URL 參數功能（安全風險）
+ * 僅回傳已建立的 session user id；不再隱式創建身份
  */
 export function getUserId(): string {
-  // 優先從 localStorage 讀取（LIFF 登入後會儲存）
-  const storedUserId = localStorage.getItem('lineUserId');
+  const storedUserId = getStoredUserId();
+  if (!storedUserId) {
+    throw new Error('No active user session');
+  }
+
+  return storedUserId;
+}
+
+export function ensureGuestUserId(): string {
+  const storedUserId = getStoredUserId();
   if (storedUserId) {
     return storedUserId;
   }
 
-  // 生成新的訪客 Mock ID 並儲存
   const newMockId = generateMockUserId();
   localStorage.setItem('lineUserId', newMockId);
   localStorage.setItem('displayName', '訪客用戶');

@@ -5,10 +5,10 @@ import { LayoutDashboard, ReceiptText, Menu, Settings, ChevronRight, TrendingUp,
 import WelcomePage from './components/WelcomePage';
 import OnboardingModal from './components/OnboardingModal';
 import ErrorToast, { showApiError } from './components/ErrorToast';
-import { ApiError } from './services/core/http';
+import { ApiError, subscribeToAuthExpired } from './services/core/http';
 import { Asset, Account, InvestmentScope } from './types';
-import { getAccounts, getAssets as fetchAssets, createAccount, getUser } from './services';
-import { isAuthenticated, autoRefreshToken } from './services/auth.service';
+import { getAccounts, getAssets as fetchAssets, createAccount, getUser, ensureGuestUserId, getStoredUserId } from './services';
+import { isAuthenticated, autoRefreshToken, clearAuthState, guestLogin } from './services/auth.service';
 import { useLiff } from './contexts/LiffContext';
 import './i18n/config'; // Initialize i18n
 import { useTranslation } from 'react-i18next';
@@ -48,6 +48,8 @@ const AppContent: React.FC = () => {
   const [authMode, setAuthMode] = useState<'guest' | 'authenticated'>('guest');
   const [showWelcome, setShowWelcome] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isAuthSettled, setIsAuthSettled] = useState(false);
+  const [isStartingGuestMode, setIsStartingGuestMode] = useState(false);
 
   // Assets & Accounts State (Lifted for Logic) - 必須在所有條件判斷之前宣告
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -61,6 +63,8 @@ const AppContent: React.FC = () => {
     us: true,    // Default true, user can toggle in Settings
     crypto: true // Default true
   });
+  const hasStoredIdentity = Boolean(lineUserId || getStoredUserId());
+  const hasActiveSession = isAuthenticated() && hasStoredIdentity;
 
   useEffect(() => {
     const handler = (event: PromiseRejectionEvent) => {
@@ -73,53 +77,84 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('unhandledrejection', handler);
   }, []);
 
+  useEffect(() => {
+    return subscribeToAuthExpired(() => {
+      setAuthMode('guest');
+      setShowWelcome(true);
+      setShowOnboarding(false);
+      setAccounts([]);
+      setAssets([]);
+      setIsLoadingAccounts(false);
+      setIsLoadingAssets(false);
+      setIsStartingGuestMode(false);
+      setIsAuthSettled(true);
+      navigate('/');
+    });
+  }, [navigate]);
+
   // 檢查認證狀態並決定是否顯示歡迎頁
   useEffect(() => {
+    if (!isLiffReady || isStartingGuestMode) {
+      setIsAuthSettled(false);
+      return;
+    }
+
     const storedAuthMode = localStorage.getItem('authMode') as 'guest' | 'authenticated' | null;
+
+    if (liffError) {
+      setAuthMode('guest');
+      setShowWelcome(true);
+      setIsAuthSettled(true);
+      return;
+    }
 
     if (storedAuthMode === 'guest') {
       setAuthMode('guest');
-      setShowWelcome(false);
+      setShowWelcome(!hasActiveSession);
+      setIsAuthSettled(true);
       return;
     }
 
     if (storedAuthMode === 'authenticated') {
-      if (isAuthenticated()) {
+      if (hasActiveSession && isLoggedIn) {
         // Token 有效，直接進入
         setAuthMode('authenticated');
         setShowWelcome(false);
+        setIsAuthSettled(true);
         return;
       }
-      // Token 過期，等 LIFF ready 後嘗試 refresh
-      if (!isLiffReady) return;
+
       autoRefreshToken().then(() => {
         if (isAuthenticated()) {
           setAuthMode('authenticated');
           setShowWelcome(false);
+          setIsAuthSettled(true);
         } else {
           // Refresh 失敗，清除過期狀態，回到歡迎頁
-          ['authMode', 'lineUserId', 'displayName'].forEach(k => localStorage.removeItem(k));
+          clearAuthState();
           setAuthMode('guest');
           setShowWelcome(true);
+          setIsAuthSettled(true);
         }
       });
       return;
     }
 
-    // 沒有任何 auth 記錄，依賴 LIFF 狀態
-    if (!isLiffReady) return;
-    if (isLoggedIn) {
+    if (hasActiveSession && isLoggedIn) {
       setAuthMode('authenticated');
       setShowWelcome(false);
+      setIsAuthSettled(true);
     } else {
+      setAuthMode('guest');
       setShowWelcome(true);
+      setIsAuthSettled(true);
     }
-  }, [isLiffReady, isLoggedIn]);
+  }, [isLiffReady, isLoggedIn, liffError, isStartingGuestMode, hasActiveSession]);
 
   // 🔥 Load accounts and assets from API on mount (等認證完成後才載入)
   useEffect(() => {
     const loadData = async () => {
-      if (!isLiffReady || showWelcome) {
+      if (!isAuthSettled || showWelcome || !hasActiveSession) {
         // 如果還沒準備好，先設為不載入，避免卡在載入畫面
         setIsLoadingAccounts(false);
         setIsLoadingAssets(false);
@@ -185,26 +220,35 @@ const AppContent: React.FC = () => {
     };
 
     loadData();
-  }, [isLiffReady, showWelcome, lineUserId, authMode]);
+  }, [isAuthSettled, showWelcome, lineUserId, authMode, hasActiveSession]);
 
   // 處理登入相關的函數
   const handleLineLogin = () => {
-    // LIFF 會自動觸發登入，不需額外處理
-    localStorage.setItem('authMode', 'authenticated');
-    setAuthMode('authenticated');
-    setShowWelcome(false);
+    window.location.reload();
   };
 
-  const handleGuestMode = () => {
-    localStorage.setItem('authMode', 'guest');
-    setAuthMode('guest');
-    setShowWelcome(false);
+  const handleGuestMode = async () => {
+    setIsStartingGuestMode(true);
+    try {
+      const guestId = ensureGuestUserId();
+      const authResult = await guestLogin(guestId, localStorage.getItem('displayName') || '訪客用戶');
+
+      if (authResult) {
+        localStorage.setItem('authMode', 'guest');
+        localStorage.setItem('lineUserId', authResult.user.lineUserId);
+        localStorage.setItem('displayName', authResult.user.displayName);
+        setAuthMode('guest');
+        setShowWelcome(false);
+      } else {
+        setShowWelcome(true);
+      }
+    } finally {
+      setIsStartingGuestMode(false);
+    }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('authMode');
-    localStorage.removeItem('lineUserId');
-    localStorage.removeItem('displayName');
+    clearAuthState();
     localStorage.removeItem('onboardingCompleted');
     localStorage.removeItem('defaultAccountCreated');
     setAuthMode('guest');
@@ -240,7 +284,14 @@ const AppContent: React.FC = () => {
 
   // 🎉 顯示歡迎頁
   if (showWelcome) {
-    return <WelcomePage onLineLogin={handleLineLogin} onGuestMode={handleGuestMode} />;
+    return (
+      <WelcomePage
+        onLineLogin={handleLineLogin}
+        onGuestMode={handleGuestMode}
+        errorMessage={liffError}
+        isGuestModeLoading={isStartingGuestMode}
+      />
+    );
   }
 
   // 📊 載入資料中
@@ -250,25 +301,6 @@ const AppContent: React.FC = () => {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-morandi-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-ink-400 font-serif">載入資料中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ⚠️ LIFF 初始化失敗
-  if (liffError) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-paper">
-        <div className="text-center max-w-md p-8">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-ink-900 mb-2">初始化失敗</h2>
-          <p className="text-ink-400 mb-4">{liffError}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-6 py-2 bg-morandi-blue text-white rounded-lg hover:bg-opacity-90 transition"
-          >
-            重新載入
-          </button>
         </div>
       </div>
     );
@@ -422,6 +454,7 @@ const AppContent: React.FC = () => {
                     <LedgerPage
                       accounts={accounts}
                       isPrivacyMode={isPrivacyMode}
+                      isSessionReady={hasActiveSession}
                       onAccountsUpdate={async () => {
                         const fetchedAccounts = await getAccounts();
                         setAccounts(fetchedAccounts);

@@ -8,23 +8,36 @@ export class ApiError extends Error {
   }
 }
 
-// Token 過期時清除所有 auth 狀態並重新載入
-// 不 import auth.service 以避免循環依賴
-function handleAuthExpired(): void {
-  [
-    'smartcapital_access_token',
-    'smartcapital_refresh_token',
-    'smartcapital_token_expiry',
-    'authMode',
-    'lineUserId',
-    'displayName',
-  ].forEach(key => localStorage.removeItem(key));
-  window.location.reload();
+type AuthExpiredListener = () => void;
+
+const authExpiredListeners = new Set<AuthExpiredListener>();
+
+export function subscribeToAuthExpired(listener: AuthExpiredListener): () => void {
+  authExpiredListeners.add(listener);
+  return () => {
+    authExpiredListeners.delete(listener);
+  };
 }
 
-function assertOk(response: Response, endpoint: string): void {
+function notifyAuthExpired(): void {
+  authExpiredListeners.forEach(listener => {
+    try {
+      listener();
+    } catch (error) {
+      console.error('❌ Auth expired listener failed:', error);
+    }
+  });
+}
+
+async function handleAuthExpired(): Promise<void> {
+  const { clearAuthState } = await import('../auth.service');
+  clearAuthState();
+  notifyAuthExpired();
+}
+
+async function assertOk(response: Response, endpoint: string): Promise<void> {
   if (response.status === 401) {
-    handleAuthExpired();
+    await handleAuthExpired();
     throw new ApiError(401, `Unauthorized: ${endpoint}`);
   }
   if (!response.ok) {
@@ -50,7 +63,7 @@ export async function get<T>(endpoint: string): Promise<T | null> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     headers: getAuthHeaders(),
   });
-  assertOk(response, endpoint);
+  await assertOk(response, endpoint);
   const result: ApiResponse<T> = await response.json();
   return result.success ? (result.data ?? null) : null;
 }
@@ -61,7 +74,7 @@ export async function post<T>(endpoint: string, body: unknown): Promise<T | null
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
   });
-  assertOk(response, endpoint);
+  await assertOk(response, endpoint);
   const result: ApiResponse<T> = await response.json();
   return result.success ? (result.data ?? null) : null;
 }
@@ -72,7 +85,7 @@ export async function patch<T>(endpoint: string, body: unknown): Promise<T | nul
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
   });
-  assertOk(response, endpoint);
+  await assertOk(response, endpoint);
   const result: ApiResponse<T> = await response.json();
   return result.success ? (result.data ?? null) : null;
 }
@@ -83,7 +96,7 @@ export async function put<T>(endpoint: string, body: unknown): Promise<T | null>
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
   });
-  assertOk(response, endpoint);
+  await assertOk(response, endpoint);
   const result: ApiResponse<T> = await response.json();
   return result.success ? (result.data ?? null) : null;
 }
@@ -93,7 +106,7 @@ export async function del(endpoint: string): Promise<boolean> {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
-  assertOk(response, endpoint);
+  await assertOk(response, endpoint);
   const result: ApiResponse<void> = await response.json();
   return result.success;
 }
@@ -104,7 +117,7 @@ export async function delWithQuery(endpoint: string, params: Record<string, stri
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
-  assertOk(response, endpoint);
+  await assertOk(response, endpoint);
   const result: ApiResponse<void> = await response.json();
   return result.success;
 }
@@ -115,7 +128,7 @@ export async function postBoolean(endpoint: string, body?: unknown): Promise<boo
     headers: getAuthHeaders(),
     body: body ? JSON.stringify(body) : undefined,
   });
-  assertOk(response, endpoint);
+  await assertOk(response, endpoint);
   const result: ApiResponse<unknown> = await response.json();
   return result.success;
 }

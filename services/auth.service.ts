@@ -25,10 +25,12 @@ export interface LoginResponse {
   expiresIn: number;
 }
 
-// Token 儲存 Key
 const ACCESS_TOKEN_KEY = 'smartcapital_access_token';
 const REFRESH_TOKEN_KEY = 'smartcapital_refresh_token';
 const TOKEN_EXPIRY_KEY = 'smartcapital_token_expiry';
+const AUTH_MODE_KEY = 'authMode';
+const LINE_USER_ID_KEY = 'lineUserId';
+const DISPLAY_NAME_KEY = 'displayName';
 
 /**
  * LINE 登入
@@ -144,11 +146,11 @@ export async function verifyToken(): Promise<boolean> {
 export async function logout(): Promise<void> {
   try {
     await post('/api/auth/logout', {});
-    clearTokens();
+    clearAuthState();
   } catch (error) {
     console.error('❌ 登出失敗:', error);
     // 即使後端失敗也清除本地 Token
-    clearTokens();
+    clearAuthState();
   }
 }
 
@@ -171,6 +173,16 @@ export function clearTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
+}
+
+/**
+ * 清除所有前端 auth 狀態
+ */
+export function clearAuthState(): void {
+  clearTokens();
+  localStorage.removeItem(AUTH_MODE_KEY);
+  localStorage.removeItem(LINE_USER_ID_KEY);
+  localStorage.removeItem(DISPLAY_NAME_KEY);
 }
 
 /**
